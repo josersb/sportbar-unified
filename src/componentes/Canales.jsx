@@ -1,0 +1,324 @@
+import React, { useRef, useState, useEffect, useContext } from "react";
+import ContextoUser from "../contexto/Contexto";
+import img_espn from "../imagenes/espn.png";
+import img_espn2 from "../imagenes/espn2.png";
+import img_espn3 from "../imagenes/espn3.png";
+import img_espnextra from "../imagenes/espnextra.png";
+import img_espnpremiumHD from "../imagenes/espnpremiumHD.png";
+import img_foxsporthd from "../imagenes/foxsporthd.png";
+import img_foxsporthd2 from "../imagenes/foxsporthd2.png";
+import img_foxsporthd3 from "../imagenes/foxsporthd3.png";
+import img_garagetv from "../imagenes/garagetv.png";
+import img_golf from "../imagenes/golf.png";
+import img_deportv from "../imagenes/deportv.png";
+import img_dtvsportshd from "../imagenes/dtvsportshd.png";
+import img_dtv2sportshd from "../imagenes/dtv2sportshd.png";
+import img_dtv3sportshd from "../imagenes/dtv3sportshd.png";
+import img_dtvfight from "../imagenes/dtvfight.png";
+import img_nbatv from "../imagenes/nbatv.png";
+import img_pxsports from "../imagenes/pxsports.png";
+import img_tnt_sports from "../imagenes/tntsports.jpg";
+import img_tyc from "../imagenes/tyc.png";
+import "./Canales.css";
+import "../elementos/CanalFavorito.css";
+
+const Canales = () => {
+  const { estado, handleChangeEstadoDecos } = useContext(ContextoUser);
+
+  const decos = estado.decos;
+  const favoritos = estado.favoritos;
+
+  const selectRef = useRef();
+  const inputRef = useRef();
+
+  const handleFavorito = (e) => {
+    inputRef.current.value = e.target.innerText;
+  };
+
+  const myInit = { method: "GET", mode: "no-cors", cache: "default" };
+  const submitCanal = async (e) => {
+    try {
+      e.preventDefault();
+      //Verifico que el canal seleccionado sea uno de los canales favoritos
+      const canal = inputRef.current.value;
+      console.log(canal)
+      const esUnCanalFavorito = favoritos.filter(x=> x==canal).length;
+      console.log(esUnCanalFavorito)
+      if (canal >= 100 && canal <= 2000 && esUnCanalFavorito) {
+        switch (selectRef.current.value) {
+          case "DTV1":
+            decos[0].canalDeco = canal;
+            await fetch(
+              `http://192.168.2.254/api/command/preset%20load%20deco1canal${canal}/TOKEN_REMOVED`,
+              myInit
+            );
+            break;
+          case "DTV2":
+            decos[1].canalDeco = canal;
+            await fetch(
+              `http://192.168.2.254/api/command/preset%20load%20deco2canal${canal}/TOKEN_REMOVED`,
+              myInit
+            );
+            break;
+          case "DTV3":
+            decos[2].canalDeco = canal;
+            await fetch(
+              `http://192.168.2.254/api/command/preset%20load%20deco3canal${canal}/TOKEN_REMOVED`,
+              myInit
+            );
+            break;
+          case "DTV4":
+            decos[3].canalDeco = canal;
+            await fetch(
+              `http://192.168.2.254/api/command/preset%20load%20deco4canal${canal}/TOKEN_REMOVED`,
+              myInit
+            );
+            break;
+          case "DTV5":
+            decos[4].canalDeco = canal;
+            await fetch(
+              `http://192.168.2.254/api/command/preset%20load%20deco5canal${canal}/TOKEN_REMOVED`,
+              myInit
+            );
+            break;
+          case "DTV6":
+            decos[5].canalDeco = canal;
+            await fetch(
+              `http://192.168.2.254/api/command/preset%20load%20deco6canal${canal}/TOKEN_REMOVED`,
+              myInit
+            );
+            break;
+          case "DTV7":
+            decos[6].canalDeco = canal;
+            await fetch(
+              `http://192.168.2.254/api/command/preset%20load%20deco7canal${canal}/TOKEN_REMOVED`,
+              myInit
+            );
+            break;
+          case "DTV8":
+            decos[7].canalDeco = canal;
+            await fetch(
+              `http://192.168.2.254/api/command/preset%20load%20deco8canal${canal}/TOKEN_REMOVED`,
+              myInit
+            );
+            break;
+          default:
+        }
+      } else {
+        inputRef.current.value = "";
+        inputRef.current.placeholder = "numero canal no valido";
+      }
+    } catch (error) {
+      console.log("error solicitud Arranger 5000");
+    }
+    handleChangeEstadoDecos(decos);
+  };
+
+  return (
+    <main>
+      <div className="canales-main-container">
+        <h3 className="canales-main-titulo">
+          Ajuste de canales - canales Favoritos
+        </h3>
+        <div className="canales-main-form">
+          <form onSubmit={submitCanal}>
+            <select
+              name="nombreDeco"
+              ref={selectRef}
+              className="canales-form-select"
+              required
+            >
+              <option value="">--Seleccione Deco--</option>
+              <option value="DTV1">DTV 1</option>
+              <option value="DTV2">DTV 2</option>
+              <option value="DTV3">DTV 3</option>
+              <option value="DTV4">DTV 4</option>
+              <option value="DTV5">DTV 5</option>
+              <option value="DTV6">DTV 6</option>
+              <option value="DTV7">DTV 7</option>
+              <option value="DTV8">DTV 8</option>
+            </select>
+            <label className="canales-form-label"> Canal </label>
+            <input
+              type="number"
+              name="canalDeco"
+              placeholder="numero a ingresar"
+              ref={inputRef}
+              className="canales-form-input"
+              required
+            />
+            <input type="submit" value="Aplicar" className="form-submit" />
+          </form>
+        </div>
+        <h3 className="canales-main-titulo">Canales Favoritos</h3>
+        <ul className="canales-main-grillaFavoritos">
+          <button className="CanalFavorito" onClick={handleFavorito}>
+            <img src={img_tnt_sports} alt="" />
+            <h3>1603</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1604"
+            onClick={handleFavorito}
+          >
+            <img src={img_espnpremiumHD} alt="" />
+            <h3>1604</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1605"
+            onClick={handleFavorito}
+          >
+            <img src={img_foxsporthd} alt="" />
+            <h3>1605</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1608"
+            onClick={handleFavorito}
+          >
+            <img src={img_foxsporthd2} alt="" />
+            <h3>1608</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1609"
+            onClick={handleFavorito}
+          >
+            <img src={img_foxsporthd3} alt="" />
+            <h3>1609</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1610"
+            onClick={handleFavorito}
+          >
+            <img src={img_dtvsportshd} alt="" />
+            <h3>1610</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1612"
+            onClick={handleFavorito}
+          >
+            <img src={img_dtv2sportshd} alt="" />
+            <h3>1612</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1613"
+            onClick={handleFavorito}
+          >
+            <img src={img_dtv3sportshd} alt="" />
+            <h3>1613</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1614"
+            onClick={handleFavorito}
+          >
+            <img src={img_dtv3sportshd} alt="" />
+            <h3>1614</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1620"
+            onClick={handleFavorito}
+          >
+            <img src={img_dtvfight} alt="" />
+            <h3>1620</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1621"
+            onClick={handleFavorito}
+          >
+            <img src={img_espn} alt="" />
+            <h3>1621</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1622"
+            onClick={handleFavorito}
+          >
+            <img src={img_espn2} alt="" />
+            <h3>1622</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1623"
+            onClick={handleFavorito}
+          >
+            <img src={img_espn3} alt="" />
+            <h3>1623</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1625"
+            onClick={handleFavorito}
+          >
+            <img src={img_espnextra} alt="" />
+            <h3>1625</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1628"
+            onClick={handleFavorito}
+          >
+            <img src={img_golf} alt="" />
+            <h3>1628</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1629"
+            onClick={handleFavorito}
+          >
+            <img src={img_tyc} alt="" />
+            <h3>1629</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1631"
+            onClick={handleFavorito}
+          >
+            <img src={img_deportv} alt="" />
+            <h3>1631</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1639"
+            onClick={handleFavorito}
+          >
+            <img src={img_pxsports} alt="" />
+            <h3>1639</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1644"
+            onClick={handleFavorito}
+          >
+            <img src={img_garagetv} alt="" />
+            <h3>1644</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="1677"
+            onClick={handleFavorito}
+          >
+            <img src={img_nbatv} alt="" />
+            <h3>1677</h3>
+          </button>
+          <button
+            className="CanalFavorito"
+            value="0000"
+            onClick={handleFavorito}
+          >
+            0000
+          </button>
+        </ul>
+      </div>
+    </main>
+  );
+};
+
+export default Canales;

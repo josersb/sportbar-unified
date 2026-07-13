@@ -1,0 +1,49 @@
+GET STATUS
+Used to retrieve the status of the specified device or individual encoder device stream or decoder subscription.
+
+Command Structure
+get status [key:<security_key>] <device> [<stream>]<cr>
+
+Arguments
+get status [key:<security_key>] <device> [<stream>]<cr>
+
+<device>: Name of the encoder or decoder
+<stream>: video | audio | usb | serial | ir
+
+Notes
+When no stream is specified the return will be as seen on the status of the encoder / decoder UI Status tab, this is a
+general status of the device.
+
+Examples
+Command
+get status Encoder1<cr> 
+get status Decoder1<cr>
+get status Encoder1 audio<cr> 
+get status Decoder1 audio<cr>
+get status Encoder1 video<cr> 
+get status Decoder1 video<cr>
+get status Encoder1 usb<cr> 
+get status Decoder1 usb<cr>
+get status Encoder1 serial<cr> 
+get status Decoder1 serial<cr>
+get status key:abc123 Encoder1 ir<cr>
+get status Decoder1 ir<cr>
+
+Response
+get status success CONNECTED<cr>
+get status success STOPPED<cr>
+get status success TIMEOUT<cr>
+get status success DISCONNECTED<cr>
+get status success OUT OF RANGE<cr>
+get status error [incomplete]<cr>
+get status error [invalid stream '<stream>']<cr>
+get status error [device ‘Encoder1’ not found]<cr>
+get status error [device ‘Encoder1’ disconnected]<cr>
+
+EXAMPLE FOR TCP CONNECTION (opciones de la interfaz web arrenger)
+
+Estado general del dispositivo consultado:
+get status DTV1 -> get status success connected
+get status DTV1 video -> get status success streaming
+
+get status [key:61316232353032643462323338613631] [DTV1] [VIDEO]<cr>

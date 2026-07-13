@@ -1,0 +1,416 @@
+:root {
+  --DTV1: #EF9A9A;
+  --DTV2: #EC407A;
+  --DTV3: #7E57C2;
+  --DTV4: #42A5F5;
+  --DTV5: #66BB6A;
+  --DTV6: #FFEE58;
+  --DTV7: #FFCA28;
+  --DTV8: #BDBDBD;
+  --ASur:white; 
+  --ACentro:white; 
+  --ANorte:white; 
+  --VWN:white;
+  --VWC:white;
+  --VWS:white;
+  --TV01:white;
+  --TV02:white;
+  --TV03:white;
+  --TV04:white;
+  --TV05:white;
+  --TV06:white;
+  --TV07:white;
+  --TV08:white;
+  --TV09:white;
+  --TV10:white;
+  --TV11:white;
+  --TV12:white;
+  --TV13:white;
+  --TV14:white;
+  --TV15:white;
+  --TV16:white;
+  --TV17:white;
+  --TV18:white;
+  --TV19:white;
+  --TV20:white;
+  --TV21:white;
+  --TV22:white;
+  --TV23:white;
+  --TV24:white;
+  --TV25:white;
+  --TV26:white;
+  --TVRACK:white;
+}
+
+.aside-container{
+  margin-top: 10px;
+  width: 100%;
+  height: auto;
+  min-height: 550px;
+  padding: 11px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content:flex-start;                  /* background-color: #ffb29d; */
+  border: 1px solid #FF3900;
+  font-family: Roboto,sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+/* Info canal en los decos */
+.decos-info{
+  margin: 2px 2px;
+  padding: 5px 5px;
+  border: 1px solid;
+  border-color: rgb(247, 217, 182); 
+  border-radius: 3px;
+}
+.decos-titulo{
+  margin: 10px;
+  max-width: 500px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  border-bottom: 1px solid grey; 
+}
+.decos-titulo-recargar{
+  margin-bottom: 2px;
+}
+.lista-decos{
+  margin:10px;
+}
+.lista-decos-encabezados{
+  margin-bottom: 10px;
+  display:flex;
+  flex-direction: row;
+  justify-content: space-around;
+  border-bottom: 1px solid lightgrey;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.item-deco{
+  padding: 2px 2px;
+  display:flex;
+  flex-direction: row;
+  justify-content: space-around;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+/* Info zonas de audio */
+.audio-info{
+  margin: 2px 2px;
+  padding: 5px 5px;
+  border: 1px solid;
+  border-color: rgb(247, 217, 182); 
+  border-radius: 3px;
+}
+.audio-titulo{
+  margin: 10px;
+  max-width: 500px;
+  border-bottom: 1px solid grey; 
+}
+.lista-audio{
+  margin:10px;
+}
+.lista-audio-encabezados{
+  margin-bottom: 10px;
+  display:flex;
+  flex-direction: row;
+  justify-content: space-around;
+  border-bottom: 1px solid lightgrey;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.item-audio{
+  display:flex;
+  flex-direction: row;
+  justify-content: space-around;
+  font-weight: 400;
+  font-size: 12px;
+}
+.item-audio-norte{
+  background-color: var(--ANorte);
+}
+.item-audio-centro{
+  background-color: var(--ACentro);
+}
+.item-audio-sur{
+  background-color: var(--ASur);
+}
+
+.item-audio-zona{
+  width: 50px;
+  text-align: center;
+}
+.item-audio-deco{
+  width: 50px;
+  text-align: center;
+}
+.item-audio-Vol{
+  width: 50px;
+  text-align: center;
+}
+.item-audio-Mute{
+  width: 50px;
+  text-align: center;
+}
+/* Info MAtriz de video */
+.video-info{
+  margin: 2px 2px;
+  padding: 5px 5px;
+  border: 1px solid;
+  border-color: rgb(247, 217, 182); 
+  border-radius: 3px;
+}
+.video-titulo{
+  margin: 10px;
+  max-width: 500px;
+  border-bottom: 1px solid grey; 
+}
+.lista-video{
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.container-escalera-barra{
+  width: 300px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item-video-vw{
+  height: 16px;
+  display:flex;
+  flex-direction: row;
+  justify-content: space-around;
+  
+}
+.item-video-vw p{
+  display: flex;
+  flex-direction: row;
+  flex-grow: 1;
+  border: 1px solid black;
+  font-weight: 400;
+  font-size: 12px;
+  text-align: center;
+}
+
+#VWN{
+ background-color: var(--VWN);
+ grid-area: vwn;  
+}
+#VWC{
+ background-color: var(--VWC);
+ grid-area: vwc;  
+}
+#VWS{
+ background-color: var(--VWS); 
+ grid-area: vws; 
+}
+#TV01{
+ background-color: var(--TV01);
+ grid-area: tv01; 
+}
+#TV02{
+ background-color: var(--TV02);
+ grid-area: tv02;  
+}
+#TV03{
+ background-color: var(--TV03);
+ grid-area: tv03;   
+}
+#TV04{
+ background-color: var(--TV04); 
+ grid-area: tv04;  
+}
+#TV05{
+ background-color: var(--TV05); 
+ grid-area: tv05;  
+}
+#TV06{
+ background-color: var(--TV06); 
+ grid-area: tv06;  
+}
+#TV07{
+ background-color: var(--TV07);
+ grid-area: tv07;   
+}
+#TV08{
+ background-color: var(--TV08);
+ grid-area: tv08;   
+}
+#TV09{
+ background-color: var(--TV09);
+ grid-area: tv09;   
+}
+#TV10{
+ background-color: var(--TV10);
+ grid-area: tv10;   
+}
+#TV11{
+ background-color: var(--TV11);
+ grid-area: tv11;   
+}
+#TV12{
+ background-color: var(--TV12); 
+ grid-area: tv12;  
+}
+#TV13{
+ background-color: var(--TV13);
+ grid-area: tv13;   
+}
+#TV14{
+ background-color: var(--TV14);
+ grid-area: tv14;   
+}
+#TV15{
+ background-color: var(--TV15);
+ grid-area: tv15;     
+}
+#TV16{
+ background-color: var(--TV16);
+ grid-area: tv16;     
+}
+#TV17{
+ background-color: var(--TV17);
+ grid-area: tv17;     
+}
+#TV18{
+ background-color: var(--TV18);
+ grid-area: tv18;     
+}
+#TV19{
+ background-color: var(--TV19);
+ grid-area: tv19;    
+}
+#TV20{
+ background-color: var(--TV20);
+ grid-area: tv20;    
+}
+#TV21{
+ background-color: var(--TV21);
+ grid-area: tv21;    
+}
+#TV22{
+ background-color: var(--TV22);
+ grid-area: tv22;    
+}
+#TV23{
+ background-color: var(--TV23);
+ grid-area: tv23;     
+}
+#TV24{
+ background-color: var(--TV24);
+ grid-area: tv24;     
+}
+#TV25{
+ background-color: var(--TV25);
+ grid-area: tv25;     
+}
+#TV26{
+ background-color: var(--TV26);
+ grid-area: tv26;     
+}
+#TVRACK{
+ background-color: var(--TVRACK);
+ grid-area: tvrk;     
+}
+
+.container-tvs-vw{
+  width: 240px;
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+  grid-template-columns: repeat(3);
+  grid-template-rows: auto;
+  grid-template-areas: 
+    "vws vwc vwn";
+}
+.container-tvs-vw p{
+  padding: 2px;
+  font-size: 12px;
+  text-align: center; 
+}
+
+.container-tvs-escalera_norte{
+  max-width: 15vw;
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+  grid-template-columns: auto;
+  grid-template-rows: repeat(4);
+  grid-template-areas: 
+    "tv23"
+    "tv24"
+    "tv25"
+    "tv26";
+}
+.container-tvs-escalera_norte p{
+  padding: 2px;
+  font-size: 12px;
+  text-align: center; 
+}
+.container-tvs-escalera_centro{
+  margin: 5px 10px;
+  max-width: 15vw;
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+  grid-template-columns: repeat(4);
+  grid-template-rows: auto;
+  grid-template-areas: 
+    "tv19 tv20 tv21 tv22";
+}
+.container-tvs-escalera_centro p{
+  padding: 2px;
+  font-size: 12px;
+  text-align: center; 
+}
+.container-tvs-escalera_sur{
+  max-width: 15vw;
+  height:100%;
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+  grid-template-columns: auto;
+  grid-template-rows: repeat(4);
+  grid-template-areas: 
+    "tv18"
+    "tv17"
+    "tv16"
+    "tv15";
+}
+.container-tvs-escalera_sur p{
+  padding: 2px;
+  font-size: 12px;
+  text-align: center; 
+}
+
+.container-tvs-barra{
+  max-width: 15vw;
+  height:100%;
+  display: grid;
+  gap: 2px;
+  padding: 5px;
+  grid-template-columns: repeat(5);
+  grid-template-rows: 16% 16% 16% 16% 16% 16%;
+  grid-template-areas: 
+    ".  tv03 tv02 tv01 ."
+    "tv04 .   .   .  tv14"
+    "tv05 . tvrk .  tv13"
+    "tv06 .   .   .  tv12"
+    "tv07 .   .   .  tv11"
+    ".  tv08 tv09 tv10 .";
+}
+.container-tvs-barra p{
+  padding: 2px;
+  font-size: 12px;
+  text-align: center; 
+}

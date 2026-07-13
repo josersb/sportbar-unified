@@ -1,0 +1,79 @@
+{
+  "name": "sportbar-unified",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sistema unificado de control SportBar - Gestión de matriz audiovisual, canales deportivos y control de audio",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "cd server && pnpm install && pnpm start",
+    "dev:full": "concurrently \"pnpm run dev\" \"pnpm run serve\"",
+    "start": "pnpm run build && pnpm run serve",
+    "install:server": "cd server && pnpm install",
+    "setup": "pnpm install && pnpm run install:server",
+    "setup:auto": "node setup.js",
+    "normalize-versions": "pnpm install --save-exact",
+    "check-versions": "node scripts/version-manager.cjs check",
+    "fix-versions": "node scripts/version-manager.cjs fix",
+    "audit-versions": "node scripts/version-manager.cjs audit",
+    "list-versions": "node scripts/version-manager.cjs list",
+    "install-exact": "node scripts/version-manager.cjs install",
+    "clean": "rm -rf node_modules pnpm-lock.yaml && pnpm install",
+    "clean:all": "rm -rf node_modules pnpm-lock.yaml server/node_modules server/pnpm-lock.yaml && pnpm install",
+    "lint": "echo 'Linting not configured yet'",
+    "lint:lockfile": "node scripts/lockfile-validator.cjs",
+    "security:socket": "npx @socket_security/cli analyze --project . 2>&1 || echo 'Socket analysis not available'",
+    "security:snyk": "npx snyk test",
+    "security:snyk:monitor": "npx snyk monitor",
+    "security:audit": "pnpm audit",
+    "security:check": "node scripts/security-checker.cjs",
+    "sbom": "node scripts/sbom-generator.cjs",
+    "test": "echo 'Tests not configured yet'"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "6.1.2",
+    "formik": "2.2.9",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-hook-form": "7.53.0",
+    "react-router-dom": "6.30.3",
+    "react-select": "5.8.0",
+    "styled-components": "6.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "18.0.17",
+    "@types/react-dom": "18.0.6",
+    "@vitejs/plugin-react": "4.3.1",
+    "concurrently": "7.6.0",
+    "lockfile-lint": "5.0.0",
+    "snyk": "1.1304.0",
+    "vite": "5.4.21"
+  },
+  "keywords": [
+    "sportbar",
+    "react",
+    "matriz-audiovisual",
+    "control-canales",
+    "directv",
+    "arranger"
+  ],
+  "author": "SportBar Team",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "engineStrict": true,
+  "volta": {
+    "node": "18.17.1"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "optionalDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "4.60.1"
+  }
+}

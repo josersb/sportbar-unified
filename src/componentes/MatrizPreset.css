@@ -1,0 +1,76 @@
+.matriz-main-preset{
+  margin-top: 10px;
+  margin-bottom: 10px;
+  width: 30%;
+  height: auto;
+  min-height: 550px;
+  padding: 20px 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content:flex-start;
+  background-color: #F5F6F9;
+  border: 1px solid #FF3900;
+  font-family: Roboto,sans-serif;
+  font-weight: 400;
+  font-size: 14px;  
+}
+
+.btnCargarPreset{
+  margin-left: 10px;
+  margin-right: 5px;
+  width: 80px;
+  height: 30px;
+  border: 2px solid #FF3900;
+  border-radius: 5px;
+  background-color: #faa68f;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  transition-duration: 0.4s;
+}
+.btnCargarPreset:hover{
+  cursor: pointer;
+  color: white;
+ background-color: #FF3900;
+ box-shadow: 0 2px 2px 0 rgba(0,0,0,0.24), 0 4px 4px 0 rgba(0,0,0,0.19);
+}
+.btnCargarPreset:active{
+  cursor: pointer;
+  color: white;
+  background-color:#FF3900 ;
+  box-shadow: 0 5px #666;
+  transform: translateY(4px);
+}
+
+.btnGrabarPreset{
+  margin-left: 10px;
+  width: 15px;
+  height: 15px;
+  border: 1px solid red;
+  border-radius: 15px;
+  outline: 1px solid red;
+outline-offset: 2px;
+  background-color: red;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  transition-duration: 0.4s;
+}
+.btnGrabarPreset:hover{
+  cursor: pointer;
+  color: white;
+ background-color: #FF3900;
+ box-shadow: 0 2px 2px 0 rgba(0,0,0,0.24), 0 4px 4px 0 rgba(0,0,0,0.19);
+}
+.btnGrabarPreset:active{
+  cursor: pointer;
+  color: white;
+  background-color:#FF3900 ;
+  box-shadow: 0 5px #666;
+  transform: translateY(4px);
+}
+
+.matriz-main-item{
+  margin-bottom: 10px;
+}
+

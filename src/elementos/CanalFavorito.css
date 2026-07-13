@@ -1,0 +1,39 @@
+.CanalFavorito{
+  margin: 5px 5px;
+  width: 90px;
+  height: 100px;
+  border: 2px solid #f58d70;
+  border-radius: 5px;
+  box-shadow: 2px 2px grey;
+  background-color: white;
+  transition-duration: 0.4s;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  position: relative;
+}
+
+.CanalFavorito img{
+  width: 80px;
+  padding-top: 10px;
+}
+
+.CanalFavorito h3{
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  color: black;
+  z-index: 100;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.CanalFavorito:hover{
+  cursor: pointer;
+  background-color: rgb(239, 234, 250);
+}
+.CanalFavorito:active{
+  cursor: pointer;
+  transform: translateY(4px);
+}

@@ -276,3 +276,9 @@ production-config.json
 # Local development overrides
 local-config.json
 dev-config.json
+
+# SDD tooling
+.atl/
+
+# CodeGraph index
+.codegraph/

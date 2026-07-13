@@ -1,0 +1,74 @@
+# OpenSpec Configuration — sportbar-unified
+# Generated: 2026-07-13
+# Artifact store: hybrid (engram + openspec)
+
+context: >
+  React 18 + Vite 5 (frontend), Express 4 (backend in server/).
+  pnpm exclusive. Node 18.17.1. Matrix audiovisual controller
+  for Arranger IPEX5000 hardware. 8 DirecTV decoders, 40+ TVs,
+  3 audio zones (Norte, Centro, Sur). No CI/CD, no testing, no linting.
+
+strict_tdd: false
+# Reason: No test runner is configured in the project.
+# The test script in package.json is a placeholder echo.
+# Install vitest or jest and configure a runner to enable strict TDD.
+
+testing:
+  runner:
+    command: null
+    framework: null
+  layers:
+    unit: { available: false, tool: null }
+    integration: { available: false, tool: null }
+    e2e: { available: false, tool: null }
+  coverage: { available: false, command: null }
+  quality:
+    linter: { available: false, command: null }
+    type_checker: { available: false, command: null }
+    formatter: { available: false, command: null }
+
+phases:
+  proposal:
+    required: true
+    artifact: sdd/{change}/proposal
+  spec:
+    required: true
+    depends_on: [proposal]
+    artifact: sdd/{change}/spec
+  design:
+    required: true
+    depends_on: [proposal]
+    artifact: sdd/{change}/design
+  tasks:
+    required: true
+    depends_on: [spec, design]
+    artifact: sdd/{change}/tasks
+  apply:
+    required: true
+    depends_on: [tasks]
+    artifact: sdd/{change}/apply-progress
+  verify:
+    required: true
+    depends_on: [spec, tasks]
+    artifact: sdd/{change}/verify-report
+  archive:
+    required: true
+    depends_on: [proposal, spec, design, tasks, apply, verify]
+    artifact: sdd/{change}/archive-report
+
+stack:
+  frontend:
+    framework: react
+    version: 18.3.1
+    build_tool: vite
+    build_version: 5.4.21
+    lang: javascript (jsx)
+    modules: esm
+  backend:
+    framework: express
+    version: 4.19.2
+    directory: server/
+    lang: javascript
+    modules: commonjs
+  package_manager: pnpm
+  node_version: 18.17.1

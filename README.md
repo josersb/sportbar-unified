@@ -8,7 +8,7 @@ Sistema unificado de control para SportBar - Gestión integral de matriz audiovi
 
 SportBar Unified es una aplicación web React que permite controlar de manera centralizada todos los aspectos audiovisuales de un SportBar, incluyendo:
 
-- **Control de Matriz de Video**: Gestión de 40+ televisores distribuidos por zonas
+- **Control de Matriz de Video**: Gestión de 30 televisores distribuidos por zonas
 - **Gestión de Canales**: Interface intuitiva para canales deportivos (ESPN, Fox Sports, DirecTV Sports, etc.)
 - **Control de Audio**: Manejo independiente por zonas (Norte, Centro, Sur)
 - **Sistema de Presets**: 5 configuraciones predefinidas guardables
@@ -42,22 +42,22 @@ SportBar Unified es una aplicación web React que permite controlar de manera ce
 ## 🛠️ Tecnologías Utilizadas
 
 ### Frontend
-- **React 18.2.0** - Framework principal
-- **React Router DOM 6.3.0** - Navegación SPA
-- **Styled Components 5.3.5** - Estilos CSS-in-JS
+- **React 18.3.1** - Framework principal
+- **React Router DOM 6.30.3** - Navegación SPA
+- **Styled Components 6.1.0** - Estilos CSS-in-JS
 - **Formik 2.2.9** - Gestión de formularios
-- **React Hook Form 7.34.2** - Formularios alternativos
-- **React Select 5.4.0** - Componentes select avanzados
+- **React Hook Form 7.53.0** - Formularios alternativos
+- **React Select 5.8.0** - Componentes select avanzados
 - **FontAwesome 6.1.2** - Iconografía
 
 ### Build & Development
-- **Vite 3.0.7** - Build tool y dev server
-- **@vitejs/plugin-react 2.0.1** - Plugin React para Vite
+- **Vite 5.4.21** - Build tool y dev server
+- **@vitejs/plugin-react 4.3.1** - Plugin React para Vite
 
 Configuración detallada del entorno: [[Docs/DEVELOPMENT_ENVIRONMENT]] | [[Docs/ENVIRONMENT_SUMMARY]]
 
 ### Backend
-- **Express.js 4.18.1** - Servidor web para producción
+- **Express.js 4.19.2** - Servidor web para producción
 - **CORS** configurado para integración Arranger
 
 ## 📁 Estructura del Proyecto
@@ -94,7 +94,7 @@ sportbar-unified/
 ## ⚡ Instalación y Configuración
 
 ### Requisitos Previos
-- Node.js >= 16.0.0
+- Node.js 18.17.1
 - NPM o Yarn
 
 ### Instalación Completa
@@ -104,11 +104,11 @@ Ver [[Docs/SETUP_INSTRUCTIONS]] para guía paso a paso.
 ```bash
 # Clonar e instalar dependencias
 cd sportbar-unified
-npm run setup
+pnpm run setup
 
 # O manualmente:
-npm install
-npm run install:server
+pnpm install
+pnpm run install:server
 ```
 
 ### Configuración de Red
@@ -125,22 +125,22 @@ Referencia de comandos: [[API commands/devices_all]] | [[API commands/get_status
 
 ### Desarrollo
 ```bash
-npm run dev          # Servidor de desarrollo (puerto 5173)
-npm run dev:full     # Desarrollo + servidor producción simultáneo
+pnpm run dev          # Servidor de desarrollo (puerto 5173)
+pnpm run dev:full     # Desarrollo + servidor producción simultáneo
 ```
 
 ### Producción
 ```bash
-npm run build        # Compilar para producción
-npm run preview      # Vista previa del build
-npm run serve        # Servidor de producción (puerto 3000)
-npm run start        # Build + servidor completo
+pnpm run build        # Compilar para producción
+pnpm run preview      # Vista previa del build
+pnpm run serve        # Servidor de producción (puerto 3000)
+pnpm run start        # Build + servidor completo
 ```
 
 ### Mantenimiento
 ```bash
-npm run lint         # Linting (pendiente configurar)
-npm run test         # Tests (pendiente configurar)
+pnpm run lint         # Linting (pendiente configurar)
+pnpm run test         # Tests (pendiente configurar)
 ```
 
 ## 🌐 URLs de Acceso
@@ -253,7 +253,7 @@ fetch(url, { method: "GET", mode: "no-cors" });
 ### Logs del Servidor
 ```bash
 cd server
-npm start
+pnpm start
 # Ver logs en consola
 ```
 
@@ -288,10 +288,10 @@ test: pruebas
 ```
 
 ### Workflow de Desarrollo
-1. Desarrollo en `npm run dev`
+1. Desarrollo en `pnpm run dev`
 2. Testing de funcionalidad
-3. Build con `npm run build`
-4. Testing en producción con `npm run serve`
+3. Build con `pnpm run build`
+4. Testing en producción con `pnpm run serve`
 5. Deploy
 
 ## 📄 Licencia

@@ -31,16 +31,16 @@ engine-strict=true
 
 ### 3. **Scripts de Gestión Automática**
 ```bash
-npm run check-versions     # Verificar versiones exactas
-npm run fix-versions      # Corregir automáticamente
-npm run audit-versions    # Auditoría completa
-npm run list-versions     # Ver todas las dependencias
+pnpm run check-versions     # Verificar versiones exactas
+pnpm run fix-versions      # Corregir automáticamente
+pnpm run audit-versions    # Auditoría completa
+pnpm run list-versions     # Ver todas las dependencias
 ```
 
 ### 4. **Version Manager Script**
 - ✅ **Ubicación**: `/scripts/version-manager.js`
 - ✅ **Funciones**: Check, fix, install, audit automático
-- ✅ **Comandos**: Disponibles via npm run
+- ✅ **Comandos**: Disponibles via pnpm run
 
 ---
 
@@ -49,18 +49,18 @@ npm run list-versions     # Ver todas las dependencias
 ### **Instalación Normal de Dependencias**
 ```bash
 # ANTES (con rangos)
-npm install lodash
+pnpm install lodash
 # Resultado: "lodash": "^4.17.21"
 
 # AHORA (versión exacta automática)
-npm install lodash
+pnpm install lodash
 # Resultado: "lodash": "4.17.21"  ← SIN ^ automáticamente
 ```
 
 ### **Verificación Automática**
 ```bash
 # Verificar que todo esté configurado correctamente
-npm run audit-versions
+pnpm run audit-versions
 
 # Resultado esperado:
 # ✅ Proyecto configurado correctamente para versiones exactas
@@ -74,21 +74,21 @@ npm run audit-versions
 ### **Uso Diario** (Lo que necesitas saber)
 ```bash
 # Instalar cualquier dependencia (será exacta automáticamente)
-npm install nombre-paquete
+pnpm install nombre-paquete
 
 # Verificar configuración
-npm run audit-versions
+pnpm run audit-versions
 
 # Si algo sale mal, corregir automáticamente
-npm run fix-versions
+pnpm run fix-versions
 ```
 
 ### **Comandos de Desarrollo**
 ```bash
-npm run dev              # Desarrollo normal
-npm run setup:auto       # Setup inicial completo
-npm run check-versions   # Check rápido
-npm run list-versions    # Ver estado detallado
+pnpm run dev              # Desarrollo normal
+pnpm run setup:auto       # Setup inicial completo
+pnpm run check-versions   # Check rápido
+pnpm run list-versions    # Ver estado detallado
 ```
 
 ---
@@ -96,8 +96,8 @@ npm run list-versions    # Ver estado detallado
 ## 🎯 BENEFICIOS OBTENIDOS
 
 ### ✅ **Instalaciones Automáticas**
-- **Antes**: `npm install package` → `^1.2.3` (rango)
-- **Ahora**: `npm install package` → `1.2.3` (exacta)
+- **Antes**: `pnpm install package` → `^1.2.3` (rango)
+- **Ahora**: `pnpm install package` → `1.2.3` (exacta)
 
 ### ✅ **Reproducibilidad**
 - **Desarrollo**: Mismas versiones siempre
@@ -147,12 +147,12 @@ npm run list-versions    # Ver estado detallado
 ### **Para Verificar que Funciona:**
 1. **Instalar dependencia de prueba**:
    ```bash
-   npm install moment
+   pnpm install moment
    ```
 
 2. **Verificar resultado**:
    ```bash
-   npm run check-versions
+   pnpm run check-versions
    ```
 
 3. **Resultado esperado**:
@@ -172,13 +172,13 @@ npm run list-versions    # Ver estado detallado
 ### **Desarrollo Normal**
 ```bash
 # 1. Instalar nueva dependencia (será exacta)
-npm install nueva-dependencia
+pnpm install nueva-dependencia
 
 # 2. Desarrollar normalmente
-npm run dev
+pnpm run dev
 
 # 3. Antes de commit (opcional)
-npm run audit-versions
+pnpm run audit-versions
 ```
 
 ### **Setup Nuevo Desarrollador**
@@ -187,13 +187,13 @@ npm run audit-versions
 cd sportbar-unified
 
 # 2. Setup automático (incluye configuración)
-npm run setup:auto
+pnpm run setup:auto
 
 # 3. Verificar configuración
-npm run audit-versions
+pnpm run audit-versions
 
 # 4. Iniciar desarrollo
-npm run dev
+pnpm run dev
 ```
 
 ---
@@ -252,16 +252,16 @@ sportbar-unified/
 ### **Si algo no funciona:**
 ```bash
 # 1. Verificar configuración
-npm run audit-versions
+pnpm run audit-versions
 
 # 2. Si hay problemas, corregir
-npm run fix-versions
+pnpm run fix-versions
 
 # 3. Reinstalar si es necesario
-npm run clean && npm install
+pnpm run clean && pnpm install
 
 # 4. Verificar de nuevo
-npm run audit-versions
+pnpm run audit-versions
 ```
 
 ### **Documentación Completa:**

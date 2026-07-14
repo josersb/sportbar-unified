@@ -1,6 +1,6 @@
 # App
 
-Componente raíz de la aplicación React. Inicializa el estado global desde localStorage, define los 4 handlers de modificación de estado, y envuelve toda la app en el `ProviderUser` del contexto global. Renderiza el componente [[Body]] como hijo único.
+Componente raíz de la aplicación React. Inicializa el estado global desde localStorage, define los 4 handlers de modificación de estado, y envuelve toda la app en el `ProviderUser` del contexto global. Renderiza el componente Body como hijo único.
 
 Ubicación: `src/App.jsx`
 
@@ -45,6 +45,6 @@ App define 4 handlers que pasan al contexto. Cada uno usa `setEstado` con spread
 
 - Es el entry point del [[../Conceptos/StateManagement]]
 - Consume [[Contexto]] (`estadoInicial`, `ProviderUser`)
-- Renderiza [[Body]] (que contiene el router con [[MatrizVideo]], [[Canales]], [[Audio]], [[Arranger]], [[Aside]])
+- Renderiza Body (que contiene el router con [[MatrizVideo]], [[Canales]], [[Audio]], [[Arranger]], [[Aside]])
 - [[../README]] — documentación general
 - [[../AGENTS]] — schema de la wiki

@@ -61,20 +61,20 @@ sportbar-unified/
 ## 🛠️ Tecnologías Integradas
 
 ### Frontend
-- ✅ React 18.2.0
-- ✅ React Router DOM 6.3.0
-- ✅ Styled Components 5.3.5
+- ✅ React 18.3.1
+- ✅ React Router DOM 6.30.3
+- ✅ Styled Components 6.1.0
 - ✅ Formik 2.2.9
-- ✅ React Select 5.4.0
+- ✅ React Select 5.8.0
 
 ### Build & Development
-- ✅ Vite 3.0.7 (optimizado)
+- ✅ Vite 5.4.21 (optimizado)
 - ✅ Hot Module Replacement
 - ✅ Build optimizado para producción
 - ✅ Proxy CORS configurado
 
 ### Backend
-- ✅ Express.js 4.18.1
+- ✅ Express.js 4.19.2
 - ✅ Servidor estático optimizado
 - ✅ CORS habilitado
 - ✅ Manejo de errores
@@ -82,17 +82,17 @@ sportbar-unified/
 ## 📋 Scripts Configurados
 
 ### Desarrollo
-- ✅ `npm run dev` - Servidor desarrollo (puerto 5173)
-- ✅ `npm run dev:full` - Desarrollo + servidor simultáneo
+- ✅ `pnpm run dev` - Servidor desarrollo (puerto 5173)
+- ✅ `pnpm run dev:full` - Desarrollo + servidor simultáneo
 
 ### Producción
-- ✅ `npm run build` - Compilar para producción
-- ✅ `npm run serve` - Servidor producción (puerto 3000)
-- ✅ `npm run start` - Build completo + servidor
+- ✅ `pnpm run build` - Compilar para producción
+- ✅ `pnpm run serve` - Servidor producción (puerto 3000)
+- ✅ `pnpm run start` - Build completo + servidor
 
 ### Setup
-- ✅ `npm run setup` - Instalación básica
-- ✅ `npm run setup:auto` - Script automatizado completo
+- ✅ `pnpm run setup` - Instalación básica
+- ✅ `pnpm run setup:auto` - Script automatizado completo
 
 ## 🌐 Configuración de Red
 
@@ -157,12 +157,12 @@ sportbar-unified/
 ## 🚨 Pendientes de Instalación
 
 ### Requisitos Sistema
-- ⏳ Node.js >= 16.0.0 (requerido)
+- ⏳ Node.js 18.17.1 (requerido)
 - ⏳ npm o yarn (requerido)
 
 ### Instalación Dependencias
-- ⏳ `npm install` (principal)
-- ⏳ `npm install` en /server
+- ⏳ `pnpm install` (principal)
+- ⏳ `pnpm install` en /server
 - ⏳ Build inicial
 
 ### Verificación Red
@@ -174,13 +174,13 @@ sportbar-unified/
 ### 1. Instalación (CRÍTICO)
 ```bash
 cd "sportbar-unified"
-npm run setup:auto
+pnpm run setup:auto
 ```
 
 ### 2. Verificación
 ```bash
-npm run dev        # Probar desarrollo
-npm run start      # Probar producción
+pnpm run dev        # Probar desarrollo
+pnpm run start      # Probar producción
 ```
 
 ### 3. Configuración Red

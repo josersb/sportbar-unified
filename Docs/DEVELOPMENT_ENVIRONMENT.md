@@ -20,32 +20,32 @@ Este proyecto está configurado para mantener **versiones exactas** de todas las
 ### Verificación
 ```bash
 # Verificar si hay versiones con rangos
-npm run check-versions
+pnpm run check-versions
 
 # Auditoría completa del proyecto
-npm run audit-versions
+pnpm run audit-versions
 
 # Listar todas las dependencias
-npm run list-versions
+pnpm run list-versions
 ```
 
 ### Corrección
 ```bash
 # Corregir versiones a exactas automáticamente
-npm run fix-versions
+pnpm run fix-versions
 
 # Instalar con versiones exactas
-npm run install-exact
+pnpm run install-exact
 ```
 
 ### Instalación de Nuevas Dependencias
 ```bash
 # SIEMPRE se instalarán con versión exacta debido a .npmrc
-npm install package-name
-npm install --save-dev dev-package
+pnpm install package-name
+pnpm install --save-dev dev-package
 
 # Verificar que se instaló con versión exacta
-npm run check-versions
+pnpm run check-versions
 ```
 
 ## 🔧 Archivos de Configuración
@@ -109,43 +109,43 @@ node scripts/version-manager.cjs help
 ### 1. Instalación Inicial
 ```bash
 # Setup completo con versiones exactas
-npm run setup:auto
+pnpm run setup:auto
 
 # Verificar configuración
-npm run audit-versions
+pnpm run audit-versions
 ```
 
 ### 2. Agregar Nueva Dependencia
 ```bash
 # Instalar nueva dependencia (será exacta automáticamente)
-npm install nueva-dependencia
+pnpm install nueva-dependencia
 
 # Verificar que se instaló correctamente
-npm run check-versions
+pnpm run check-versions
 
 # Si hay algún problema, corregir
-npm run fix-versions
+pnpm run fix-versions
 ```
 
 ### 3. Desarrollo Diario
 ```bash
 # Iniciar desarrollo
-npm run dev
+pnpm run dev
 
 # O desarrollo completo (frontend + backend)
-npm run dev:full
+pnpm run dev:full
 ```
 
 ### 4. Antes de Commit
 ```bash
 # Verificar estado de versiones
-npm run audit-versions
+pnpm run audit-versions
 
 # Si hay problemas, corregir
-npm run fix-versions
+pnpm run fix-versions
 
 # Build para verificar compatibilidad
-npm run build
+pnpm run build
 ```
 
 ## 🔒 Beneficios de Versiones Exactas
@@ -175,13 +175,13 @@ npm audit
 ### Actualizar Dependencias:
 ```bash
 # Actualizar una dependencia específica
-npm install package-name@1.2.3
+pnpm install package-name@1.2.3
 
 # Actualizar todas (CUIDADO: testing requerido)
 npm update
 
 # Verificar que siguen siendo exactas
-npm run check-versions
+pnpm run check-versions
 ```
 
 ## 🚨 Troubleshooting
@@ -189,11 +189,11 @@ npm run check-versions
 ### Problema: Dependencia se instaló con rango (^, ~)
 ```bash
 # Solución automática
-npm run fix-versions
+pnpm run fix-versions
 
 # Solución manual: editar package.json y remover ^ o ~
 # Luego reinstalar
-npm install
+pnpm install
 ```
 
 ### Problema: .npmrc no funciona
@@ -209,13 +209,13 @@ echo "package-lock=true" >> .npmrc
 ### Problema: Diferencias entre entornos
 ```bash
 # Limpiar completamente
-npm run clean
+pnpm run clean
 
 # Reinstalar todo
-npm run setup:auto
+pnpm run setup:auto
 
 # Verificar
-npm run audit-versions
+pnpm run audit-versions
 ```
 
 ## 📁 Estructura de Archivos de Configuración
@@ -224,11 +224,11 @@ npm run audit-versions
 sportbar-unified/
 ├── .npmrc                          # Config NPM principal
 ├── package.json                    # Deps exactas principales
-├── package-lock.json               # Lock file principal
+├── pnpm-lock.yaml               # Lock file principal
 ├── server/
 │   ├── .npmrc                      # Config NPM servidor
 │   ├── package.json                # Deps exactas servidor
-│   └── package-lock.json           # Lock file servidor
+│   └── pnpm-lock.yaml           # Lock file servidor
 └── scripts/
     └── version-manager.cjs          # Gestor de versiones
 ```
@@ -236,15 +236,15 @@ sportbar-unified/
 ## 🎯 Mejores Prácticas
 
 ### DO ✅
-- Usar `npm run setup:auto` para nuevos desarrolladores
-- Ejecutar `npm run audit-versions` regularmente
-- Commit de `package-lock.json` siempre
+- Usar `pnpm run setup:auto` para nuevos desarrolladores
+- Ejecutar `pnpm run audit-versions` regularmente
+- Commit de `pnpm-lock.yaml` siempre
 - Revisar dependencias antes de actualizar
 - Usar scripts automatizados del proyecto
 
 ### DON'T ❌
 - No editar versiones manualmente sin verificar
-- No ignorar `package-lock.json`
+- No ignorar `pnpm-lock.yaml`
 - No usar `npm update` sin testing
 - No instalar dependencias globales innecesarias
 - No omitir verificaciones antes de commits
@@ -254,27 +254,27 @@ sportbar-unified/
 ### Scripts de Verificación:
 ```bash
 # En tu workflow diario
-npm run audit-versions    # Estado general
-npm run check-versions    # Verificación rápida
-npm run list-versions     # Vista detallada
+pnpm run audit-versions    # Estado general
+pnpm run check-versions    # Verificación rápida
+pnpm run list-versions     # Vista detallada
 ```
 
 ### Integración CI/CD:
 ```bash
 # Agregar a pipeline de CI
-npm run audit-versions
-npm run build
-npm run test
+pnpm run audit-versions
+pnpm run build
+pnpm run test
 ```
 
 ## 📞 Soporte
 
 Si encuentras problemas con la gestión de versiones:
 
-1. **Verificar**: `npm run audit-versions`
-2. **Corregir**: `npm run fix-versions`
-3. **Limpiar**: `npm run clean`
-4. **Reinstalar**: `npm run setup:auto`
+1. **Verificar**: `pnpm run audit-versions`
+2. **Corregir**: `pnpm run fix-versions`
+3. **Limpiar**: `pnpm run clean`
+4. **Reinstalar**: `pnpm run setup:auto`
 
 ### Logs Útiles:
 ```bash

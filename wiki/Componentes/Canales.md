@@ -30,7 +30,7 @@ Token: `TOKEN_REMOVED`
 ## Canales favoritos
 
 Grilla de 20 botones con logos de canales deportivos y su número:
-TNT Sports (1603), ESPN Premium HD (1604), Fox Sports HD (1605), Fox Sports 2 HD (1608), Fox Sports 3 HD (1609), DirecTV Sports HD (1610), DirecTV Sports 2 HD (1612), DirecTV Sports 3 HD (1613), DTV Fight (1620), ESPN (1621), ESPN 2 (1622), ESPN 3 (1623), ESPN Extra (1625), Golf Channel (1628), TyC Sports (1629), DeporTV (1631), PX Sports (1639), Garage TV (1644), NBA TV (1677), y un botón 0000.
+TNT Sports (1603), ESPN Premium HD (1604), Fox Sports HD (1605), Fox Sports 2 HD (1608), Fox Sports 3 HD (1609), DirecTV Sports HD (1610), DirecTV Sports 2 HD (1612), DirecTV Sports 3 HD (1613), DirecTV Sports 3 HD (1614), DTV Fight (1620), ESPN (1621), ESPN 2 (1622), ESPN 3 (1623), ESPN Extra (1625), Golf Channel (1628), TyC Sports (1629), DeporTV (1631), PX Sports (1639), Garage TV (1644), NBA TV (1677), y un botón 0000.
 
 Al hacer clic en un favorito, se copia el número al input. Luego el usuario selecciona el deco destino y hace submit.
 

@@ -40,7 +40,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## Historial y Estado
 
-- [[log]] — registro cronológico de operaciones de la wiki
+- [[wiki/log|Registro de cambios]] — registro cronológico de operaciones de la wiki
 - [[README]] — estado actual del proyecto
 
 ## Referencias de API

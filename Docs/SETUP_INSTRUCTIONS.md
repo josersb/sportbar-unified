@@ -9,7 +9,7 @@ El proyecto SportBar Unified ha sido **unificado exitosamente**, pero requiere c
 ## 📋 Requisitos Previos
 
 ### 1. Instalar Node.js
-Descargar e instalar Node.js versión 16 o superior desde:
+Descargar e instalar Node.js 18.17.1 desde:
 - **Sitio oficial**: https://nodejs.org/
 - **Versión recomendada**: LTS (Long Term Support)
 
@@ -27,7 +27,7 @@ Debe mostrar las versiones instaladas (ej: v18.17.0)
 ### Opción 1: Instalación Automática (Recomendada)
 ```bash
 cd "Proyectos VS Code/sportbar-unified"
-npm run setup:auto
+pnpm run setup:auto
 ```
 
 ### Opción 2: Instalación Manual
@@ -36,33 +36,33 @@ npm run setup:auto
 cd "Proyectos VS Code/sportbar-unified"
 
 # 2. Instalar dependencias principales
-npm install
+pnpm install
 
 # 3. Instalar dependencias del servidor
 cd server
-npm install
+pnpm install
 cd ..
 
 # 4. Ejecutar build inicial
-npm run build
+pnpm run build
 ```
 
 ## 🎮 Comandos de Ejecución
 
 ### Desarrollo
 ```bash
-npm run dev          # Servidor desarrollo (puerto 5173)
+pnpm run dev          # Servidor desarrollo (puerto 5173)
 ```
 
 ### Producción
 ```bash
-npm run start        # Build completo + servidor (puerto 3000)
-npm run serve        # Solo servidor producción
+pnpm run start        # Build completo + servidor (puerto 3000)
+pnpm run serve        # Solo servidor producción
 ```
 
 ### Desarrollo Completo (Recomendado)
 ```bash
-npm run dev:full     # Desarrollo + servidor simultáneo
+pnpm run dev:full     # Desarrollo + servidor simultáneo
 ```
 
 ## 🌐 URLs de Acceso
@@ -164,13 +164,13 @@ Este proyecto **UNIFICA** los 3 proyectos originales. Ver [[MIGRATION_LOG]] y [[
 
 ### Error: Cannot find module
 ```bash
-npm install  # Reinstalar dependencias
+pnpm install  # Reinstalar dependencias
 ```
 
 ### Error: Permission denied
 ```bash
 # Windows: Ejecutar como administrador
-# Linux/Mac: sudo npm install
+# Linux/Mac: sudo pnpm install
 ```
 
 ### Error: Port already in use
@@ -190,10 +190,10 @@ npm install  # Reinstalar dependencias
 ### Logs del Sistema
 ```bash
 # Servidor desarrollo
-npm run dev
+pnpm run dev
 
 # Servidor producción
-npm run serve
+pnpm run serve
 # Ver logs en consola
 ```
 
@@ -210,8 +210,8 @@ npm run serve
 ## 🎯 Próximos Pasos
 
 1. **Instalar Node.js** (si no está instalado)
-2. **Ejecutar**: `npm run setup:auto`
-3. **Iniciar desarrollo**: `npm run dev`
+2. **Ejecutar**: `pnpm run setup:auto`
+3. **Iniciar desarrollo**: `pnpm run dev`
 4. **Probar funcionalidades** en http://localhost:5173
 5. **Configurar red** matriz Arranger
 6. **Personalizar** configuración en .env

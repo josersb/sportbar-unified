@@ -216,8 +216,8 @@ sportbar-unified/
 ```
 
 ### **Funcionalidades 100% Operativas**
-- ✅ **Desarrollo**: `npm run dev` (puerto 5173)
-- ✅ **Producción**: `npm run start` (puerto 3000)
+- ✅ **Desarrollo**: `pnpm run dev` (puerto 5173)
+- ✅ **Producción**: `pnpm run start` (puerto 3000)
 - ✅ **Control matriz**: Integración Arranger completa
 - ✅ **Gestión canales**: Catálogo deportivo completo
 - ✅ **Control audio**: 3 zonas independientes
@@ -236,13 +236,13 @@ sportbar-unified/
 ### **Comandos de Verificación**
 ```bash
 # Verificar integridad del proyecto
-npm run audit-versions
+pnpm run audit-versions
 
 # Probar funcionalidad completa  
-npm run dev
+pnpm run dev
 
 # Build de producción
-npm run start
+pnpm run start
 ```
 
 ### **Documentación Disponible**

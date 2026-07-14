@@ -1,5 +1,6 @@
 import React, { useRef, useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
+import { joinMultipleTVs } from "../api/arrangerApi";
 import "./MatrizPreset.css";
 
 const MatrizPreset = () => {
@@ -15,125 +16,39 @@ const MatrizPreset = () => {
   const useInputRefPreset5 = useRef();
 
   const handleCargaMatriz = async () => {
-    // Matriz arranger
-    const myInit = { method: "GET", mode: "no-cors", cache: "default" };
+    const mappings = [
+      { source: tvs.VWN, dest: "VW-Norte" },
+      { source: tvs.VWC, dest: "VW-Centro" },
+      { source: tvs.VWS, dest: "VW-Sur" },
+      { source: tvs.TV01, dest: "TV01" },
+      { source: tvs.TV02, dest: "TV02" },
+      { source: tvs.TV03, dest: "TV03" },
+      { source: tvs.TV04, dest: "TV04" },
+      { source: tvs.TV05, dest: "TV05" },
+      { source: tvs.TV06, dest: "TV06" },
+      { source: tvs.TV07, dest: "TV07" },
+      { source: tvs.TV08, dest: "TV08" },
+      { source: tvs.TV09, dest: "TV09" },
+      { source: tvs.TV10, dest: "TV10" },
+      { source: tvs.TV11, dest: "TV11" },
+      { source: tvs.TV12, dest: "TV12" },
+      { source: tvs.TV13, dest: "TV13" },
+      { source: tvs.TV14, dest: "TV14" },
+      { source: tvs.TV15, dest: "TV15" },
+      { source: tvs.TV16, dest: "TV16" },
+      { source: tvs.TV17, dest: "TV17" },
+      { source: tvs.TV18, dest: "TV18" },
+      { source: tvs.TV19, dest: "TV19" },
+      { source: tvs.TV20, dest: "TV20" },
+      { source: tvs.TV21, dest: "TV21" },
+      { source: tvs.TV22, dest: "TV22" },
+      { source: tvs.TV23, dest: "TV23" },
+      { source: tvs.TV24, dest: "TV24" },
+      { source: tvs.TV25, dest: "TV25" },
+      { source: tvs.TV26, dest: "TV26" },
+    ];
     try {
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.VWN}%20VW-Norte/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.VWC}%20VW-Centro/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.VWS}%20VW-Sur/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV01}%20TV01/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV02}%20TV02/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV03}%20TV03/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV04}%20TV04/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV05}%20TV05/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV06}%20TV06/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV07}%20TV07/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV08}%20TV08/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV09}%20TV09/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV10}%20TV10/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV11}%20TV11/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV12}%20TV12/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV13}%20TV13/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV14}%20TV14/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV15}%20TV15/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV16}%20TV16/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV17}%20TV17/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV18}%20TV18/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV19}%20TV19/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV20}%20TV20/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV21}%20TV21/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV22}%20TV22/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV23}%20TV23/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV24}%20TV24/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV25}%20TV25/TOKEN_REMOVED`,
-        myInit
-      );
-      await fetch(
-        `http://192.168.2.254/api/command/join%20av%20${tvs.TV26}%20TV26/TOKEN_REMOVED`,
-        myInit
-      );
+      await joinMultipleTVs(mappings);
     } catch (error) {
       console.log("error solicitud Arranger 5000");
     }

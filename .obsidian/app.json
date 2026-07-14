@@ -1,0 +1,23 @@
+{
+  "alwaysUpdateLinks": true,
+  "attachmentFolderPath": "Docs/assets",
+  "userIgnoreFilters": [
+    "node_modules/",
+    "dist/",
+    ".git/",
+    ".codegraph/",
+    ".atl/",
+    ".qodo/",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "sbom.json",
+    "reset.css",
+    "normalize.css"
+  ],
+  "showUnsupportedFiles": false,
+  "showLineNumber": true,
+  "readableLineLength": false,
+  "trashOption": "local",
+  "newFileLocation": "folder",
+  "newFileFolderPath": "Docs"
+}

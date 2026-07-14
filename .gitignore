@@ -282,3 +282,16 @@ dev-config.json
 
 # CodeGraph index
 .codegraph/
+
+# Obsidian vault
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+.obsidian/themes/
+.obsidian/plugins/
+.obsidian/core-plugins-migration.json
+.obsidian/community-plugins.json
+.obsidian/hotkeys.json
+.obsidian/templates.json
+.obsidian/starred.json
+.obsidian/daily-notes.json

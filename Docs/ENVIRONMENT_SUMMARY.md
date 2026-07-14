@@ -1,5 +1,7 @@
 # 🏆 SportBar Unified - Resumen de Configuración del Entorno
 
+> Guía técnica: [[DEVELOPMENT_ENVIRONMENT]] | Setup: [[SETUP_INSTRUCTIONS]] | Proyecto: [[../README]] | Estado: [[PROJECT_STATUS]]
+
 ## ✅ CONFIGURACIÓN COMPLETADA
 
 **Estado**: ✅ **ENTORNO CONFIGURADO PARA VERSIONES EXACTAS**  
@@ -263,10 +265,10 @@ npm run audit-versions
 ```
 
 ### **Documentación Completa:**
-- 📖 **`DEVELOPMENT_ENVIRONMENT.md`** - Guía detallada técnica
-- 🚀 **`SETUP_INSTRUCTIONS.md`** - Instrucciones de instalación
-- 📊 **`PROJECT_STATUS.md`** - Estado general del proyecto
-- 📋 **`README.md`** - Documentación principal
+- 📖 **[[DEVELOPMENT_ENVIRONMENT]]** - Guía detallada técnica
+- 🚀 **[[SETUP_INSTRUCTIONS]]** - Instrucciones de instalación
+- 📊 **[[PROJECT_STATUS]]** - Estado general del proyecto
+- 📋 **[[../README|README]]** - Documentación principal
 
 ---
 

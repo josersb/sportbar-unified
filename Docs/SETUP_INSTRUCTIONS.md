@@ -1,5 +1,7 @@
 # 🏆 SportBar Unified - Instrucciones de Configuración
 
+> Documentación principal: [[../README]] | Entorno de desarrollo: [[DEVELOPMENT_ENVIRONMENT]] | Estado del proyecto: [[PROJECT_STATUS]]
+
 ## ⚠️ Configuración Pendiente
 
 El proyecto SportBar Unified ha sido **unificado exitosamente**, pero requiere completar la instalación de dependencias.
@@ -138,7 +140,7 @@ sportbar-unified/
 
 ## 🔧 Integración con Proyectos Anteriores
 
-Este proyecto **UNIFICA** los 3 proyectos originales:
+Este proyecto **UNIFICA** los 3 proyectos originales. Ver [[MIGRATION_LOG]] y [[Análisis de Tres Proyectos Sportbar]] para el historial completo.
 
 ### Proyectos Originales Integrados:
 1. **React-Sportbar** → Código fuente principal
@@ -216,7 +218,7 @@ npm run serve
 
 ## 📖 Documentación Completa
 
-Ver archivo **README.md** para documentación técnica detallada.
+Ver archivo **[[../README|README.md]]** para documentación técnica detallada.
 
 ---
 

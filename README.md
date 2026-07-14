@@ -2,6 +2,8 @@
 
 Sistema unificado de control para SportBar - Gestión integral de matriz audiovisual, canales deportivos y control de audio por zonas.
 
+> Convenciones del proyecto y arquitectura: [[AGENTS]] | [[index|Índice de la wiki]] | [[log|Log de cambios]]
+
 ## 📋 Descripción
 
 SportBar Unified es una aplicación web React que permite controlar de manera centralizada todos los aspectos audiovisuales de un SportBar, incluyendo:
@@ -52,6 +54,8 @@ SportBar Unified es una aplicación web React que permite controlar de manera ce
 - **Vite 3.0.7** - Build tool y dev server
 - **@vitejs/plugin-react 2.0.1** - Plugin React para Vite
 
+Configuración detallada del entorno: [[Docs/DEVELOPMENT_ENVIRONMENT]] | [[Docs/ENVIRONMENT_SUMMARY]]
+
 ### Backend
 - **Express.js 4.18.1** - Servidor web para producción
 - **CORS** configurado para integración Arranger
@@ -94,6 +98,9 @@ sportbar-unified/
 - NPM o Yarn
 
 ### Instalación Completa
+
+Ver [[Docs/SETUP_INSTRUCTIONS]] para guía paso a paso.
+
 ```bash
 # Clonar e instalar dependencias
 cd sportbar-unified
@@ -111,6 +118,8 @@ IP: 192.168.2.254
 Puerto: 80
 API: /api/command/
 ```
+
+Referencia de comandos: [[API commands/devices_all]] | [[API commands/get_status]]
 
 ## 🎮 Comandos Disponibles
 
@@ -148,6 +157,8 @@ npm run test         # Tests (pendiente configurar)
 - `/soporte` - Información de soporte
 
 ## 📊 Estado de la Aplicación
+
+Estado completo del proyecto: [[Docs/PROJECT_STATUS]]
 
 ### Estructura de Datos
 El estado global incluye:
@@ -253,6 +264,8 @@ Este proyecto unifica:
 - **Ajuste de canales - sportbar**: Versión de producción
 - **sportbar**: Otra versión de producción
 
+Historial completo: [[Docs/MIGRATION_LOG]] | Análisis original: [[Docs/Análisis de Tres Proyectos Sportbar]]
+
 ### Beneficios de la Unificación
 - ✅ Eliminación de duplicación
 - ✅ Flujo desarrollo → producción unificado
@@ -261,6 +274,8 @@ Este proyecto unifica:
 - ✅ Deploy automatizado
 
 ## 🤝 Contribución
+
+Convenciones de IA y arquitectura: [[AGENTS]]
 
 ### Estructura de Commits
 ```

@@ -1,5 +1,7 @@
 # 🏆 SportBar Unified - Estado del Proyecto
 
+> Proyecto: [[../README]] | Migración: [[MIGRATION_LOG]] | Entorno: [[DEVELOPMENT_ENVIRONMENT]] | Setup: [[SETUP_INSTRUCTIONS]]
+
 ## ✅ Proyecto Unificado Exitosamente
 
 **Fecha**: Diciembre 2024  
@@ -244,6 +246,6 @@ npm run start      # Probar producción
 **Resultado**: Sistema completo operativo
 
 ### 📋 Archivos de Referencia:
-- 📖 **MIGRATION_LOG.md** - Log completo de migración y limpieza
-- 🛠️ **DEVELOPMENT_ENVIRONMENT.md** - Configuración versiones exactas
+- 📖 **[[MIGRATION_LOG]]** - Log completo de migración y limpieza
+- 🛠️ **[[DEVELOPMENT_ENVIRONMENT]]** - Configuración versiones exactas
 - 📊 **Este archivo** - Estado actual del proyecto

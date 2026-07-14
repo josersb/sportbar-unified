@@ -1,5 +1,7 @@
 # 🛠️ SportBar Unified - Guía del Entorno de Desarrollo
 
+> Proyecto principal: [[../README]] | Convenciones: [[../AGENTS]] | Resumen: [[ENVIRONMENT_SUMMARY]] | Setup: [[SETUP_INSTRUCTIONS]]
+
 ## 🎯 Configuración para Versiones Exactas
 
 Este proyecto está configurado para mantener **versiones exactas** de todas las dependencias, evitando problemas de compatibilidad y garantizando reproducibilidad entre diferentes entornos.

@@ -54,13 +54,47 @@ export async function assignSourceToDestination(source, destination) {
   return sendArrangerCommand(command);
 }
 
-/**
- * Ejemplo para agregar más comandos:
- * export async function muteAudioZone(zone) {
- *   const command = `mute audio ${zone}`;
- *   return sendArrangerCommand(command);
- * }
+/*
+ * Ejecuta join av secuencial para un array de asignaciones {source, dest}.
+ * Cada ítem se ejecuta en orden; si uno falla, loggea el error y continúa.
+ * @param {Array<{source: string, dest: string}>} mappings
+ * @returns {Promise<void>}
  */
+export async function joinMultipleTVs(mappings) {
+  for (const { source, dest } of mappings) {
+    try {
+      await assignSourceToDestination(source, dest);
+    } catch (error) {
+      console.error(
+        `[ArrangerAPI] Error enviando comando "join av ${source} ${dest}":`,
+        error,
+      );
+    }
+  }
+}
+
+/*
+ * Envía un comando serial a un dispositivo Tesira con terminador \\x0A.
+ * El payload se codifica como URL, el \\x0A literal se convierte en %5Cx0A.
+ * @param {string} device - Nombre del dispositivo (ej: "DTV1")
+ * @param {string} command - Comando serial (ej: "Mute1 set mute 1 true")
+ * @returns {Promise<Response>}
+ */
+export async function sendSerialCommand(device, command) {
+  const payload = `${command}\\x0A`;
+  const urlCommand = `send serial ${device} "${payload}"`;
+  return sendArrangerCommand(urlCommand);
+}
+
+/*
+ * Carga un preset de canal en un decodificador específico.
+ * @param {number} decoNumber - Número de decodificador (1..8)
+ * @param {number|string} channel - Número de canal (ej: 1603)
+ * @returns {Promise<Response>}
+ */
+export async function loadChannelPreset(decoNumber, channel) {
+  return sendArrangerCommand(`preset load deco${decoNumber}canal${channel}`);
+}
 
 /**
  * Utilidades para construir comandos (opcional, para futuros comandos avanzados)

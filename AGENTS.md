@@ -209,3 +209,156 @@ sportbar-unified/
 4. **pnpm overrides**: Express 4.x no puede resolver automaticamente vulnerabilidades en sus dependencias transitivas. pnpm permite sobreescribir versiones via `pnpm.overrides`.
 
 5. **NVM-Windows**: No soporta auto-switch via `.nvmrc`. Requiere script personalizado.
+
+## LLM Wiki Schema
+
+Esta sección define las reglas de la wiki markdown interconectada del proyecto. El LLM lee este schema antes de cualquier operación de wiki (ingest, lint, query, creación de páginas).
+
+### Entity Types
+
+Tipos de páginas que pueden existir en esta wiki:
+
+| Type | Description | Naming convention | Example |
+|------|-------------|-------------------|---------|
+| Componente React | Página funcional o UI del frontend | `Componentes/Nombre.md` | `Componentes/MatrizVideo.md` |
+| API / Endpoint | Integración externa o endpoint del servidor | `API/Nombre.md` | `API/ArrangerApi.md` |
+| Dispositivo Hardware | Equipo físico conectado a la matriz | `Dispositivos/Nombre.md` | `Dispositivos/DTV1.md` |
+| Concepto | Patrón, idea o principio de diseño | `Conceptos/Nombre.md` | `Conceptos/StateManagement.md` |
+| Configuración | Archivo o conjunto de settings del proyecto | `Configuracion/Nombre.md` | `Configuracion/Vite.md` |
+| Preset | Configuración guardada de estado de la matriz | `Presets/Nombre.md` | `Presets/Preset1.md` |
+| Source | Documento ingerido a la wiki desde fuente externa | `Sources/YYYY-MM-DD-Titulo.md` | `Sources/2026-02-14-DevicesAll.md` |
+| Decision | Elección de diseño con justificación y tradeoffs | `Decisions/YYYY-MM-DD-Titulo.md` | `Decisions/2026-01-19-PnpmChoice.md` |
+| Query | Pregunta que produjo una respuesta valiosa | `Queries/Titulo.md` | `Queries/ComoFuncionaJoinAV.md` |
+
+#### Catálogo de Entidades Conocidas
+
+##### Componentes React
+
+| Componente | Ruta | Descripción |
+|------------|------|-------------|
+| MatrizVideo | `src/componentes/MatrizVideo.jsx` | Control principal de la matriz de video |
+| MatrizPreset | `src/componentes/MatrizPreset.jsx` | Gestión de presets de configuración |
+| Canales | `src/componentes/Canales.jsx` | Visualización y gestión de canales |
+| Audio | `src/componentes/Audio.jsx` | Control de zonas de audio |
+| Arranger | `src/componentes/Arranger.jsx` | Interface con la matriz Arranger |
+| Aside | `src/componentes/Aside.jsx` | Panel lateral de navegación |
+| Portada | `src/componentes/Portada.jsx` | Página de inicio |
+| Nav | `src/componentes/Nav.jsx` | Barra de navegación superior |
+| Soporte | `src/componentes/Soporte.jsx` | Información de soporte técnico |
+| Header | `src/componentes/Header.jsx` | Cabecera común |
+| Body | `src/componentes/Body.jsx` | Layout principal |
+| Select | `src/componentes/Select.jsx` | Componente reutilizable de selección |
+| Radio | `src/componentes/Radio.jsx` | Componente radio button |
+| CheckBox | `src/componentes/CheckBox.jsx` | Componente checkbox |
+| TextInput | `src/componentes/TextInput.jsx` | Componente input de texto |
+| CanalFavorito | `src/elementos/CanalFavorito.jsx` | Componente de canal favorito |
+
+##### APIs y Endpoints
+
+| API | Fuente | Descripción |
+|-----|--------|-------------|
+| ArrangerApi | `src/api/arrangerApi.js` | Cliente HTTP para comandos de la matriz |
+| Comando `join av` | Arranger API | Conecta fuente de video/audio a destino |
+| Comando `preset load` | Arranger API | Carga un preset en la matriz |
+| Comando `send serial` | Arranger API | Envía comandos seriales a dispositivos |
+| Comando `get status` | Arranger API | Obtiene estado actual de la matriz |
+| Comando `devices all` | Arranger API | Lista todos los dispositivos conectados |
+
+##### Dispositivos Hardware
+
+| Grupo | Dispositivos | Descripción |
+|-------|-------------|-------------|
+| Decodificadores | DTV1, DTV2, DTV3, DTV4, DTV5, DTV6, DTV7, DTV8 | Decodificadores DirecTV (8) |
+| TVs Principales | TV01–TV26 | TVs numeradas del bar (26) |
+| TVs Especiales | VWN, VWC, VWS | TVs de áreas especiales (3) |
+| TV Rack | TVRACK | TV del rack técnico (1) |
+| Zonas de Audio | Norte, Centro, Sur | Zonas de audio independientes (3) |
+
+##### Conceptos
+
+| Concepto | Descripción |
+|----------|-------------|
+| State Management | Context API global en `src/contexto/Contexto.jsx` |
+| Presets (localStorage) | Persistencia de 5 configuraciones en `localStorage` (keys: `estadoApp_Preset1`–`estadoApp_Preset5`) |
+| Proxy Vite | Redirección de `/api` → `http://192.168.2.254` en entorno dev |
+
+##### Configuración
+
+| Archivo | Descripción |
+|---------|-------------|
+| `vite.config.js` | Configuración de Vite (proxy, build, chunks) |
+| `server/` | Servidor Express 4 para producción (puerto 3000) |
+| `package.json` | Scripts y dependencias del proyecto |
+| `.npmrc` | Configuración de npm/pnpm (save-exact, seguridad) |
+
+##### Presets
+
+| Preset | Key en localStorage | Descripción |
+|--------|-------------------|-------------|
+| Preset1 | `estadoApp_Preset1` | Configuración de matriz 1 |
+| Preset2 | `estadoApp_Preset2` | Configuración de matriz 2 |
+| Preset3 | `estadoApp_Preset3` | Configuración de matriz 3 |
+| Preset4 | `estadoApp_Preset4` | Configuración de matriz 4 |
+| Preset5 | `estadoApp_Preset5` | Configuración de matriz 5 |
+
+### Categories for index.md
+
+Secciones del `index.md`:
+
+```markdown
+## Proyecto
+## Componentes React
+## APIs y Endpoints
+## Dispositivos Hardware
+## Conceptos
+## Configuración
+## Presets
+## Entorno y Configuración
+## Historial y Estado
+## Análisis
+## Referencias de API
+## Sources
+## Decisions
+## Queries
+```
+
+### Naming Conventions
+
+- **Archivos de entidad**: `PascalCase.md` — igual que el nombre de la entidad en el código o hardware. Ej: `MatrizVideo.md`, `DTV1.md`, `ArrangerApi.md`.
+- **Archivos de fuente y decisión**: prefijo `YYYY-MM-DD-` + título en `kebab-case`. Ej: `2026-02-14-DevicesAll.md`.
+- **Archivos de query**: `PascalCase.md` con prefijo descriptivo. Ej: `ComoFuncionaJoinAV.md`.
+- **Carpetas**: una por entity type, en español y `PascalCase`: `Componentes/`, `API/`, `Dispositivos/`, `Conceptos/`, `Configuracion/`, `Presets/`, `Sources/`, `Decisions/`, `Queries/`.
+- **Títulos de página**: `# Nombre de la Entidad` (primera línea, usado como display name en Obsidian). Coincide con el nombre de archivo.
+- **Archivos raíz obligatorios**: `index.md`, `log.md`. Van en la raíz del vault (no en subcarpetas).
+
+### Link Conventions
+
+- **Wikilinks con path relativo**: `[[Componentes/MatrizVideo]]` para páginas en subcarpetas. `[[README]]` para páginas en raíz.
+- **Desde página anidada a raíz**: `[[../README]]`, `[[../AGENTS]]`.
+- **Desde página anidada a sibling**: `[[../API/ArrangerApi]]`.
+- **Regla de inbound mínimo**: toda página de entidad DEBE tener al menos un wikilink entrante desde otra página. Las páginas huérfanas (sin inbound links) se detectan en lint y requieren corrección.
+- **Cross-linking esperado por tipo**:
+  - Componente → vinculado desde su Concepto (State Management) y desde la página de ruta que lo renderiza.
+  - API → vinculado desde los Componentes que la consumen y desde Dispositivos que controla.
+  - Dispositivo → vinculado desde la API que lo gestiona y desde los Componentes que lo usan.
+  - Concepto → vinculado desde todos los Componentes y APIs que lo implementan.
+  - Preset → vinculado desde `MatrizPreset` y desde los Dispositivos que referencia.
+  - Decision → vinculado desde las entidades y conceptos que afecta.
+- **No usar paths absolutos** (con `C:\` o `/home/`). Solo paths relativos dentro del vault.
+- **No usar Markdown links** `[texto](path)`. Siempre `[[wikilinks]]`.
+
+### Ingest Triggers
+
+Qué eventos disparan actualizaciones de la wiki:
+
+| Trigger | Action |
+|---------|--------|
+| Nuevo archivo en `API commands/` | Full ingest: crear/actualizar página en `API/`, cross-link a Dispositivos relevantes, actualizar `index.md` y `log.md` |
+| Nuevo componente React creado o modificado significativamente | Crear/actualizar página en `Componentes/`, vincular a Conceptos relevantes |
+| Cambio en `src/api/arrangerApi.js` | Actualizar página `API/ArrangerApi`, revisar cross-links con Dispositivos |
+| Cambio en `src/contexto/Contexto.jsx` | Actualizar página `Conceptos/StateManagement`, verificar impacto en Componentes |
+| Cambio en configuración (vite, pnpm, express) | Actualizar página en `Configuracion/`, registrar en `log.md` |
+| Nuevo preset guardado o cambio en estructura de presets | Actualizar páginas en `Presets/`, revisar referencias en `MatrizPreset` |
+| Bug fix con causa raíz | Actualizar entidad afectada, crear Decision si la solución es no-obvia |
+| Nuevo documento en `Docs/` | Ingest del documento como Source, cross-link a entidades mencionadas |
+

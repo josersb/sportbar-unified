@@ -26,3 +26,39 @@ Last updated: 2026-07-14
 
 - [[API commands/devices_all]] — Listado actualizado (14-02-2026) de todos los dispositivos conectados a la matriz Arranger: TVs, decodificadores DTV, encoders y dispositivos de audio.
 - [[API commands/get_status]] — Documentación del comando `get status` de la API Arranger: estructura, argumentos, ejemplos y respuestas posibles.
+
+## Componentes React
+
+<!-- Páginas de entidad para cada componente del frontend: MatrizVideo, MatrizPreset, Canales, Audio, Arranger, Aside, Portada, Nav, Soporte, Header, Body, Select, Radio, CheckBox, TextInput, CanalFavorito -->
+
+## APIs y Endpoints
+
+<!-- Páginas de entidad para APIs y comandos: ArrangerApi, join av, preset load, send serial, get status, devices all -->
+
+## Dispositivos Hardware
+
+<!-- Páginas de entidad para cada dispositivo físico: DTV1-DTV8, TV01-TV26, VWN, VWC, VWS, TVRACK, Zonas de Audio (Norte, Centro, Sur) -->
+
+## Conceptos
+
+<!-- Páginas de entidad para patrones y principios: State Management, Presets (localStorage), Proxy Vite -->
+
+## Configuración
+
+<!-- Páginas de entidad para archivos de configuración: Vite, Express Server, pnpm, .npmrc -->
+
+## Presets
+
+<!-- Páginas de entidad para cada preset: Preset1, Preset2, Preset3, Preset4, Preset5 -->
+
+## Sources
+
+<!-- Documentos ingeridos desde fuentes externas -->
+
+## Decisions
+
+<!-- Decisiones de diseño con justificación y tradeoffs -->
+
+## Queries
+
+<!-- Preguntas que produjeron respuestas valiosas -->

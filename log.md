@@ -19,3 +19,21 @@ Append-only chronological record of all wiki operations.
 - **Links totales creados**: 46
 - **Contradictions**: None
 - **Nota**: `AGENTS.md` y `API commands/*.txt` no fueron modificados (schema y fuentes raw, respectivamente). `AGENTS.md` recibe inbound links desde `README.md` y `Docs/DEVELOPMENT_ENVIRONMENT.md`.
+
+---
+
+## [2026-07-14] wiki-schema | Fase 2 — Schema de la LLM Wiki para SportBar Unified
+
+- **Operation**: schema creation
+- **Pages created**: none (schema agregado a AGENTS.md existente)
+- **Pages updated**: [[AGENTS]] (nueva sección `## LLM Wiki Schema`), [[index]] (nuevas categorías: Componentes, APIs, Dispositivos, Conceptos, Configuración, Presets, Sources, Decisions, Queries), [[log]] (esta entrada)
+- **Entity types definidos**: 9 (Componente React, API/Endpoint, Dispositivo Hardware, Concepto, Configuración, Preset, Source, Decision, Query)
+- **Entidades catalogadas**:
+  - 16 Componentes React (MatrizVideo, MatrizPreset, Canales, Audio, Arranger, Aside, Portada, Nav, Soporte, Header, Body, Select, Radio, CheckBox, TextInput, CanalFavorito)
+  - 6 APIs y Endpoints (ArrangerApi, join av, preset load, send serial, get status, devices all)
+  - 5 grupos de Dispositivos Hardware (Decodificadores DTV1-DTV8, TVs Principales TV01-TV26, TVs Especiales VWN/VWC/VWS, TVRACK, Zonas de Audio Norte/Centro/Sur)
+  - 3 Conceptos (State Management, Presets localStorage, Proxy Vite)
+  - 4 elementos de Configuración (Vite, Express Server, pnpm, .npmrc)
+  - 5 Presets (Preset1-Preset5)
+- **Secciones del schema**: Naming Conventions, Link Conventions, Ingest Triggers, Categories for index.md
+- **Nota**: No se crearon páginas de entidad (eso corresponde a la Fase 4). Las categorías en `index.md` quedan como placeholders con comentarios HTML hasta que se creen las páginas.

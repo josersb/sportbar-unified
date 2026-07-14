@@ -37,3 +37,14 @@ Append-only chronological record of all wiki operations.
   - 5 Presets (Preset1-Preset5)
 - **Secciones del schema**: Naming Conventions, Link Conventions, Ingest Triggers, Categories for index.md
 - **Nota**: No se crearon páginas de entidad (eso corresponde a la Fase 4). Las categorías en `index.md` quedan como placeholders con comentarios HTML hasta que se creen las páginas.
+
+---
+
+## [2026-07-14] ingest | Fase 4 — Entidades iniciales
+
+- **Pages created**: 15 ([[wiki/Componentes/MatrizVideo]], [[wiki/Componentes/MatrizPreset]], [[wiki/Componentes/Canales]], [[wiki/Componentes/Audio]], [[wiki/Componentes/Aside]], [[wiki/Componentes/Arranger]], [[wiki/Componentes/Contexto]], [[wiki/Componentes/App]], [[wiki/API/ArrangerApi]], [[wiki/Dispositivos/Decodificadores]], [[wiki/Dispositivos/ZonasAudio]], [[wiki/Conceptos/StateManagement]], [[wiki/Conceptos/SistemaPresets]], [[wiki/Configuracion/ViteProxy]], [[wiki/Configuracion/PnpmSetup]])
+- **Pages updated**: [[index]] (placeholders reemplazados con links reales), [[log]] (esta entrada)
+- **Key links**: 177 wikilinks totales entre las 15 páginas de entidad
+- **Top hubs**: Decodificadores (17 out), App (17 out), ArrangerApi (13 out), SistemaPresets (14 out)
+- **Contradictions**: None
+- **Orphans**: 0 — todas las páginas tienen al menos inbound desde index.md

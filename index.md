@@ -27,29 +27,34 @@ Last updated: 2026-07-14
 - [[API commands/devices_all]] — Listado actualizado (14-02-2026) de todos los dispositivos conectados a la matriz Arranger: TVs, decodificadores DTV, encoders y dispositivos de audio.
 - [[API commands/get_status]] — Documentación del comando `get status` de la API Arranger: estructura, argumentos, ejemplos y respuestas posibles.
 
-## Componentes React
+## Wiki de Entidades
 
-<!-- Páginas de entidad para cada componente del frontend: MatrizVideo, MatrizPreset, Canales, Audio, Arranger, Aside, Portada, Nav, Soporte, Header, Body, Select, Radio, CheckBox, TextInput, CanalFavorito -->
+Ver [[wiki/index|catálogo completo de la wiki]].
 
-## APIs y Endpoints
+### Componentes React
+- [[wiki/Componentes/MatrizVideo]] — Control de matriz de video (828 líneas, 30+ comandos Arranger)
+- [[wiki/Componentes/MatrizPreset]] — Sistema de 5 presets (cargar/grabar)
+- [[wiki/Componentes/Canales]] — Gestión de canales por decodificador + grilla de favoritos
+- [[wiki/Componentes/Audio]] — Control de audio en 3 zonas con comandos Tesira
+- [[wiki/Componentes/Aside]] — Panel lateral con estado en tiempo real
+- [[wiki/Componentes/Arranger]] — Links a interfaz web del Arranger
+- [[wiki/Componentes/Contexto]] — Context API + estado inicial + inicialización de presets
+- [[wiki/Componentes/App]] — Componente raíz: estado global + Context Provider
 
-<!-- Páginas de entidad para APIs y comandos: ArrangerApi, join av, preset load, send serial, get status, devices all -->
+### APIs y Endpoints
+- [[wiki/API/ArrangerApi]] — Cliente HTTP para Arranger IPEX5000 (join av, preset load, send serial)
 
-## Dispositivos Hardware
+### Dispositivos Hardware
+- [[wiki/Dispositivos/Decodificadores]] — DTV1-DTV8, asignación de canales, comandos preset
+- [[wiki/Dispositivos/ZonasAudio]] — Norte, Centro, Sur: fuentes, volumen, mute, comandos Tesira
 
-<!-- Páginas de entidad para cada dispositivo físico: DTV1-DTV8, TV01-TV26, VWN, VWC, VWS, TVRACK, Zonas de Audio (Norte, Centro, Sur) -->
+### Conceptos
+- [[wiki/Conceptos/StateManagement]] — Context API, localStorage, handlers globales
+- [[wiki/Conceptos/SistemaPresets]] — 5 configuraciones guardables, cargar/grabar, localStorage keys
 
-## Conceptos
-
-<!-- Páginas de entidad para patrones y principios: State Management, Presets (localStorage), Proxy Vite -->
-
-## Configuración
-
-<!-- Páginas de entidad para archivos de configuración: Vite, Express Server, pnpm, .npmrc -->
-
-## Presets
-
-<!-- Páginas de entidad para cada preset: Preset1, Preset2, Preset3, Preset4, Preset5 -->
+### Configuración
+- [[wiki/Configuracion/ViteProxy]] — Proxy Vite `/api` → Arranger, chunks, dev server
+- [[wiki/Configuracion/PnpmSetup]] — pnpm exclusivo, .npmrc, .nvmrc, overrides de seguridad
 
 ## Sources
 

@@ -19,6 +19,7 @@ import img_nbatv from "../imagenes/nbatv.png";
 import img_pxsports from "../imagenes/pxsports.png";
 import img_tnt_sports from "../imagenes/tntsports.jpg";
 import img_tyc from "../imagenes/tyc.png";
+import { loadChannelPreset } from "../api/arrangerApi";
 import "./Canales.css";
 import "../elementos/CanalFavorito.css";
 
@@ -35,7 +36,6 @@ const Canales = () => {
     inputRef.current.value = e.target.innerText;
   };
 
-  const myInit = { method: "GET", mode: "no-cors", cache: "default" };
   const submitCanal = async (e) => {
     try {
       e.preventDefault();
@@ -45,65 +45,10 @@ const Canales = () => {
       const esUnCanalFavorito = favoritos.filter(x=> x==canal).length;
       console.log(esUnCanalFavorito)
       if (canal >= 100 && canal <= 2000 && esUnCanalFavorito) {
-        switch (selectRef.current.value) {
-          case "DTV1":
-            decos[0].canalDeco = canal;
-            await fetch(
-              `http://192.168.2.254/api/command/preset%20load%20deco1canal${canal}/TOKEN_REMOVED`,
-              myInit
-            );
-            break;
-          case "DTV2":
-            decos[1].canalDeco = canal;
-            await fetch(
-              `http://192.168.2.254/api/command/preset%20load%20deco2canal${canal}/TOKEN_REMOVED`,
-              myInit
-            );
-            break;
-          case "DTV3":
-            decos[2].canalDeco = canal;
-            await fetch(
-              `http://192.168.2.254/api/command/preset%20load%20deco3canal${canal}/TOKEN_REMOVED`,
-              myInit
-            );
-            break;
-          case "DTV4":
-            decos[3].canalDeco = canal;
-            await fetch(
-              `http://192.168.2.254/api/command/preset%20load%20deco4canal${canal}/TOKEN_REMOVED`,
-              myInit
-            );
-            break;
-          case "DTV5":
-            decos[4].canalDeco = canal;
-            await fetch(
-              `http://192.168.2.254/api/command/preset%20load%20deco5canal${canal}/TOKEN_REMOVED`,
-              myInit
-            );
-            break;
-          case "DTV6":
-            decos[5].canalDeco = canal;
-            await fetch(
-              `http://192.168.2.254/api/command/preset%20load%20deco6canal${canal}/TOKEN_REMOVED`,
-              myInit
-            );
-            break;
-          case "DTV7":
-            decos[6].canalDeco = canal;
-            await fetch(
-              `http://192.168.2.254/api/command/preset%20load%20deco7canal${canal}/TOKEN_REMOVED`,
-              myInit
-            );
-            break;
-          case "DTV8":
-            decos[7].canalDeco = canal;
-            await fetch(
-              `http://192.168.2.254/api/command/preset%20load%20deco8canal${canal}/TOKEN_REMOVED`,
-              myInit
-            );
-            break;
-          default:
-        }
+        const selectedDeco = selectRef.current.value;
+        const decoNumber = parseInt(selectedDeco.replace("DTV", ""), 10);
+        decos[decoNumber - 1].canalDeco = canal;
+        await loadChannelPreset(decoNumber, canal);
       } else {
         inputRef.current.value = "";
         inputRef.current.placeholder = "numero canal no valido";

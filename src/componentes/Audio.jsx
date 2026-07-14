@@ -5,6 +5,7 @@ import Select from "./Select";
 import TextInput from "./TextInput";
 
 import ContextoUser from "../contexto/Contexto";
+import { sendSerialCommand } from "../api/arrangerApi";
 import "./Audio.css";
 
 const Audio = () => {
@@ -45,54 +46,42 @@ const Audio = () => {
           handleChangeEstadoAudio(audio);
           console.log(audio);
 
-          // send serial DTV1 "Mute1 set mute 1 true x0A"
-          // send serial DTV1 "Mute1 set mute 1 false x0A"
-          const myInit = { method: "GET", mode: "no-cors", cache: "default" };
           try {
-            await fetch(
-              `http://192.168.2.254/api/command/send%20serial%20DTV1%20%22Mute1%20set%20mute%201%20${values.muteNorte}%5cx0A%22/TOKEN_REMOVED`,
-              myInit
+            await sendSerialCommand(
+              "DTV1",
+              `Mute1 set mute 1 ${values.muteNorte}`,
             );
-            await fetch(
-              `http://192.168.2.254/api/command/send%20serial%20DTV1%20%22Mute2%20set%20mute%201%20${values.muteCentro}%5cx0A%22/TOKEN_REMOVED`,
-              myInit
+            await sendSerialCommand(
+              "DTV1",
+              `Mute2 set mute 1 ${values.muteCentro}`,
             );
-            await fetch(
-              `http://192.168.2.254/api/command/send%20serial%20DTV1%20%22Mute3%20set%20mute%201%20${values.muteSur}%5cx0A%22/TOKEN_REMOVED`,
-              myInit
+            await sendSerialCommand(
+              "DTV1",
+              `Mute3 set mute 1 ${values.muteSur}`,
             );
-            await fetch(
-              `http://192.168.2.254/api/command/send%20serial%20DTV1%20%22Level3%20set%20level%201%20${values.volumenNorte}%5cx0A%22/TOKEN_REMOVED`,
-              myInit
+            await sendSerialCommand(
+              "DTV1",
+              `Level3 set level 1 ${values.volumenNorte}`,
             );
-            await fetch(
-              `http://192.168.2.254/api/command/send%20serial%20DTV1%20%22Level4%20set%20level%201%20${values.volumenNorte}%5cx0A%22/TOKEN_REMOVED`,
-              myInit
+            await sendSerialCommand(
+              "DTV1",
+              `Level4 set level 1 ${values.volumenCentro}`,
             );
-            await fetch(
-              `http://192.168.2.254/api/command/send%20serial%20DTV1%20%22Level5%20set%20level%201%20${values.volumenNorte}%5cx0A%22/TOKEN_REMOVED`,
-              myInit
+            await sendSerialCommand(
+              "DTV1",
+              `Level5 set level 1 ${values.volumenSur}`,
             );
-            await fetch(
-              `http://192.168.2.254/api/command/send%20serial%20DTV1%20%22SourceSelector1%20set%20sourceSelection%20${values.audioNorte.slice(
-                3,
-                5
-              )}%5cx0A%22/TOKEN_REMOVED`,
-              myInit
+            await sendSerialCommand(
+              "DTV1",
+              `SourceSelector1 set sourceSelection ${values.audioNorte}`,
             );
-            await fetch(
-              `http://192.168.2.254/api/command/send%20serial%20DTV1%20%22SourceSelector2%20set%20sourceSelection%20${values.audioCentro.slice(
-                3,
-                5
-              )}%5cx0A%22/TOKEN_REMOVED`,
-              myInit
+            await sendSerialCommand(
+              "DTV1",
+              `SourceSelector2 set sourceSelection ${values.audioCentro}`,
             );
-            await fetch(
-              `http://192.168.2.254/api/command/send%20serial%20DTV1%20%22SourceSelector3%20set%20sourceSelection%20${values.audioSur.slice(
-                3,
-                5
-              )}%5cx0A%22/TOKEN_REMOVED`,
-              myInit
+            await sendSerialCommand(
+              "DTV1",
+              `SourceSelector3 set sourceSelection ${values.audioSur}`,
             );
           } catch (error) {
             console.log("error solicitud Arranger 5000");

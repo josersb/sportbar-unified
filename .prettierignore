@@ -1,0 +1,7 @@
+dist/
+node_modules/
+pnpm-lock.yaml
+server/pnpm-lock.yaml
+sbom.json
+.codegraph/
+.atl/

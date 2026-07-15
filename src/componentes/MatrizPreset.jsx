@@ -1,11 +1,10 @@
-import React, { useRef, useContext } from "react";
+import { useRef, useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
 import { joinMultipleTVs } from "../api/arrangerApi";
 import "./MatrizPreset.css";
 
 const MatrizPreset = () => {
-  const { estado, handleChangeEstadoVideo, handleChangeEstadoPreset } =
-    useContext(ContextoUser);
+  const { estado, handleChangeEstadoVideo, handleChangeEstadoPreset } = useContext(ContextoUser);
   const tvs = estado.tvs;
   const descripcionPreset = estado.descripcionPreset;
 
@@ -49,7 +48,7 @@ const MatrizPreset = () => {
     ];
     try {
       await joinMultipleTVs(mappings);
-    } catch (error) {
+    } catch {
       console.log("error solicitud Arranger 5000");
     }
   };

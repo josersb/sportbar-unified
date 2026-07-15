@@ -30,14 +30,10 @@ export async function sendArrangerCommand(command, options = {}) {
     const response = await fetch(url, fetchOptions);
     // No se puede leer el body en modo no-cors, pero se puede loguear el status
     if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[ArrangerAPI] Comando enviado: ${command} → Status: ${response.status}`,
-      );
+      console.log(`[ArrangerAPI] Comando enviado: ${command} → Status: ${response.status}`);
     }
     return response;
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error(`[ArrangerAPI] Error enviando comando "${command}":`, error);
     throw error;
   }
@@ -65,10 +61,7 @@ export async function joinMultipleTVs(mappings) {
     try {
       await assignSourceToDestination(source, dest);
     } catch (error) {
-      console.error(
-        `[ArrangerAPI] Error enviando comando "join av ${source} ${dest}":`,
-        error,
-      );
+      console.error(`[ArrangerAPI] Error enviando comando "join av ${source} ${dest}":`, error);
     }
   }
 }

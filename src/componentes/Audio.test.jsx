@@ -36,7 +36,7 @@ function renderWithContext(overrideValue = {}) {
   return render(
     <ProviderUser value={contextValue}>
       <Audio />
-    </ProviderUser>,
+    </ProviderUser>
   );
 }
 
@@ -58,45 +58,27 @@ describe("Audio onSubmit", () => {
     });
 
     // === Mute commands (3 calls) ===
-    expect(mockSendSerialCommand).toHaveBeenCalledWith(
-      "DTV1",
-      "Mute1 set mute 1 false",
-    );
-    expect(mockSendSerialCommand).toHaveBeenCalledWith(
-      "DTV1",
-      "Mute2 set mute 1 false",
-    );
-    expect(mockSendSerialCommand).toHaveBeenCalledWith(
-      "DTV1",
-      "Mute3 set mute 1 false",
-    );
+    expect(mockSendSerialCommand).toHaveBeenCalledWith("DTV1", "Mute1 set mute 1 false");
+    expect(mockSendSerialCommand).toHaveBeenCalledWith("DTV1", "Mute2 set mute 1 false");
+    expect(mockSendSerialCommand).toHaveBeenCalledWith("DTV1", "Mute3 set mute 1 false");
 
     // === Volume commands (3 calls) ===
-    expect(mockSendSerialCommand).toHaveBeenCalledWith(
-      "DTV1",
-      "Level3 set level 1 -21",
-    );
-    expect(mockSendSerialCommand).toHaveBeenCalledWith(
-      "DTV1",
-      "Level4 set level 1 -23",
-    );
-    expect(mockSendSerialCommand).toHaveBeenCalledWith(
-      "DTV1",
-      "Level5 set level 1 -21",
-    );
+    expect(mockSendSerialCommand).toHaveBeenCalledWith("DTV1", "Level3 set level 1 -21");
+    expect(mockSendSerialCommand).toHaveBeenCalledWith("DTV1", "Level4 set level 1 -23");
+    expect(mockSendSerialCommand).toHaveBeenCalledWith("DTV1", "Level5 set level 1 -21");
 
     // === Source selector commands (3 calls) ===
     expect(mockSendSerialCommand).toHaveBeenCalledWith(
       "DTV1",
-      "SourceSelector1 set sourceSelection DTV1",
+      "SourceSelector1 set sourceSelection DTV1"
     );
     expect(mockSendSerialCommand).toHaveBeenCalledWith(
       "DTV1",
-      "SourceSelector2 set sourceSelection DTV1",
+      "SourceSelector2 set sourceSelection DTV1"
     );
     expect(mockSendSerialCommand).toHaveBeenCalledWith(
       "DTV1",
-      "SourceSelector3 set sourceSelection DTV1",
+      "SourceSelector3 set sourceSelection DTV1"
     );
 
     // State should be updated after the calls

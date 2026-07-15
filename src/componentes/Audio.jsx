@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useContext } from "react";
+import { useContext } from "react";
 import { Formik, Form } from "formik";
 import CheckBox from "./CheckBox";
 import Select from "./Select";
@@ -9,8 +9,7 @@ import { sendSerialCommand } from "../api/arrangerApi";
 import "./Audio.css";
 
 const Audio = () => {
-  const { estado, handleChangeEstadoDecos, handleChangeEstadoAudio } =
-    useContext(ContextoUser);
+  const { estado, handleChangeEstadoAudio } = useContext(ContextoUser);
 
   const audio = estado.audio;
 
@@ -47,51 +46,31 @@ const Audio = () => {
           console.log(audio);
 
           try {
+            await sendSerialCommand("DTV1", `Mute1 set mute 1 ${values.muteNorte}`);
+            await sendSerialCommand("DTV1", `Mute2 set mute 1 ${values.muteCentro}`);
+            await sendSerialCommand("DTV1", `Mute3 set mute 1 ${values.muteSur}`);
+            await sendSerialCommand("DTV1", `Level3 set level 1 ${values.volumenNorte}`);
+            await sendSerialCommand("DTV1", `Level4 set level 1 ${values.volumenCentro}`);
+            await sendSerialCommand("DTV1", `Level5 set level 1 ${values.volumenSur}`);
             await sendSerialCommand(
               "DTV1",
-              `Mute1 set mute 1 ${values.muteNorte}`,
+              `SourceSelector1 set sourceSelection ${values.audioNorte}`
             );
             await sendSerialCommand(
               "DTV1",
-              `Mute2 set mute 1 ${values.muteCentro}`,
+              `SourceSelector2 set sourceSelection ${values.audioCentro}`
             );
             await sendSerialCommand(
               "DTV1",
-              `Mute3 set mute 1 ${values.muteSur}`,
+              `SourceSelector3 set sourceSelection ${values.audioSur}`
             );
-            await sendSerialCommand(
-              "DTV1",
-              `Level3 set level 1 ${values.volumenNorte}`,
-            );
-            await sendSerialCommand(
-              "DTV1",
-              `Level4 set level 1 ${values.volumenCentro}`,
-            );
-            await sendSerialCommand(
-              "DTV1",
-              `Level5 set level 1 ${values.volumenSur}`,
-            );
-            await sendSerialCommand(
-              "DTV1",
-              `SourceSelector1 set sourceSelection ${values.audioNorte}`,
-            );
-            await sendSerialCommand(
-              "DTV1",
-              `SourceSelector2 set sourceSelection ${values.audioCentro}`,
-            );
-            await sendSerialCommand(
-              "DTV1",
-              `SourceSelector3 set sourceSelection ${values.audioSur}`,
-            );
-          } catch (error) {
+          } catch {
             console.log("error solicitud Arranger 5000");
           }
         }}
       >
         <div className="audio-main-container">
-          <h3 className="audio-main-titulo">
-            Ajuste de audio - zonas Sur-Centro-Norte
-          </h3>
+          <h3 className="audio-main-titulo">Ajuste de audio - zonas Sur-Centro-Norte</h3>
           <div className="audio-main-form">
             <Form>
               <div className="audio-select-zona">

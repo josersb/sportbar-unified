@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import {
-  joinMultipleTVs,
-  sendSerialCommand,
-  loadChannelPreset,
-} from "./arrangerApi";
+import { joinMultipleTVs, sendSerialCommand, loadChannelPreset } from "./arrangerApi";
 
 describe("joinMultipleTVs", () => {
   beforeEach(() => {
@@ -59,7 +55,7 @@ describe("joinMultipleTVs", () => {
     // The failed one should log the error
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining("[ArrangerAPI] Error"),
-      expect.any(Error),
+      expect.any(Error)
     );
 
     consoleSpy.mockRestore();

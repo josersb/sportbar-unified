@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useContext } from "react";
+import { useContext } from "react";
 import { Formik, Form } from "formik";
 import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import "./MatrizVideo.css";
-import MatrizPreset from "./MatrizPreset";
 import { joinMultipleTVs, assignSourceToDestination } from "../api/arrangerApi";
 
 const MatrizVideo = () => {
@@ -430,16 +429,9 @@ const MatrizVideo = () => {
           <Form>
             <div className="matriz-main-form">
               <div className="matriz-select-zona">
-                <h3 className="matriz-select-zona-titulo">
-                  Videos Wall Norte - Centro - Sur
-                </h3>
+                <h3 className="matriz-select-zona-titulo">Videos Wall Norte - Centro - Sur</h3>
                 <div className="matriz-select-vwallNCS">
-                  <Select
-                    id="select-VWN"
-                    label="VWall Norte"
-                    name="VWN"
-                    className="matriz-select"
-                  >
+                  <Select id="select-VWN" label="VWall Norte" name="VWN" className="matriz-select">
                     <option value="DTV1">DTV 1</option>
                     <option value="DTV2">DTV 2</option>
                     <option value="DTV3">DTV 3</option>
@@ -449,11 +441,7 @@ const MatrizVideo = () => {
                     <option value="DTV7">DTV 7</option>
                     <option value="DTV8">DTV 8</option>
                   </Select>
-                  <Select
-                    label="VWall Centro"
-                    name="VWC"
-                    className="matriz-select"
-                  >
+                  <Select label="VWall Centro" name="VWC" className="matriz-select">
                     <option value="DTV1">DTV 1</option>
                     <option value="DTV2">DTV 2</option>
                     <option value="DTV3">DTV 3</option>
@@ -463,11 +451,7 @@ const MatrizVideo = () => {
                     <option value="DTV7">DTV 7</option>
                     <option value="DTV8">DTV 8</option>
                   </Select>
-                  <Select
-                    label="VWall Sur"
-                    name="VWS"
-                    className="matriz-select"
-                  >
+                  <Select label="VWall Sur" name="VWS" className="matriz-select">
                     <option value="DTV1">DTV 1</option>
                     <option value="DTV2">DTV 2</option>
                     <option value="DTV3">DTV 3</option>
@@ -480,9 +464,7 @@ const MatrizVideo = () => {
                 </div>
               </div>
               <div className="matriz-select-zona">
-                <h3 className="matriz-select-zona-titulo">
-                  Perimetro de TVs Norte - Centro - Sur
-                </h3>
+                <h3 className="matriz-select-zona-titulo">Perimetro de TVs Norte - Centro - Sur</h3>
                 <div className="matriz-select-perimetro">
                   <Select
                     label="TVs Escalera Norte"
@@ -524,11 +506,7 @@ const MatrizVideo = () => {
                     <option value="DTV3254">DTV3,2,5,4</option>
                     <option value="DTV1354">DTV1,3,5,4</option>
                   </Select>
-                  <Select
-                    label="TVs Escalera Sur"
-                    name="TvsEscaleraSur"
-                    className="matriz-select"
-                  >
+                  <Select label="TVs Escalera Sur" name="TvsEscaleraSur" className="matriz-select">
                     <option value="DTV1">DTV 1</option>
                     <option value="DTV2">DTV 2</option>
                     <option value="DTV3">DTV 3</option>
@@ -551,11 +529,7 @@ const MatrizVideo = () => {
                   Tvs de la Barra Norte - Livertador - Sur - Pista
                 </h3>
                 <div className="matriz-select-barra">
-                  <Select
-                    label="TVs Barra Norte"
-                    name="TvsBarraNorte"
-                    className="matriz-select"
-                  >
+                  <Select label="TVs Barra Norte" name="TvsBarraNorte" className="matriz-select">
                     <option value="DTV1">DTV 1</option>
                     <option value="DTV2">DTV 2</option>
                     <option value="DTV3">DTV 3</option>
@@ -590,11 +564,7 @@ const MatrizVideo = () => {
                     <option value="DTV143">DTV1,4,3</option>
                     <option value="DTV153">DTV1,5,3</option>
                   </Select>
-                  <Select
-                    label="TVs Barra Sur"
-                    name="TvsBarraSur"
-                    className="matriz-select"
-                  >
+                  <Select label="TVs Barra Sur" name="TvsBarraSur" className="matriz-select">
                     <option value="DTV1">DTV 1</option>
                     <option value="DTV2">DTV 2</option>
                     <option value="DTV3">DTV 3</option>
@@ -610,11 +580,7 @@ const MatrizVideo = () => {
                     <option value="DTV3254">DTV3,2,5,4</option>
                     <option value="DTV1354">DTV1,3,5,4</option>
                   </Select>
-                  <Select
-                    label="TVs Barra Pista"
-                    name="TvsBarraPista"
-                    className="matriz-select"
-                  >
+                  <Select label="TVs Barra Pista" name="TvsBarraPista" className="matriz-select">
                     <option value="DTV1">DTV 1</option>
                     <option value="DTV2">DTV 2</option>
                     <option value="DTV3">DTV 3</option>
@@ -639,60 +605,28 @@ const MatrizVideo = () => {
                   Select Deco al TV de Monitoreo Multimedia - TVRACK
                 </h3>
                 <div className="matriz-select-rack">
-                  <button
-                    type="button"
-                    onClick={handleBtnDTV1}
-                    className="form-submit"
-                  >
+                  <button type="button" onClick={handleBtnDTV1} className="form-submit">
                     DTV 1
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleBtnDTV2}
-                    className="form-submit"
-                  >
+                  <button type="button" onClick={handleBtnDTV2} className="form-submit">
                     DTV 2
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleBtnDTV3}
-                    className="form-submit"
-                  >
+                  <button type="button" onClick={handleBtnDTV3} className="form-submit">
                     DTV 3
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleBtnDTV4}
-                    className="form-submit"
-                  >
+                  <button type="button" onClick={handleBtnDTV4} className="form-submit">
                     DTV 4
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleBtnDTV5}
-                    className="form-submit"
-                  >
+                  <button type="button" onClick={handleBtnDTV5} className="form-submit">
                     DTV 5
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleBtnDTV6}
-                    className="form-submit"
-                  >
+                  <button type="button" onClick={handleBtnDTV6} className="form-submit">
                     DTV 6
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleBtnDTV7}
-                    className="form-submit"
-                  >
+                  <button type="button" onClick={handleBtnDTV7} className="form-submit">
                     DTV 7
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleBtnDTV8}
-                    className="form-submit"
-                  >
+                  <button type="button" onClick={handleBtnDTV8} className="form-submit">
                     DTV 8
                   </button>
                 </div>
@@ -701,9 +635,7 @@ const MatrizVideo = () => {
           </Form>
         </Formik>
       </div>
-      <div className="matriz-main-preset">
-        
-      </div>
+      <div className="matriz-main-preset"></div>
     </main>
   );
 };

@@ -1,5 +1,4 @@
-
-.header-container{
+.header-container {
   width: auto;
   height: 70px;
   display: flex;
@@ -7,16 +6,16 @@
   justify-content: space-between;
   align-items: center;
   padding: 5px 20px;
-  background-color: #FF3900;
-  font-family: Roboto,sans-serif;
+  background-color: #ff3900;
+  font-family: Roboto, sans-serif;
   font-weight: 700;
   font-size: 32px;
 }
-.header-container h1{
+.header-container h1 {
   margin-right: 150px;
-  color: white
+  color: white;
 }
-.header-container h1 span{
+.header-container h1 span {
   color: black;
   margin-left: 20px;
 }

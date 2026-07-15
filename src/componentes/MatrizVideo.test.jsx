@@ -4,12 +4,10 @@ import { ProviderUser } from "../contexto/Contexto";
 import MatrizVideo from "./MatrizVideo";
 
 // vi.mock is hoisted to top of file — use vi.hoisted for variables the factory needs
-const { mockJoinMultipleTVs, mockAssignSourceToDestination } = vi.hoisted(
-  () => ({
-    mockJoinMultipleTVs: vi.fn().mockResolvedValue(undefined),
-    mockAssignSourceToDestination: vi.fn().mockResolvedValue(undefined),
-  }),
-);
+const { mockJoinMultipleTVs, mockAssignSourceToDestination } = vi.hoisted(() => ({
+  mockJoinMultipleTVs: vi.fn().mockResolvedValue(undefined),
+  mockAssignSourceToDestination: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("../api/arrangerApi", () => ({
   joinMultipleTVs: mockJoinMultipleTVs,
@@ -75,7 +73,7 @@ function renderWithContext(overrideValue = {}) {
   return render(
     <ProviderUser value={contextValue}>
       <MatrizVideo />
-    </ProviderUser>,
+    </ProviderUser>
   );
 }
 
@@ -103,15 +101,12 @@ describe("MatrizVideo", () => {
         fireEvent.click(screen.getByRole("button", { name: buttonLabel }));
 
         await vi.waitFor(() => {
-          expect(mockAssignSourceToDestination).toHaveBeenCalledWith(
-            dtv,
-            "TVRACK",
-          );
+          expect(mockAssignSourceToDestination).toHaveBeenCalledWith(dtv, "TVRACK");
         });
 
         // State should be updated with the selected DTV
         expect(handleChangeEstadoVideo).toHaveBeenCalled();
-      },
+      }
     );
   });
 

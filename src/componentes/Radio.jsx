@@ -1,4 +1,5 @@
 import { useField } from "formik";
+import PropTypes from "prop-types";
 
 const Radio = ({ label, ...props }) => {
   const [field] = useField({ ...props, type: "radio" });
@@ -11,6 +12,10 @@ const Radio = ({ label, ...props }) => {
       </label>
     </div>
   );
+};
+
+Radio.propTypes = {
+  label: PropTypes.string,
 };
 
 export default Radio;

@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import { useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
 import "./Aside.css";
 
@@ -124,25 +124,19 @@ const Aside = () => {
             <span className="item-audio-zona">{audio[0].nombreZona}</span>
             <span className="item-audio-deco">{audio[0].fuenteAudio}</span>
             <span className="item-audio-Vol">{audio[0].volumen}</span>
-            <span className="item-audio-Mute">
-              {audio[0].mute ? "ON" : "OFF"}
-            </span>
+            <span className="item-audio-Mute">{audio[0].mute ? "ON" : "OFF"}</span>
           </li>
           <li className="item-audio item-audio-centro">
             <span className="item-audio-zona">{audio[1].nombreZona}</span>
             <span className="item-audio-deco">{audio[1].fuenteAudio}</span>
             <span className="item-audio-Vol">{audio[1].volumen}</span>
-            <span className="item-audio-Mute">
-              {audio[1].mute ? "ON" : "OFF"}
-            </span>
+            <span className="item-audio-Mute">{audio[1].mute ? "ON" : "OFF"}</span>
           </li>
           <li className="item-audio item-audio-sur">
             <span className="item-audio-zona">{audio[2].nombreZona}</span>
             <span className="item-audio-deco">{audio[2].fuenteAudio}</span>
             <span className="item-audio-Vol">{audio[2].volumen}</span>
-            <span className="item-audio-Mute">
-              {audio[2].mute ? "ON" : "OFF"}
-            </span>
+            <span className="item-audio-Mute">{audio[2].mute ? "ON" : "OFF"}</span>
           </li>
         </ul>
       </div>

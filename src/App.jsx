@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import Body from "./componentes/Body";
 
@@ -9,10 +9,6 @@ const App = () => {
     : estadoInicial;
 
   const [estado, setEstado] = useState(estadoAppGuardado);
-
-  const decos = estado.decos;
-  const audio = estado.audio;
-  const tvs = estado.tvs;
 
   // Guardando el estado dentro de localstorage
   useEffect(() => {

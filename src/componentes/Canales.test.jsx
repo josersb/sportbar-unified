@@ -34,7 +34,7 @@ function renderWithContext(overrideValue = {}) {
   return render(
     <ProviderUser value={contextValue}>
       <Canales />
-    </ProviderUser>,
+    </ProviderUser>
   );
 }
 
@@ -52,33 +52,27 @@ describe("Canales submitCanal", () => {
     ["DTV6", 6],
     ["DTV7", 7],
     ["DTV8", 8],
-  ])(
-    "calls loadChannelPreset for %s with channel 1603",
-    async (dtv, expectedIndex) => {
-      const handleChangeEstadoDecos = vi.fn();
-      renderWithContext({ handleChangeEstadoDecos });
+  ])("calls loadChannelPreset for %s with channel 1603", async (dtv, expectedIndex) => {
+    const handleChangeEstadoDecos = vi.fn();
+    renderWithContext({ handleChangeEstadoDecos });
 
-      // Find the select element and set the deco value
-      const select = screen.getByRole("combobox");
-      fireEvent.change(select, { target: { value: dtv } });
+    // Find the select element and set the deco value
+    const select = screen.getByRole("combobox");
+    fireEvent.change(select, { target: { value: dtv } });
 
-      // Find the channel input and set the value
-      const input = screen.getByPlaceholderText("numero a ingresar");
-      fireEvent.change(input, { target: { value: "1603" } });
+    // Find the channel input and set the value
+    const input = screen.getByPlaceholderText("numero a ingresar");
+    fireEvent.change(input, { target: { value: "1603" } });
 
-      // Submit the form
-      fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+    // Submit the form
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 
-      // Wait for the async call — canal comes as string from inputRef.current.value
-      await vi.waitFor(() => {
-        expect(mockLoadChannelPreset).toHaveBeenCalledWith(
-          expectedIndex,
-          "1603",
-        );
-      });
+    // Wait for the async call — canal comes as string from inputRef.current.value
+    await vi.waitFor(() => {
+      expect(mockLoadChannelPreset).toHaveBeenCalledWith(expectedIndex, "1603");
+    });
 
-      // State should always be updated (handleChangeEstadoDecos is outside try/catch)
-      expect(handleChangeEstadoDecos).toHaveBeenCalled();
-    },
-  );
+    // State should always be updated (handleChangeEstadoDecos is outside try/catch)
+    expect(handleChangeEstadoDecos).toHaveBeenCalled();
+  });
 });

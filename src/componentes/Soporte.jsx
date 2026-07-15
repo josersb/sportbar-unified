@@ -1,4 +1,3 @@
-import React from "react";
 import "./Soporte.css";
 
 const Soporte = () => {

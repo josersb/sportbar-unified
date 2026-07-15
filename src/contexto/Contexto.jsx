@@ -38,8 +38,8 @@ export const estadoInicial = {
     },
   ],
   favoritos: [
-    1603, 1604, 1605, 1608, 1609, 1610, 1612, 1613,1614, 1620, 1621, 1622, 1623,
-    1625, 1628, 1629, 1631, 1639, 1644, 1677,
+    1603, 1604, 1605, 1608, 1609, 1610, 1612, 1613, 1614, 1620, 1621, 1622, 1623, 1625, 1628, 1629,
+    1631, 1639, 1644, 1677,
   ],
   tvs: {
     VWN: "DTV1",
@@ -100,47 +100,40 @@ export const estadoInicial = {
       mute: false,
     },
   ],
-  descripcionPreset:[
+  descripcionPreset: [
     {
-      preset1:"ingresar descripción",
+      preset1: "ingresar descripción",
     },
     {
-      preset2:"ingresar descripción",
+      preset2: "ingresar descripción",
     },
     {
-      preset3:"ingresar descripción",
+      preset3: "ingresar descripción",
     },
     {
-      preset4:"ingresar descripción",
+      preset4: "ingresar descripción",
     },
     {
-      preset5:"ingresar descripción",
+      preset5: "ingresar descripción",
     },
-  ]
+  ],
 };
 
-  // Creamos si no existen los 5 presets de estados en el localstorage.
-  const estadoAppPreset1 = localStorage.getItem("estadoApp_Preset1")
-    ? null
-    : localStorage.setItem("estadoApp_Preset1", JSON.stringify(estadoInicial));
-    
+// Creamos si no existen los 5 presets de estados en el localstorage.
+localStorage.getItem("estadoApp_Preset1") ||
+  localStorage.setItem("estadoApp_Preset1", JSON.stringify(estadoInicial));
 
-  const estadoAppPreset2 = localStorage.getItem("estadoApp_Preset2")
-    ? null
-    : localStorage.setItem("estadoApp_Preset2", JSON.stringify(estadoInicial));
+localStorage.getItem("estadoApp_Preset2") ||
+  localStorage.setItem("estadoApp_Preset2", JSON.stringify(estadoInicial));
 
-  const estadoAppPreset3 = localStorage.getItem("estadoApp_Preset3")
-    ? null
-    : localStorage.setItem("estadoApp_Preset3", JSON.stringify(estadoInicial));
+localStorage.getItem("estadoApp_Preset3") ||
+  localStorage.setItem("estadoApp_Preset3", JSON.stringify(estadoInicial));
 
-  const estadoAppPreset4 = localStorage.getItem("estadoApp_Preset4")
-    ? null
-    : localStorage.setItem("estadoApp_Preset4", JSON.stringify(estadoInicial));
+localStorage.getItem("estadoApp_Preset4") ||
+  localStorage.setItem("estadoApp_Preset4", JSON.stringify(estadoInicial));
 
-  const estadoAppPreset5 = localStorage.getItem("estadoApp_Preset5")
-    ? null
-    : localStorage.setItem("estadoApp_Preset5", JSON.stringify(estadoInicial));
-
+localStorage.getItem("estadoApp_Preset5") ||
+  localStorage.setItem("estadoApp_Preset5", JSON.stringify(estadoInicial));
 
 export const ProviderUser = ContextoUser.Provider;
 export default ContextoUser;

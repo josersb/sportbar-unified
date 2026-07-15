@@ -8,8 +8,8 @@
  */
 
 const ARRANGER_BASE_URL =
-  process.env.VITE_ARRANGER_API_BASE || "http://192.168.2.254/api/command";
-const ARRANGER_TOKEN = process.env.VITE_ARRANGER_TOKEN || "TOKEN_REMOVED";
+  import.meta.env.VITE_ARRANGER_API_BASE || "http://192.168.2.254/api/command";
+const ARRANGER_TOKEN = import.meta.env.VITE_ARRANGER_TOKEN || "TOKEN_REMOVED";
 
 /*
  * Envía un comando genérico a la API de Arranger.

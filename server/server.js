@@ -4,11 +4,42 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware para parsear JSON (debe ir antes de las rutas)
+app.use(express.json());
+
+// Load lowdb and initialize state database
+let stateDb;
+(async () => {
+  const { JSONFilePreset } = await import("lowdb/node");
+  stateDb = await JSONFilePreset(path.join(__dirname, "state.json"), {
+    state: null,
+  });
+})();
+
+// GET /api/state — returns persisted state from server/state.json
+app.get("/api/state", (req, res) => {
+  if (!stateDb) {
+    return res.json({ state: null });
+  }
+  res.json({ state: stateDb.data.state });
+});
+
+// POST /api/state — persists state to server/state.json
+app.post("/api/state", async (req, res) => {
+  if (!stateDb) {
+    return res.status(503).json({ error: "Database not ready" });
+  }
+  const { state } = req.body;
+  if (!state) {
+    return res.status(400).json({ error: "Missing state" });
+  }
+  stateDb.data.state = state;
+  await stateDb.write();
+  res.json({ ok: true });
+});
+
 // Middleware para servir archivos estáticos desde dist (build de producción)
 app.use(express.static(path.join(__dirname, "../dist")));
-
-// Middleware para parsear JSON (por si se necesita en el futuro)
-app.use(express.json());
 
 // Headers para CORS (necesario para las llamadas a la matriz Arranger)
 app.use((req, res, next) => {

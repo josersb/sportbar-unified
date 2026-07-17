@@ -33,6 +33,9 @@ server/node_modules/
 # Build outputs
 dist/
 dist-ssr/
+
+# Runtime state (lowdb persistence)
+server/state.json
 build/
 out/
 

@@ -17,6 +17,11 @@ export default defineConfig({
         target: "http://localhost:3000",
         changeOrigin: true,
       },
+      // State persistence endpoint → Express (must come before the generic /api rule)
+      "/api/state": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
       // Proxy API calls to avoid CORS issues during development
       "/api": {
         target: "http://192.168.2.254",

@@ -41,44 +41,92 @@ const migrarEstado = (oldData) => {
 };
 
 const App = () => {
-  const [estado, setEstado] = useState(() => {
-    const saved = localStorage.getItem("estadoApp");
-    if (saved) {
+  const [estado, setEstado] = useState(estadoInicial);
+  const [estadoLoaded, setEstadoLoaded] = useState(false);
+
+  // Load state: server first, localStorage fallback, then initial state
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadState() {
+      // 1. Try server (shared state across devices)
       try {
-        const parsed = JSON.parse(saved);
-        if (!parsed._version || parsed._version < 1) {
-          const migrated = migrarEstado(parsed);
-          // Save migrated data back immediately
-          localStorage.setItem("estadoApp", JSON.stringify(migrated));
-          // Also migrate presets
-          for (let i = 1; i <= 5; i++) {
-            const key = `estadoApp_Preset${i}`;
-            const presetSaved = localStorage.getItem(key);
-            if (presetSaved) {
-              try {
-                const presetParsed = JSON.parse(presetSaved);
-                if (!presetParsed._version || presetParsed._version < 1) {
-                  localStorage.setItem(key, JSON.stringify(migrarEstado(presetParsed)));
+        const res = await fetch("/api/state");
+        if (res.ok) {
+          const { state } = await res.json();
+          if (state && !cancelled) {
+            setEstado(state);
+            setEstadoLoaded(true);
+            return;
+          }
+        }
+      } catch {
+        // Server not available, fall through to localStorage
+      }
+
+      // 2. Fallback to localStorage
+      const saved = localStorage.getItem("estadoApp");
+      if (saved && !cancelled) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (!parsed._version || parsed._version < 1) {
+            const migrated = migrarEstado(parsed);
+            localStorage.setItem("estadoApp", JSON.stringify(migrated));
+            // Also migrate presets
+            for (let i = 1; i <= 5; i++) {
+              const key = `estadoApp_Preset${i}`;
+              const presetSaved = localStorage.getItem(key);
+              if (presetSaved) {
+                try {
+                  const presetParsed = JSON.parse(presetSaved);
+                  if (!presetParsed._version || presetParsed._version < 1) {
+                    localStorage.setItem(key, JSON.stringify(migrarEstado(presetParsed)));
+                  }
+                } catch {
+                  // skip corrupted preset
                 }
-              } catch {
-                // skip corrupted preset
               }
             }
+            setEstado(migrated);
+          } else {
+            setEstado(parsed);
           }
-          return migrated;
+          setEstadoLoaded(true);
+          return;
+        } catch {
+          // corrupted localStorage
         }
-        return parsed;
-      } catch {
-        return estadoInicial;
+      }
+
+      // 3. Use initial state
+      if (!cancelled) {
+        setEstado(estadoInicial);
+        setEstadoLoaded(true);
       }
     }
-    return estadoInicial;
-  });
 
-  // Guardando el estado dentro de localstorage
+    loadState();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist state: localStorage + server (fire-and-forget)
   useEffect(() => {
+    if (!estadoLoaded) return;
+
+    // Always persist to localStorage (fast, sync-safe for current device)
     localStorage.setItem("estadoApp", JSON.stringify(estado));
-  }, [estado]);
+
+    // Also persist to server (shared state across devices, fire-and-forget)
+    fetch("/api/state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state: estado }),
+    }).catch(() => {
+      // Server not available — state still persisted in localStorage
+    });
+  }, [estado, estadoLoaded]);
 
   const handleChangeEstadoDecos = (decos) => {
     setEstado((prev) => {

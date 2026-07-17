@@ -465,34 +465,67 @@ const MatrizVideo = () => {
                   </Select>
                 </div>
               </div>
-              <button type="submit" className="form-submit">
-                Enviar
-              </button>
+              <div className="matriz-submit-container">
+                <button type="submit" className="form-submit">
+                  Enviar
+                </button>
+              </div>
               <div className="matriz-select-zona">
                 <h3 className="matriz-select-zona-titulo">
                   Select Deco al TV de Monitoreo Multimedia - TVRACK
                 </h3>
                 <div className="matriz-select-rack">
-                  {getByCapability('videoSource').map(d => (
-                    <button key={d.id} type="button" data-testid={`btn-${d.id}`} onClick={handleBtnDTV(d.id)} className="form-submit" disabled={loadingBtn === d.id}>
-                      {d.connected || d.id}
-                    </button>
-                  ))}
+                  {getByCapability('videoSource').map(d => {
+                    const isActive = d.id === tvs.TVRACK;
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        data-testid={`btn-${d.id}`}
+                        onClick={handleBtnDTV(d.id)}
+                        className={`form-submit${isActive ? ' active' : ''}`}
+                        disabled={loadingBtn === d.id}
+                        title={d.connected}
+                        style={{
+                          backgroundColor: `var(--${d.id})`,
+                          color: ['DTV6', 'DTV7'].includes(d.id) ? '#1a1a2e' : '#fff',
+                          opacity: isActive ? 1 : 0.65,
+                          border: isActive ? '2px solid #fff' : '1px solid transparent',
+                          transition: 'opacity 0.2s, border 0.2s',
+                        }}
+                      >
+                        {d.id}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div className="matriz-select-zona">
                 <h3 className="matriz-select-zona-titulo">
                   Zonas Adicionales — VIP, Planta -1, +15
                 </h3>
-                <div className="matriz-select-rack">
-                  {[
-                    'aVip-Barra-Centro','aVip-Lobby-Batacazo','a-Menos1-Escenario',
-                    'a-QMR75-Menos1-TV1','aVip-Bar-Boveda','aMas-15-Barra',
-                    'a-QMR75-Menos1-TV2','a-Menos1-Escenario2','a-QMC65-Menos1-TV2',
-                    'RACK-VIP-PANTALLABATACA'
-                  ].map(key => (
-                    <div key={key} style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.5rem'}}>
-                      <label style={{minWidth:'200px',fontSize:'0.8rem',color:'#c9d1d9'}}>{key}</label>
+                <div className="matriz-select-zonas">
+                  {(() => {
+                    const labels = {
+                      'aVip-Barra-Centro': 'VIP Barra Centro',
+                      'aVip-Lobby-Batacazo': 'VIP Lobby Batacazo',
+                      'a-Menos1-Escenario': 'Escenario -1',
+                      'a-QMR75-Menos1-TV1': 'QMR75 -1 TV1',
+                      'aVip-Bar-Boveda': 'VIP Bar Bóveda',
+                      'aMas-15-Barra': '+15 Barra',
+                      'a-QMR75-Menos1-TV2': 'QMR75 -1 TV2',
+                      'a-Menos1-Escenario2': 'Escenario -1 (2)',
+                      'a-QMC65-Menos1-TV2': 'QMC65 -1 TV2',
+                      'RACK-VIP-PANTALLABATACA': 'Rack VIP Bataca',
+                    };
+                    return [
+                      'aVip-Barra-Centro','aVip-Lobby-Batacazo','a-Menos1-Escenario',
+                      'a-QMR75-Menos1-TV1','aVip-Bar-Boveda','aMas-15-Barra',
+                      'a-QMR75-Menos1-TV2','a-Menos1-Escenario2','a-QMC65-Menos1-TV2',
+                      'RACK-VIP-PANTALLABATACA'
+                    ].map(key => (
+                      <div key={key} style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.5rem'}}>
+                        <label style={{minWidth:'160px',fontSize:'0.8rem',color:'#c9d1d9'}}>{labels[key]}</label>
                       <select
                         value={tvs[key] || 'DTV1'}
                         onChange={e => handleChangeEstadoVideo({...tvs, [key]: e.target.value})}
@@ -503,7 +536,7 @@ const MatrizVideo = () => {
                         ))}
                       </select>
                     </div>
-                  ))}
+                  ))})()}
                 </div>
               </div>
             </div>

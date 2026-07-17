@@ -1,4 +1,14 @@
 :root {
+  /* ── Device color tokens (source: dispositivos.js) ── */
+  --DTV1: #EF9A9A;
+  --DTV2: #EC407A;
+  --DTV3: #7E57C2;
+  --DTV4: #42A5F5;
+  --DTV5: #66BB6A;
+  --DTV6: #FFEE58;
+  --DTV7: #FFCA28;
+  --DTV8: #BDBDBD;
+
   --ASur: white;
   --ACentro: white;
   --ANorte: white;

@@ -1,11 +1,11 @@
 import { useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
+import { getAllDevices } from "../contexto/dispositivos";
 import "./Aside.css";
 
 const Aside = () => {
   const { estado } = useContext(ContextoUser);
 
-  const decos = estado.decos;
   const audio = estado.audio;
   const tvs = estado.tvs;
 
@@ -77,38 +77,18 @@ const Aside = () => {
             <span>DECO</span>
             <span>CANAL</span>
           </li>
-          <li className="item-deco" style={{ backgroundColor: "#EF9A9A" }}>
-            <span className="item-deco-titulo">{decos[0].nombreDeco}</span>
-            <span className="item-deco-canal">{decos[0].canalDeco}</span>
-          </li>
-          <li className="item-deco" style={{ backgroundColor: "#EC407A" }}>
-            <span className="item-deco-titulo">{decos[1].nombreDeco}</span>
-            <span className="item-deco-canal">{decos[1].canalDeco}</span>
-          </li>
-          <li className="item-deco" style={{ backgroundColor: "#7E57C2" }}>
-            <span className="item-deco-titulo">{decos[2].nombreDeco}</span>
-            <span className="item-deco-canal">{decos[2].canalDeco}</span>
-          </li>
-          <li className="item-deco" style={{ backgroundColor: "#42A5F5" }}>
-            <span className="item-deco-titulo">{decos[3].nombreDeco}</span>
-            <span className="item-deco-canal">{decos[3].canalDeco}</span>
-          </li>
-          <li className="item-deco" style={{ backgroundColor: "#66BB6A" }}>
-            <span className="item-deco-titulo">{decos[4].nombreDeco}</span>
-            <span className="item-deco-canal">{decos[4].canalDeco}</span>
-          </li>
-          <li className="item-deco" style={{ backgroundColor: "#FFEE58" }}>
-            <span className="item-deco-titulo">{decos[5].nombreDeco}</span>
-            <span className="item-deco-canal">{decos[5].canalDeco}</span>
-          </li>
-          <li className="item-deco" style={{ backgroundColor: "#FFCA28" }}>
-            <span className="item-deco-titulo">{decos[6].nombreDeco}</span>
-            <span className="item-deco-canal">{decos[6].canalDeco}</span>
-          </li>
-          <li className="item-deco" style={{ backgroundColor: "#BDBDBD" }}>
-            <span className="item-deco-titulo">{decos[7].nombreDeco}</span>
-            <span className="item-deco-canal">{decos[7].canalDeco}</span>
-          </li>
+          {getAllDevices().map(device => {
+            const estadoDevice = estado.dispositivos?.[device.id];
+            const label = device.provider
+              ? (estadoDevice?.canalActual ?? '—')
+              : device.connected;
+            return (
+              <li key={device.id} className="item-deco" style={{ backgroundColor: device.color }}>
+                <span className="item-deco-titulo">{device.id}</span>
+                <span className="item-deco-canal">{label}</span>
+              </li>
+            );
+          })}
         </ul>
       </div>
       <div className="audio-info">

@@ -1,7 +1,8 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { Formik, Form } from "formik";
 import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
+import { getByCapability } from "../contexto/dispositivos";
 import "./MatrizVideo.css";
 import { joinMultipleTVs, assignSourceToDestination } from "../api/arrangerApi";
 
@@ -9,78 +10,17 @@ const MatrizVideo = () => {
   const { estado, handleChangeEstadoVideo } = useContext(ContextoUser);
 
   const tvs = estado.tvs;
+  const [loadingBtn, setLoadingBtn] = useState(null);
 
-  const handleBtnDTV1 = async () => {
+  const handleBtnDTV = (deviceId) => async () => {
+    setLoadingBtn(deviceId);
     try {
-      await assignSourceToDestination("DTV1", "TVRACK");
+      await assignSourceToDestination(deviceId, "TVRACK");
     } catch (error) {
       console.error("[ArrangerAPI] Error:", error);
     }
-    tvs.TVRACK = "DTV1";
-    handleChangeEstadoVideo(tvs);
-  };
-  const handleBtnDTV2 = async () => {
-    try {
-      await assignSourceToDestination("DTV2", "TVRACK");
-    } catch (error) {
-      console.error("[ArrangerAPI] Error:", error);
-    }
-    tvs.TVRACK = "DTV2";
-    handleChangeEstadoVideo(tvs);
-  };
-  const handleBtnDTV3 = async () => {
-    try {
-      await assignSourceToDestination("DTV3", "TVRACK");
-    } catch (error) {
-      console.error("[ArrangerAPI] Error:", error);
-    }
-    tvs.TVRACK = "DTV3";
-    handleChangeEstadoVideo(tvs);
-  };
-  const handleBtnDTV4 = async () => {
-    try {
-      await assignSourceToDestination("DTV4", "TVRACK");
-    } catch (error) {
-      console.error("[ArrangerAPI] Error:", error);
-    }
-    tvs.TVRACK = "DTV4";
-    handleChangeEstadoVideo(tvs);
-  };
-  const handleBtnDTV5 = async () => {
-    try {
-      await assignSourceToDestination("DTV5", "TVRACK");
-    } catch (error) {
-      console.error("[ArrangerAPI] Error:", error);
-    }
-    tvs.TVRACK = "DTV5";
-    handleChangeEstadoVideo(tvs);
-  };
-  const handleBtnDTV6 = async () => {
-    try {
-      await assignSourceToDestination("DTV6", "TVRACK");
-    } catch (error) {
-      console.error("[ArrangerAPI] Error:", error);
-    }
-    tvs.TVRACK = "DTV6";
-    handleChangeEstadoVideo(tvs);
-  };
-  const handleBtnDTV7 = async () => {
-    try {
-      await assignSourceToDestination("DTV7", "TVRACK");
-    } catch (error) {
-      console.error("[ArrangerAPI] Error:", error);
-    }
-    tvs.TVRACK = "DTV7";
-    handleChangeEstadoVideo(tvs);
-  };
-  const handleBtnDTV8 = async () => {
-    try {
-      await assignSourceToDestination("DTV8", "TVRACK");
-    } catch (error) {
-      console.error("[ArrangerAPI] Error:", error);
-    }
-    tvs.TVRACK = "DTV8";
-    handleChangeEstadoVideo(tvs);
+    handleChangeEstadoVideo({ ...tvs, TVRACK: deviceId });
+    setLoadingBtn(null);
   };
 
   return (
@@ -391,37 +331,15 @@ const MatrizVideo = () => {
                 tvs.TV17 = values.TvsEscaleraSur;
                 tvs.TV18 = values.TvsEscaleraSur;
             }
-            const mappings = [
-              { source: tvs.VWN, dest: "VW-Norte" },
-              { source: tvs.VWC, dest: "VW-Centro" },
-              { source: tvs.VWS, dest: "VW-Sur" },
-              { source: tvs.TV01, dest: "TV01" },
-              { source: tvs.TV02, dest: "TV02" },
-              { source: tvs.TV03, dest: "TV03" },
-              { source: tvs.TV04, dest: "TV04" },
-              { source: tvs.TV05, dest: "TV05" },
-              { source: tvs.TV06, dest: "TV06" },
-              { source: tvs.TV07, dest: "TV07" },
-              { source: tvs.TV08, dest: "TV08" },
-              { source: tvs.TV09, dest: "TV09" },
-              { source: tvs.TV10, dest: "TV10" },
-              { source: tvs.TV11, dest: "TV11" },
-              { source: tvs.TV12, dest: "TV12" },
-              { source: tvs.TV13, dest: "TV13" },
-              { source: tvs.TV14, dest: "TV14" },
-              { source: tvs.TV15, dest: "TV15" },
-              { source: tvs.TV16, dest: "TV16" },
-              { source: tvs.TV17, dest: "TV17" },
-              { source: tvs.TV18, dest: "TV18" },
-              { source: tvs.TV19, dest: "TV19" },
-              { source: tvs.TV20, dest: "TV20" },
-              { source: tvs.TV21, dest: "TV21" },
-              { source: tvs.TV22, dest: "TV22" },
-              { source: tvs.TV23, dest: "TV23" },
-              { source: tvs.TV24, dest: "TV24" },
-              { source: tvs.TV25, dest: "TV25" },
-              { source: tvs.TV26, dest: "TV26" },
-            ];
+            const vwDestNames = {
+              VWN: "VW-Norte",
+              VWC: "VW-Centro",
+              VWS: "VW-Sur",
+            };
+            const mappings = Object.entries(estado.tvs).map(([tv, source]) => ({
+              source,
+              dest: vwDestNames[tv] || tv,
+            }));
             await joinMultipleTVs(mappings);
             handleChangeEstadoVideo(tvs);
           }}
@@ -432,34 +350,19 @@ const MatrizVideo = () => {
                 <h3 className="matriz-select-zona-titulo">Videos Wall Norte - Centro - Sur</h3>
                 <div className="matriz-select-vwallNCS">
                   <Select id="select-VWN" label="VWall Norte" name="VWN" className="matriz-select">
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                   </Select>
                   <Select label="VWall Centro" name="VWC" className="matriz-select">
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                   </Select>
                   <Select label="VWall Sur" name="VWS" className="matriz-select">
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                   </Select>
                 </div>
               </div>
@@ -471,14 +374,9 @@ const MatrizVideo = () => {
                     name="TvsEscaleraNorte"
                     className="matriz-select"
                   >
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                     <option value="DTV1234">DTV1,2,3,4</option>
                     <option value="DTV1212">DTV1,2,1,2</option>
                     <option value="DTV1231">DTV1,2,3,1</option>
@@ -491,14 +389,9 @@ const MatrizVideo = () => {
                     name="TvsEscaleraCentro"
                     className="matriz-select"
                   >
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                     <option value="DTV1234">DTV1,2,3,4</option>
                     <option value="DTV1212">DTV1,2,1,2</option>
                     <option value="DTV1231">DTV1,2,3,1</option>
@@ -507,14 +400,9 @@ const MatrizVideo = () => {
                     <option value="DTV1354">DTV1,3,5,4</option>
                   </Select>
                   <Select label="TVs Escalera Sur" name="TvsEscaleraSur" className="matriz-select">
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                     <option value="DTV1234">DTV1,2,3,4</option>
                     <option value="DTV1212">DTV1,2,1,2</option>
                     <option value="DTV1231">DTV1,2,3,1</option>
@@ -530,14 +418,9 @@ const MatrizVideo = () => {
                 </h3>
                 <div className="matriz-select-barra">
                   <Select label="TVs Barra Norte" name="TvsBarraNorte" className="matriz-select">
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                     <option value="DTV1234">DTV1,2,3,4</option>
                     <option value="DTV1212">DTV1,2,1,2</option>
                     <option value="DTV1231">DTV1,2,3,1</option>
@@ -550,14 +433,9 @@ const MatrizVideo = () => {
                     name="TvsBarraLivertador"
                     className="matriz-select"
                   >
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                     <option value="DTV123">DTV1,2,3</option>
                     <option value="DTV121">DTV1,2,1</option>
                     <option value="DTV542">DTV5,4,2</option>
@@ -565,14 +443,9 @@ const MatrizVideo = () => {
                     <option value="DTV153">DTV1,5,3</option>
                   </Select>
                   <Select label="TVs Barra Sur" name="TvsBarraSur" className="matriz-select">
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                     <option value="DTV1234">DTV1,2,3,4</option>
                     <option value="DTV1212">DTV1,2,1,2</option>
                     <option value="DTV1231">DTV1,2,3,1</option>
@@ -581,14 +454,9 @@ const MatrizVideo = () => {
                     <option value="DTV1354">DTV1,3,5,4</option>
                   </Select>
                   <Select label="TVs Barra Pista" name="TvsBarraPista" className="matriz-select">
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('videoSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+                    ))}
                     <option value="DTV123">DTV1,2,3</option>
                     <option value="DTV121">DTV1,2,1</option>
                     <option value="DTV542">DTV5,4,2</option>
@@ -605,30 +473,11 @@ const MatrizVideo = () => {
                   Select Deco al TV de Monitoreo Multimedia - TVRACK
                 </h3>
                 <div className="matriz-select-rack">
-                  <button type="button" onClick={handleBtnDTV1} className="form-submit">
-                    DTV 1
-                  </button>
-                  <button type="button" onClick={handleBtnDTV2} className="form-submit">
-                    DTV 2
-                  </button>
-                  <button type="button" onClick={handleBtnDTV3} className="form-submit">
-                    DTV 3
-                  </button>
-                  <button type="button" onClick={handleBtnDTV4} className="form-submit">
-                    DTV 4
-                  </button>
-                  <button type="button" onClick={handleBtnDTV5} className="form-submit">
-                    DTV 5
-                  </button>
-                  <button type="button" onClick={handleBtnDTV6} className="form-submit">
-                    DTV 6
-                  </button>
-                  <button type="button" onClick={handleBtnDTV7} className="form-submit">
-                    DTV 7
-                  </button>
-                  <button type="button" onClick={handleBtnDTV8} className="form-submit">
-                    DTV 8
-                  </button>
+                  {getByCapability('videoSource').map(d => (
+                    <button key={d.id} type="button" data-testid={`btn-${d.id}`} onClick={handleBtnDTV(d.id)} className="form-submit" disabled={loadingBtn === d.id}>
+                      {d.connected || d.id}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

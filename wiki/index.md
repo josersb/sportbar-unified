@@ -25,7 +25,11 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## Dispositivos Hardware
 
-- [[Dispositivos/Decodificadores]] — 8 decodificadores DirecTV (DTV1–DTV8)
+- [[Dispositivos/Decodificadores]] — catálogo de 8 fuentes de video: 6 DirecTV + 2 encoders IPEX5001
+- [[Dispositivos/DirecTV-Decos]] — 6 decodificadores DirecTV físicos (DTV1–DTV6), control IR, conexión a encoders
+- [[Dispositivos/IPEX5001-Encoder]] — transmisor HDMI sobre IP, JPEG2000, PoE, IR/RS232/USB passthrough
+- [[Dispositivos/IPEX5002-Decoder]] — receptor HDMI sobre IP, video wall 16×16, CEC, idle image
+- [[Dispositivos/Arranger-IPEXCB]] — controlador central IPEXCB, API HTTP + TCP, referencia completa de comandos
 - [[Dispositivos/ZonasAudio]] — 3 zonas de audio independientes (Norte, Centro, Sur) con procesador Tesira
 
 ## Conceptos
@@ -45,12 +49,15 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## Referencias de API
 
-- `API commands/get_status.txt` — documentación del comando `get status` del Arranger
-- [[API/ArrangerApi]] — implementación del cliente API en el proyecto
+- [[API/ArrangerApi]] — implementación del cliente API y referencia completa de comandos del Arranger
+- [[Dispositivos/Arranger-IPEXCB]] — documentación del controlador físico, IP, token, puertos
 
 ## Sources
 
-*Sin sources ingestados todavía. Los documentos en `API commands/` y `Docs/` están pendientes de ingestión.*
+- Manual de instalación IPEX5001 (Liberty AV / DigitaLinx IP) — ingerido 2026-07-15
+- Manual de usuario Arranger Digi IP 5000 / IPEXCB — ingerido 2026-07-15
+- `API commands/devices_all.txt` — catálogo de dispositivos conectados al Arranger
+- `API commands/get_status.txt` — documentación del comando `get status` del Arranger
 
 ## Decisions
 

@@ -1,0 +1,27 @@
+change: modelo-dispositivos
+phase: archive
+artifact_store: hybrid
+archived_at: 2026-07-15
+artifacts:
+  exploration: true
+  proposal: true
+  specs:
+    registro-dispositivos: true
+    migracion-localstorage: true
+    arranger-api-centralized: true
+  design: true
+  tasks: true
+tasks_progress:
+  total: 11
+  completed: 11
+  pending: 0
+specs_synced:
+  - registro-dispositivos (CREATED -> openspec/specs/registro-dispositivos/spec.md)
+  - migracion-localstorage (CREATED -> openspec/specs/migracion-localstorage/spec.md)
+  - arranger-api-centralized (UPDATED -> openspec/specs/arranger-api-centralized/spec.md)
+build: passed
+tests: 29/29 passed
+notes:
+  - T11 checkbox was stale (work complete, tests pass). Reconciled per orchestrator instruction.
+  - No verify-report.md was found — archive proceeds with build + test evidence.
+last_updated: 2026-07-15

@@ -1,6 +1,93 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { joinMultipleTVs, sendSerialCommand, loadChannelPreset } from "./arrangerApi";
+import { joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits } from "./arrangerApi";
+
+// Mock IR_CODES so the dynamic import inside sendChannelDigits resolves synchronously
+// and doesn't interfere with vi.useFakeTimers
+vi.mock("../data/irCodes.js", () => ({
+  IR_CODES: {
+    '0': '0000006c000a000a00e5002d002d002d00160016001600160016002d001600160016002d0016002d002d0016001604770072002d002d002d00160016001600160016002d001600160016002d0016002d002d001600160477',
+    '1': '0000006c000a000a00e5002e002e002e001600160016001600160016001600160016002e001600160016002e001604770072002e002e002e001600160016001600160016001600160016002e001600160016002e00160477',
+    '2': '0000006c000a000a00e5002d002d002d001600160016001600160016001600160016002d001600160016002d00160016048c0072002d002d002d001600160016001600160016001600160016002d001600160016002d00160016048c',
+    '3': '0000006c000a000a00e5002d002d002d00160016001600160016001600160016002d002d00160016002d002d001604770072002d002d002d00160016001600160016001600160016002d002d00160016002d002d00160477',
+    '4': '0000006c000a000a00e5002d002d002d00160016001600160016001600160016002d0016001600160016002d002d001604770072002d002d002d00160016001600160016001600160016002d0016001600160016002d002d00160477',
+    '5': '0000006c000a000a00e5002e002e002e0016001600160016001600160016002e0016002e0016002e00160016001604770072002e002e002e0016001600160016001600160016002e0016002e0016002e0016001600160477',
+    '6': '0000006c000a000a00e5002d002d002d0016001600160016001600160016002d002d00160016002d0016002d001604770072002d002d002d0016001600160016001600160016002d002d00160016002d0016002d00160477',
+    '7': '0000006c000a000a00e5002d002d002d0016001600160016001600160016002d002d002d0016002d002d0016001604770072002d002d002d0016001600160016001600160016002d002d002d0016002d002d001600160477',
+    '8': '0000006c000a000a00e5002d002d002d001600160016001600160016002d0016001600160016002d002d0016001604770072002d002d002d001600160016001600160016002d0016001600160016002d002d001600160477',
+    '9': '0000006c000a000a00e5002d002d002d0016001600160016001600160016002d00160016002d0016002d002d002d001604770072002d002d002d0016001600160016001600160016002d00160016002d0016002d002d002d00160477',
+  },
+}));
+
+describe("sendIrCommand", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200 }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends send ir command with device and hex code", async () => {
+    await sendIrCommand("DTV1", "0000006c000a000a00e5");
+
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("send%20ir%20DTV1%200000006c000a000a00e5");
+  });
+
+  it("sends correct URL for different device and hex", async () => {
+    await sendIrCommand("DTV3", "abcdef123456");
+
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("send%20ir%20DTV3%20abcdef123456");
+  });
+});
+
+describe("sendChannelDigits", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200 }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  describe("with fake timers", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    it("sends each digit with 300ms delays", async () => {
+      const promise = sendChannelDigits("DTV1", "16");
+
+      // Advance timers to trigger each delay
+      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(300);
+      await promise;
+
+      expect(global.fetch).toHaveBeenCalledTimes(2); // 2 digits
+    });
+
+    it("sends 4 digits for a 4-digit channel", async () => {
+      const promise = sendChannelDigits("DTV1", "1603");
+
+      // Advance timers for each digit delay (4 digits × 300ms)
+      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(300);
+      await promise;
+
+      expect(global.fetch).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  it("throws for missing IR code", async () => {
+    // X is not a valid key in IR_CODES — should throw before any delay
+    await expect(sendChannelDigits("DTV1", "X")).rejects.toThrow("Código IR no encontrado para dígito: X");
+  });
+});
 
 describe("joinMultipleTVs", () => {
   beforeEach(() => {

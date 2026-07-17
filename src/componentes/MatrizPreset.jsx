@@ -1,5 +1,6 @@
 import { useRef, useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
+import { DISPOSITIVOS } from "../contexto/dispositivos";
 import { joinMultipleTVs } from "../api/arrangerApi";
 import "./MatrizPreset.css";
 

@@ -90,6 +90,40 @@ export async function loadChannelPreset(decoNumber, channel) {
 }
 
 /**
+ * Envía un comando IR a un dispositivo vía el Arranger.
+ * @param {string} deviceId - ID del dispositivo (ej: "DTV1")
+ * @param {string} hexCode - Código IR en formato Pronto hex
+ * @returns {Promise<Response>}
+ */
+export async function sendIrCommand(deviceId, hexCode) {
+  return sendArrangerCommand(`send ir ${deviceId} ${hexCode}`);
+}
+
+/**
+ * Envía un cambio de canal dígito por dígito vía IR.
+ * Cada dígito se envía con un delay de 300ms entre comandos,
+ * replicando el comportamiento de los presets del Arranger.
+ * @param {string} deviceId - ID del dispositivo (ej: "DTV1")
+ * @param {string|number} channel - Número de canal (ej: "1603")
+ * @throws {Error} Si algún dígito no tiene código IR en la tabla
+ * @returns {Promise<void>}
+ */
+export async function sendChannelDigits(deviceId, channel) {
+  const { IR_CODES } = await import("../data/irCodes.js");
+  const digits = String(channel).split("");
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  for (const digit of digits) {
+    const hex = IR_CODES[digit];
+    if (!hex) {
+      throw new Error(`Código IR no encontrado para dígito: ${digit}`);
+    }
+    await sendIrCommand(deviceId, hex);
+    await delay(300);
+  }
+}
+
+/**
  * Utilidades para construir comandos (opcional, para futuros comandos avanzados)
  */
 /*
@@ -104,6 +138,22 @@ export function buildArrangerCommand(command, ...args) {
     arr.flatMap((arg) => (Array.isArray(arg) ? flattenArgs(arg) : [arg]));
   const allArgs = flattenArgs(args);
   return [command, ...allArgs].join(" ");
+}
+
+/**
+ * Obtiene el estado de un dispositivo IPEX5001 consultando el proxy Express.
+ * El proxy se comunica con el Arranger sin restricciones CORS y devuelve
+ * los streams activos parseados como JSON.
+ *
+ * @param {string} deviceId - ID del dispositivo (ej: 'DTV1')
+ * @returns {Promise<{streams: object, online: boolean}>}
+ */
+export async function getDeviceStatus(deviceId) {
+  const response = await fetch(`/api/device/${deviceId}/status`);
+  if (!response.ok) {
+    throw new Error(`Device ${deviceId} status failed: ${response.status}`);
+  }
+  return response.json();
 }
 
 // Exportar la URL y el token por si se necesitan en otros módulos

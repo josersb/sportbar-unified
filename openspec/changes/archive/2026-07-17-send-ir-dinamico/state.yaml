@@ -1,0 +1,46 @@
+# SDD Cycle State — send-ir-dinamico
+# Archived: 2026-07-17
+# Status: COMPLETE
+
+change: send-ir-dinamico
+title: "Envío IR Dinámico para Cambio de Canales"
+status: archived
+archived_at: "2026-07-17"
+
+phases:
+  proposal: completed
+  spec: completed
+  design: completed
+  tasks: completed
+  apply: completed
+  verify: completed
+  archive: completed
+
+artifacts:
+  proposal: sdd/send-ir-dinamico/proposal
+  spec: sdd/send-ir-dinamico/spec
+  design: sdd/send-ir-dinamico/design
+  tasks: sdd/send-ir-dinamico/tasks
+  apply_progress: sdd/send-ir-dinamico/apply-progress
+  archive_report: sdd/send-ir-dinamico/archive-report
+
+files_changed:
+  - src/data/irCodes.js (CREATE)
+  - src/api/arrangerApi.js (MODIFY)
+  - src/componentes/Canales.jsx (MODIFY)
+  - src/api/arrangerApi.test.js (MODIFY)
+  - src/componentes/Canales.test.jsx (MODIFY)
+
+metrics:
+  estimated_lines: 100
+  actual_lines: ~100
+  test_count: 34
+  test_passes: 34
+  build_modules: 220
+  build_time_s: 4.63
+
+key_decisions:
+  - Dynamic import of IR_CODES in sendChannelDigits (avoids circular deps)
+  - loadChannelPreset kept as active backup (NOT deprecated)
+  - 300ms delay between digits
+  - Fail loud on missing IR code

@@ -26,6 +26,35 @@ app.use((req, res, next) => {
   }
 });
 
+// Proxy endpoint: relay get status a Arranger (server-to-server, sin CORS)
+// En dev, Vite redirige /api/device/ a este servidor Express.
+app.get("/api/device/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const url = `http://192.168.2.254/api/command/get status ${id}/TOKEN_REMOVED`;
+    const response = await fetch(url);
+    const text = await response.text();
+
+    // Parsear la respuesta del Arranger para extraer streams activos
+    const streams = {
+      video: text.includes("VIDEO"),
+      audio: text.includes("AUDIO"),
+      ir: text.includes("IR"),
+      serial: text.includes("SERIAL"),
+      usb: text.includes("USB"),
+    };
+
+    res.json({ deviceId: id, streams, online: response.ok });
+  } catch (error) {
+    res.json({
+      deviceId: req.params.id,
+      streams: {},
+      online: false,
+      error: error.message,
+    });
+  }
+});
+
 // Ruta para servir la aplicación React (SPA)
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../dist", "index.html"));

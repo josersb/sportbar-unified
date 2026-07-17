@@ -11,7 +11,9 @@
 | `assignSourceToDestination` | `join av` | Single TV assignment |
 | `joinMultipleTVs` | `join av` batch | Array `{source,dest}` sequential |
 | `sendSerialCommand` | `send serial` | Tesira audio with `\x0A` |
-| `loadChannelPreset` | `preset load` | Decoder channel change |
+| `loadChannelPreset` | `preset load` | Decoder channel change (backup) |
+| `sendIrCommand` | `send ir` | Send IR hex code to device |
+| `sendChannelDigits` | `send ir` (multi) | Channel change via digit-by-digit IR |
 
 #### Scenario: Component imports only functions
 - GIVEN `arrangerApi.js` exports `joinMultipleTVs`
@@ -46,11 +48,16 @@
 - WHEN called → URL contains `send%20serial%20DTV1%20%22Mute1%20set%20mute%201%20true%5Cx0A%22`
 
 ### Requirement: Channel preset — loadChannelPreset
-`loadChannelPreset(deco, channel)` MUST send `preset load deco{deco}canal{channel}`.
+`loadChannelPreset(deco, channel)` sends `preset load deco{deco}canal{channel}` and is kept as an active backup for rollback. Channel changes now primarily use `sendChannelDigits(deviceId, channel)` which sends IR codes digit-by-digit. The legacy function remains fully callable for fallback scenarios.
+(Previously: `loadChannelPreset` was the sole channel-change mechanism)
 
-#### Scenario: DTV1 tuned to channel 1603
+#### Scenario: DTV1 tuned to channel 1603 (backup path)
 - GIVEN `loadChannelPreset(1, 1603)` is called
-- THEN command `preset load deco1canal1603` is sent
+- THEN command `preset load deco1canal1603` is sent (legacy, preserved for rollback)
+
+#### Scenario: DTV1 tuned to channel 1603 (primary path)
+- GIVEN `sendChannelDigits("DTV1", 1603)` is called
+- THEN IR codes for digits 1, 6, 0, 3 are sent sequentially with 300ms delays
 
 ### Requirement: Error handling with per-command logging
 Every exported function MUST catch errors and `console.error` which command failed, with format `[ArrangerAPI] Error enviando comando "<command>"`.
@@ -59,6 +66,77 @@ Every exported function MUST catch errors and `console.error` which command fail
 - GIVEN Arranger unreachable
 - WHEN `assignSourceToDestination("DTV1","TV01")` fails
 - THEN logs `[ArrangerAPI] Error enviando comando "join av DTV1 TV01"`
+
+### Requirement: getDeviceStatus — device capability detection
+`arrangerApi.js` MUST export `getDeviceStatus(deviceId)` calling `get status {deviceId}` to parse active streams into capability flags.
+
+#### Scenario: IR-capable device detected
+- GIVEN Arranger responds with streams `VIDEO, IR` for DTV1
+- WHEN `getDeviceStatus("DTV1")` called
+- THEN returns `{videoSource:true, channelControl:true}`
+
+#### Scenario: Encoder (no IR) detected
+- GIVEN Arranger reports `VIDEO, AUDIO` only for DTV7
+- WHEN `getDeviceStatus("DTV7")` called
+- THEN returns `{videoSource:true, audioSource:true, channelControl:false}`
+
+### Requirement: Test Coverage — capability-based model
+All affected test files MUST reflect the capability-based device model and pass.
+
+#### Scenario: Canales test uses filtered devices
+- GIVEN test renders Canales
+- WHEN deco dropdown queried → contains exactly 6 options (DTV1-DTV6)
+
+#### Scenario: MatrizVideo test uses dynamic list
+- GIVEN test renders MatrizVideo
+- WHEN DTV source buttons queried → match dynamic list from `dispositivos.js`
+
+### Requirement: IR Code Lookup Table
+`src/data/irCodes.js` MUST export an immutable `IR_CODES` object mapping digits 0-9 to their Pronto hex code strings.
+
+#### Scenario: All 10 digits have codes
+- GIVEN the IR code lookup table is loaded
+- WHEN any digit 0-9 is queried
+- THEN a valid hex code string is returned
+
+#### Scenario: Missing digit throws error
+- GIVEN a digit has no IR code in the lookup table
+- WHEN sendChannelDigits processes that digit
+- THEN an error is thrown with message indicating which digit is missing
+
+### Requirement: Dynamic IR Channel Change — sendChannelDigits
+`sendChannelDigits(deviceId, channel)` MUST decompose the channel number into individual digits, look up each digit's hex code in `IR_CODES`, validate capability gating, and call `sendIrCommand` for each digit sequentially with a 300ms delay between calls.
+
+#### Scenario: Four-digit channel (1603) sent correctly
+- GIVEN deviceId="DTV5", channel=1603
+- WHEN sendChannelDigits is called
+- THEN sendIrCommand called 4 times for digits 1, 6, 0, 3 with 300ms delays
+
+#### Scenario: Three-digit channel (100) sent correctly
+- GIVEN deviceId="DTV1", channel=100
+- WHEN sendChannelDigits is called
+- THEN sendIrCommand called for digits 1, 0, 0 with 300ms delays
+
+### Requirement: Dynamic IR Sending — sendIrCommand
+`sendIrCommand(deviceId, hexCode)` MUST send a `send ir {deviceId} "{hexCode}"` command to the Arranger via `sendArrangerCommand`.
+
+#### Scenario: IR command sent
+- GIVEN deviceId="DTV5", hexCode="0000 006C ..."
+- WHEN sendIrCommand is called
+- THEN sends `send ir DTV5 "0000 006C ..."` to Arranger
+
+### Requirement: Capability-Gated IR Validation
+`sendChannelDigits` MUST validate that the target device has `channelControl` capability before sending any IR command. Devices without `channelControl` MUST be rejected with an error.
+
+#### Scenario: DTV7 rejected (no channelControl)
+- GIVEN DTV7 has channelControl: false
+- WHEN sendChannelDigits("DTV7", 1603) is called
+- THEN throws before sending any IR command
+
+#### Scenario: DTV1 passes gate
+- GIVEN DTV1 has channelControl: true
+- WHEN sendChannelDigits("DTV1", 1603) is called
+- THEN IR commands are sent normally
 
 ## MODIFIED Requirements
 
@@ -72,32 +150,45 @@ Every exported function MUST catch errors and `console.error` which command fail
 - THEN `joinMultipleTVs` called once with 29 entries — zero inline `fetch()`
 
 ### Requirement: MatrizVideo — onSubmit and DTV buttons
-`onSubmit` MUST call `joinMultipleTVs` with computed TV assignments. `handleBtnDTV1..8` MUST call `assignSourceToDestination(DTVn, "TVRACK")`.
-(Previously: 37 inline fetch calls with manual URL, plus inline `myInit`)
+`onSubmit` MUST call `joinMultipleTVs` with computed TV assignments. DTV source buttons MUST be generated dynamically via `dispositivos.map()`, not 8 hardcoded `handleBtnDTV1..8` functions.
+(Previously: 8 hardcoded handleBtnDTV1..8 functions + 37 inline fetch calls with manual URL)
 
 #### Scenario: Form submit sends all assignments
 - GIVEN user selects `TvsBarraNorte=DTV1234` and submits
 - WHEN `onSubmit` executes → `joinMultipleTVs` called with all 29 mappings
 
-#### Scenario: DTV button sends single assignment
-- GIVEN user clicks "DTV 3" button
-- WHEN `handleBtnDTV3` executes → calls `assignSourceToDestination("DTV3","TVRACK")`
+#### Scenario: Source buttons generated dynamically
+- GIVEN `dispositivos.js` defines 8 devices
+- WHEN MatrizVideo renders → all 8 DTV buttons generated via `map()`
+- AND each button label = device's `connected` equipment name
 
 ### Requirement: Audio — onSubmit serial commands
-`onSubmit` MUST call `sendSerialCommand` for each Tesira zone (mute, level, source) instead of 9 inline fetch calls.
-(Previously: 9 inline fetch with manual URL encoding of mute/level/source values)
+`onSubmit` MUST filter audio sources by `audioSource` capability and call `sendSerialCommand` for each Tesira zone (mute, level, source) instead of 9 inline fetch calls.
+(Previously: all devices appeared as audio sources — no capability filter; 9 inline fetch calls)
 
 #### Scenario: Audio zones updated
 - GIVEN user sets muteNorte=true and submits
 - WHEN `onSubmit` executes → calls `sendSerialCommand("DTV1","Mute1 set mute 1 true")`
 
-### Requirement: Canales — submitCanal preset load
-`submitCanal` MUST map selected deco to index and call `loadChannelPreset(index, channel)` instead of switch/case with 8 fetch branches.
-(Previously: switch/case with 8 hardcoded preset-load URLs)
+#### Scenario: Audio sources filtered by capability
+- GIVEN device registry loaded
+- WHEN Audio renders source dropdown
+- THEN only `audioSource`-capable devices appear
+
+### Requirement: Canales — submitCanal channel change
+`submitCanal` MUST build dropdown from `channelControl`-capable devices only (DTV1-DTV6), then call `sendChannelDigits(selectedDeco, canal)` with the selected device ID and channel number. `loadChannelPreset` remains importable as a backup.
+(Previously: called `loadChannelPreset(decoNumber, canal)` with mapped numeric index via `parseInt`)
 
 #### Scenario: Channel assigned to any decoder
 - GIVEN deco=`"DTV5"`, channel=1603
-- WHEN `submitCanal` executes → maps DTV5 → index 5 → calls `loadChannelPreset(5, 1603)`
+- WHEN `submitCanal` executes
+- THEN `sendChannelDigits("DTV5", 1603)` is called, sending digits 1, 6, 0, 3 with 300ms delays
+
+#### Scenario: Dropdown excludes non-IR devices
+- GIVEN device registry loaded
+- WHEN Canales renders deco selector
+- THEN only `channelControl` devices appear (DTV1-DTV6)
+- AND DTV7 (encoder) and DTV8 (streaming) excluded
 
 ## REMOVED Requirements
 

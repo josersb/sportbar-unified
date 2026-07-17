@@ -1,5 +1,6 @@
 import { useRef, useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
+import { getByCapability } from "../contexto/dispositivos";
 import img_espn from "../imagenes/espn.png";
 import img_espn2 from "../imagenes/espn2.png";
 import img_espn3 from "../imagenes/espn3.png";
@@ -19,12 +20,12 @@ import img_nbatv from "../imagenes/nbatv.png";
 import img_pxsports from "../imagenes/pxsports.png";
 import img_tnt_sports from "../imagenes/tntsports.jpg";
 import img_tyc from "../imagenes/tyc.png";
-import { loadChannelPreset } from "../api/arrangerApi";
+import { loadChannelPreset, sendChannelDigits } from "../api/arrangerApi";
 import "./Canales.css";
 import "../elementos/CanalFavorito.css";
 
 const Canales = () => {
-  const { estado, handleChangeEstadoDecos } = useContext(ContextoUser);
+  const { estado, handleChangeEstadoDecos, handleUpdateDispositivo } = useContext(ContextoUser);
 
   const decos = estado.decos;
   const favoritos = estado.favoritos;
@@ -46,9 +47,12 @@ const Canales = () => {
       console.log(esUnCanalFavorito);
       if (canal >= 100 && canal <= 2000 && esUnCanalFavorito) {
         const selectedDeco = selectRef.current.value;
+        // Update dispositivo state directly
+        handleUpdateDispositivo(selectedDeco, { canalActual: canal });
+        // Also keep legacy decos array in sync for backward compat
         const decoNumber = parseInt(selectedDeco.replace("DTV", ""), 10);
         decos[decoNumber - 1].canalDeco = canal;
-        await loadChannelPreset(decoNumber, canal);
+        await sendChannelDigits(selectedDeco, canal);
       } else {
         inputRef.current.value = "";
         inputRef.current.placeholder = "numero canal no valido";
@@ -67,14 +71,9 @@ const Canales = () => {
           <form onSubmit={submitCanal}>
             <select name="nombreDeco" ref={selectRef} className="canales-form-select" required>
               <option value="">--Seleccione Deco--</option>
-              <option value="DTV1">DTV 1</option>
-              <option value="DTV2">DTV 2</option>
-              <option value="DTV3">DTV 3</option>
-              <option value="DTV4">DTV 4</option>
-              <option value="DTV5">DTV 5</option>
-              <option value="DTV6">DTV 6</option>
-              <option value="DTV7">DTV 7</option>
-              <option value="DTV8">DTV 8</option>
+              {getByCapability('channelControl').map(d => (
+                <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
+              ))}
             </select>
             <label htmlFor="canalDeco" className="canales-form-label"> Canal </label>
             <input

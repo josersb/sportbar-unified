@@ -1,8 +1,10 @@
 import React from "react";
+import { DISPOSITIVOS } from "./dispositivos";
 
 const ContextoUser = React.createContext();
 
 export const estadoInicial = {
+  // @deprecated — migrate to estado.dispositivos
   decos: [
     {
       nombreDeco: "DTV1",
@@ -37,6 +39,17 @@ export const estadoInicial = {
       canalDeco: "1644",
     },
   ],
+  dispositivos: Object.fromEntries(
+    Object.entries(DISPOSITIVOS).map(([id, device]) => [
+      id,
+      {
+        canalActual: device.defaultChannel,
+        capabilities: device.fallbackCapabilities,
+        online: true,
+      }
+    ])
+  ),
+  _version: 1,
   favoritos: [
     1603, 1604, 1605, 1608, 1609, 1610, 1612, 1613, 1614, 1620, 1621, 1622, 1623, 1625, 1628, 1629,
     1631, 1639, 1644, 1677,

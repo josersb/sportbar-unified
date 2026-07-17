@@ -4,12 +4,14 @@ import { ProviderUser } from "../contexto/Contexto";
 import Canales from "./Canales";
 
 // vi.mock is hoisted to top of file — use vi.hoisted for variables the factory needs
-const { mockLoadChannelPreset } = vi.hoisted(() => ({
+const { mockLoadChannelPreset, mockSendChannelDigits } = vi.hoisted(() => ({
   mockLoadChannelPreset: vi.fn().mockResolvedValue(undefined),
+  mockSendChannelDigits: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../api/arrangerApi", () => ({
   loadChannelPreset: mockLoadChannelPreset,
+  sendChannelDigits: mockSendChannelDigits,
 }));
 
 // 8 decos with empty initial channels
@@ -29,6 +31,7 @@ function renderWithContext(overrideValue = {}) {
   const contextValue = {
     estado: baseState,
     handleChangeEstadoDecos: vi.fn(),
+    handleUpdateDispositivo: vi.fn(),
     ...overrideValue,
   };
   return render(
@@ -44,15 +47,13 @@ describe("Canales submitCanal", () => {
   });
 
   it.each([
-    ["DTV1", 1],
-    ["DTV2", 2],
-    ["DTV3", 3],
-    ["DTV4", 4],
-    ["DTV5", 5],
-    ["DTV6", 6],
-    ["DTV7", 7],
-    ["DTV8", 8],
-  ])("calls loadChannelPreset for %s with channel 1603", async (dtv, expectedIndex) => {
+    "DTV1",
+    "DTV2",
+    "DTV3",
+    "DTV4",
+    "DTV5",
+    "DTV6",
+  ])("calls sendChannelDigits for %s with channel 1603", async (dtv) => {
     const handleChangeEstadoDecos = vi.fn();
     renderWithContext({ handleChangeEstadoDecos });
 
@@ -69,8 +70,11 @@ describe("Canales submitCanal", () => {
 
     // Wait for the async call — canal comes as string from inputRef.current.value
     await vi.waitFor(() => {
-      expect(mockLoadChannelPreset).toHaveBeenCalledWith(expectedIndex, "1603");
+      expect(mockSendChannelDigits).toHaveBeenCalledWith(dtv, "1603");
     });
+
+    // loadChannelPreset should NOT be called (deprecated path not used)
+    expect(mockLoadChannelPreset).not.toHaveBeenCalled();
 
     // State should always be updated (handleChangeEstadoDecos is outside try/catch)
     expect(handleChangeEstadoDecos).toHaveBeenCalled();

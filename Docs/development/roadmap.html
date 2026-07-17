@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SportBar Unified — Roadmap</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font:16px/1.5 system-ui,sans-serif;background:#0f1117;color:#c9d1d9;padding:2rem;max-width:700px;margin:0 auto}
+  h1{font-size:1.5rem;margin-bottom:.25rem;color:#f0f6fc}
+  .sub{color:#8b949e;margin-bottom:2rem;font-size:.9rem}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem}
+  .card.done{opacity:.55;border-color:#238636}
+  .card.active{border-color:#1f6feb;background:#0d1117}
+  .idx{font-size:1.75rem;min-width:2.5rem;text-align:center}
+  .done .idx{color:#238636}
+  .active .idx{color:#58a6ff}
+  .pending .idx{color:#484f58}
+  .body{flex:1}
+  h2{font-size:1.1rem;margin-bottom:.2rem}
+  .done h2{color:#3fb950;text-decoration:line-through}
+  .active h2{color:#58a6ff}
+  .pending h2{color:#8b949e}
+  p{color:#8b949e;font-size:.85rem;margin:0}
+  .badge{font-size:.7rem;padding:.15em .6em;border-radius:10px;font-weight:600;white-space:nowrap}
+  .badge-done{background:#238636;color:#fff}
+  .badge-active{background:#1f6feb;color:#fff}
+  .badge-pending{background:#21262d;color:#8b949e}
+  .phase{color:#58a6ff;font-weight:600;font-size:.8rem}
+  hr{border:none;border-top:1px solid #21262d;margin:2rem 0}
+  .legend{display:flex;gap:1.5rem;font-size:.8rem;color:#8b949e}
+  .legend span{display:flex;align-items:center;gap:.35rem}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .dot-done{background:#238636}
+  .dot-active{background:#1f6feb}
+  .dot-pending{background:#484f58}
+</style>
+</head>
+<body>
+
+<h1>SportBar Unified — Roadmap</h1>
+<p class="sub">Último cambio completado: modelo-dispositivos (11 jul 2026)</p>
+
+<!-- ✅ DONE -->
+<div class="card done">
+  <div class="idx">✅</div>
+  <div class="body">
+    <h2>Modelo de Dispositivos</h2>
+    <p>Registry tipado con 8 IPEX5001 + detección híbrida + migración localStorage. 13 archivos, 29 tests.</p>
+  </div>
+  <span class="badge badge-done">DONE</span>
+</div>
+
+<!-- 🔵 ACTIVE -->
+<div class="card done">
+  <div class="idx">✅</div>
+  <div class="body">
+    <h2>send ir dinámico</h2>
+    <p>IR dígito por dígito con delay 300ms. 10 códigos hex, 5 archivos, 34 tests. <code>loadChannelPreset</code> mantenido como backup.</p>
+  </div>
+  <span class="badge badge-done">DONE</span>
+</div>
+
+<!-- ⚪ PENDING -->
+<div class="card pending">
+  <div class="idx">2</div>
+  <div class="body">
+    <h2>Zonas Adicionales</h2>
+    <p>Controlar los 11 dispositivos de Planta -1, +15 y VIP que el Arranger ya ve pero la app ignora.</p>
+  </div>
+  <span class="badge badge-pending">PENDING</span>
+</div>
+
+<div class="card pending">
+  <div class="idx">3</div>
+  <div class="body">
+    <h2>Robustez</h2>
+    <p>Manejo de errores, retry en proxy Express, feedback visual de fallos, más cobertura de tests.</p>
+  </div>
+  <span class="badge badge-pending">PENDING</span>
+</div>
+
+<hr>
+<div class="legend">
+  <span><span class="dot dot-done"></span> Completado</span>
+  <span><span class="dot dot-active"></span> En progreso</span>
+  <span><span class="dot dot-pending"></span> Pendiente</span>
+</div>
+
+</body>
+</html>

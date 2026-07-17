@@ -5,6 +5,7 @@ import Select from "./Select";
 import TextInput from "./TextInput";
 
 import ContextoUser from "../contexto/Contexto";
+import { getByCapability } from "../contexto/dispositivos";
 import { sendSerialCommand } from "../api/arrangerApi";
 import "./Audio.css";
 
@@ -46,6 +47,7 @@ const Audio = () => {
           console.log(audio);
 
           try {
+            // DTV1 = RS232 gateway to Tesira DSP (not a DirecTV decoder for audio purposes)
             await sendSerialCommand("DTV1", `Mute1 set mute 1 ${values.muteNorte}`);
             await sendSerialCommand("DTV1", `Mute2 set mute 1 ${values.muteCentro}`);
             await sendSerialCommand("DTV1", `Mute3 set mute 1 ${values.muteSur}`);
@@ -81,14 +83,9 @@ const Audio = () => {
                     className="audio-form-select"
                   >
                     <option value="">--Seleccione Deco--</option>
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('audioSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id}</option>
+                    ))}
                   </Select>
                   <TextInput
                     name="volumenNorte"
@@ -108,14 +105,9 @@ const Audio = () => {
                     className="audio-form-select"
                   >
                     <option value="">--Seleccione Deco--</option>
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('audioSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id}</option>
+                    ))}
                   </Select>
                   <TextInput
                     name="volumenCentro"
@@ -135,14 +127,9 @@ const Audio = () => {
                     className="audio-form-select"
                   >
                     <option value="">--Seleccione Deco--</option>
-                    <option value="DTV1">DTV 1</option>
-                    <option value="DTV2">DTV 2</option>
-                    <option value="DTV3">DTV 3</option>
-                    <option value="DTV4">DTV 4</option>
-                    <option value="DTV5">DTV 5</option>
-                    <option value="DTV6">DTV 6</option>
-                    <option value="DTV7">DTV 7</option>
-                    <option value="DTV8">DTV 8</option>
+                    {getByCapability('audioSource').map(d => (
+                      <option key={d.id} value={d.id}>{d.id}</option>
+                    ))}
                   </Select>
                   <TextInput
                     name="volumenSur"

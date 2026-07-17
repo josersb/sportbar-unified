@@ -11,80 +11,59 @@
   .sub{color:#8b949e;margin-bottom:2rem;font-size:.9rem}
   .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem}
   .card.done{opacity:.55;border-color:#238636}
-  .card.active{border-color:#1f6feb;background:#0d1117}
+  .card.pending{border-color:#30363d}
   .idx{font-size:1.75rem;min-width:2.5rem;text-align:center}
   .done .idx{color:#238636}
-  .active .idx{color:#58a6ff}
   .pending .idx{color:#484f58}
   .body{flex:1}
   h2{font-size:1.1rem;margin-bottom:.2rem}
   .done h2{color:#3fb950;text-decoration:line-through}
-  .active h2{color:#58a6ff}
   .pending h2{color:#8b949e}
   p{color:#8b949e;font-size:.85rem;margin:0}
   .badge{font-size:.7rem;padding:.15em .6em;border-radius:10px;font-weight:600;white-space:nowrap}
   .badge-done{background:#238636;color:#fff}
-  .badge-active{background:#1f6feb;color:#fff}
   .badge-pending{background:#21262d;color:#8b949e}
-  .phase{color:#58a6ff;font-weight:600;font-size:.8rem}
   hr{border:none;border-top:1px solid #21262d;margin:2rem 0}
+  .section-title{color:#58a6ff;font-size:.8rem;font-weight:600;margin:1.5rem 0 .5rem}
   .legend{display:flex;gap:1.5rem;font-size:.8rem;color:#8b949e}
   .legend span{display:flex;align-items:center;gap:.35rem}
   .dot{width:10px;height:10px;border-radius:50%}
   .dot-done{background:#238636}
-  .dot-active{background:#1f6feb}
   .dot-pending{background:#484f58}
 </style>
 </head>
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">Último cambio completado: modelo-dispositivos (11 jul 2026)</p>
+<p class="sub">21 commits · 34 tests · master · Último: state persistence (17 jul 2026)</p>
 
-<!-- ✅ DONE -->
-<div class="card done">
-  <div class="idx">✅</div>
-  <div class="body">
-    <h2>Modelo de Dispositivos</h2>
-    <p>Registry tipado con 8 IPEX5001 + detección híbrida + migración localStorage. 13 archivos, 29 tests.</p>
-  </div>
-  <span class="badge badge-done">DONE</span>
-</div>
+<div class="section-title">SDD CHANGES</div>
 
-<!-- 🔵 ACTIVE -->
-<div class="card done">
-  <div class="idx">✅</div>
-  <div class="body">
-    <h2>send ir dinámico</h2>
-    <p>IR dígito por dígito con delay 300ms. 10 códigos hex, 5 archivos, 34 tests. <code>loadChannelPreset</code> mantenido como backup.</p>
-  </div>
-  <span class="badge badge-done">DONE</span>
-</div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Modelo de Dispositivos</h2><p>Registry tipado 8 IPEX5001 + deteccion hibrida + migracion localStorage. 13 archivos.</p></div><span class="badge badge-done">v1</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>send ir dinamico</h2><p>IR digito por digito 300ms delay. 10 codigos hex. loadChannelPreset backup activo.</p></div><span class="badge badge-done">v1</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Centralize Arranger API</h2><p>83 fetchs eliminados. 3 funciones en arrangerApi.js. 4 PRs encadenados. -290 lineas netas.</p></div><span class="badge badge-done">v1</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Zonas Adicionales</h2><p>10 decoders IPEX5002 (VIP, Planta -1, +15). 47 destinos en estado.tvs. Seccion en MatrizVideo.</p></div><span class="badge badge-done">v1</span></div>
 
-<!-- ⚪ PENDING -->
-<div class="card pending">
-  <div class="idx">2</div>
-  <div class="body">
-    <h2>Zonas Adicionales</h2>
-    <p>Controlar los 11 dispositivos de Planta -1, +15 y VIP que el Arranger ya ve pero la app ignora.</p>
-  </div>
-  <span class="badge badge-pending">PENDING</span>
-</div>
+<div class="section-title">INFRA & QUALITY</div>
 
-<div class="card pending">
-  <div class="idx">3</div>
-  <div class="body">
-    <h2>Robustez</h2>
-    <p>Manejo de errores, retry en proxy Express, feedback visual de fallos, más cobertura de tests.</p>
-  </div>
-  <span class="badge badge-pending">PENDING</span>
-</div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Testing Setup</h2><p>Vitest 2.1.9 + Testing Library. 34 tests. strict_tdd activo.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Linting & Formatting</h2><p>ESLint 9.x flat config + Prettier. 43 issues corregidos. 22 immutability pendientes.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>State Persistence</h2><p>lowdb 7.0.1 en Express. GET/POST /api/state. Estado compartido entre equipos en red.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>LLM Wiki</h2><p>Vault Obsidian. 21 paginas, ~70 wikilinks. Schema en AGENTS.md. Skill global llm-wiki.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Repo privado en github.com/josersb/sportbar-unified. Collaborator tecnopulsar invitado.</p></div><span class="badge badge-done">done</span></div>
+
+<div class="section-title">PENDING</div>
+
+<div class="card pending"><div class="idx">1</div><div class="body"><h2>Robustez</h2><p>Manejo de errores con feedback visual. Retry en proxy Express. Timeouts.</p></div><span class="badge badge-pending">todo</span></div>
+<div class="card pending"><div class="idx">2</div><div class="body"><h2>22 immutability warnings</h2><p>Mutacion directa de objetos Contexto en Audio, Canales, MatrizPreset, MatrizVideo.</p></div><span class="badge badge-pending">todo</span></div>
+<div class="card pending"><div class="idx">3</div><div class="body"><h2>Deploy a produccion</h2><p>Reemplazar vieja app en :3000 por sportbar-unified. Testeado en :3101. Side-by-side listo.</p></div><span class="badge badge-pending">todo</span></div>
+<div class="card pending"><div class="idx">4</div><div class="body"><h2>Branch protection</h2><p>Requiere GitHub Pro ($4/mes).</p></div><span class="badge badge-pending">todo</span></div>
+<div class="card pending"><div class="idx">5</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptar.</p></div><span class="badge badge-pending">wait</span></div>
 
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado</span>
-  <span><span class="dot dot-active"></span> En progreso</span>
-  <span><span class="dot dot-pending"></span> Pendiente</span>
+  <span><span class="dot dot-done"></span> Completado (9)</span>
+  <span><span class="dot dot-pending"></span> Pendiente (5)</span>
 </div>
 
 </body>

@@ -54,6 +54,17 @@ const initialTvs = {
   TV24: "DTV1",
   TV25: "DTV1",
   TV26: "DTV1",
+  // Zonas adicionales
+  "aVip-Barra-Centro": "DTV1",
+  "aVip-Lobby-Batacazo": "DTV1",
+  "a-Menos1-Escenario": "DTV1",
+  "a-QMR75-Menos1-TV1": "DTV1",
+  "aVip-Bar-Boveda": "DTV1",
+  "aMas-15-Barra": "DTV1",
+  "a-QMR75-Menos1-TV2": "DTV1",
+  "a-Menos1-Escenario2": "DTV1",
+  "a-QMC65-Menos1-TV2": "DTV1",
+  "RACK-VIP-PANTALLABATACA": "DTV1",
 };
 
 const baseState = {
@@ -118,9 +129,8 @@ describe("MatrizVideo", () => {
       expect(mockJoinMultipleTVs).toHaveBeenCalledTimes(1);
 
       const mappings = mockJoinMultipleTVs.mock.calls[0][0];
-      // All 37 estado.tvs entries mapped dynamically. Order from initialTvs:
-      // VWN, VWC, VWS, TVRACK, TvsBarra*, TvsEscalera*, TV01..TV26
-      expect(mappings).toHaveLength(37);
+      // All 47 estado.tvs entries mapped dynamically. Order from initialTvs + new destinations
+      expect(mappings).toHaveLength(47);
 
       // VW mappings (indices 0-2)
       expect(mappings[0]).toEqual({ source: "DTV1", dest: "VW-Norte" });

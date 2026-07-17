@@ -480,6 +480,32 @@ const MatrizVideo = () => {
                   ))}
                 </div>
               </div>
+              <div className="matriz-select-zona">
+                <h3 className="matriz-select-zona-titulo">
+                  Zonas Adicionales — VIP, Planta -1, +15
+                </h3>
+                <div className="matriz-select-rack">
+                  {[
+                    'aVip-Barra-Centro','aVip-Lobby-Batacazo','a-Menos1-Escenario',
+                    'a-QMR75-Menos1-TV1','aVip-Bar-Boveda','aMas-15-Barra',
+                    'a-QMR75-Menos1-TV2','a-Menos1-Escenario2','a-QMC65-Menos1-TV2',
+                    'RACK-VIP-PANTALLABATACA'
+                  ].map(key => (
+                    <div key={key} style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.5rem'}}>
+                      <label style={{minWidth:'200px',fontSize:'0.8rem',color:'#c9d1d9'}}>{key}</label>
+                      <select
+                        value={tvs[key] || 'DTV1'}
+                        onChange={e => handleChangeEstadoVideo({...tvs, [key]: e.target.value})}
+                        style={{padding:'0.25rem',background:'#0d1117',color:'#c9d1d9',border:'1px solid #30363d',borderRadius:'4px'}}
+                      >
+                        {getByCapability('videoSource').map(d => (
+                          <option key={d.id} value={d.id}>{d.id}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </Form>
         </Formik>

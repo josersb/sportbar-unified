@@ -1,0 +1,26 @@
+schema: spec-driven
+change: zonas-adicionales
+status: archived
+archive_date: 2026-07-17
+phases:
+  - sdd-explore
+  - sdd-propose
+  - sdd-spec
+  - sdd-design
+  - sdd-apply (implemented directly, no formal sdd-tasks)
+  - sdd-verify (build + tests verified at archive time)
+  - sdd-archive
+artifacts:
+  - proposal.md: archived
+  - exploration.md: archived
+  - specs/destinos-adicionales/spec.md: archived (delta synced to main specs)
+  - specs/registro-dispositivos/spec.md: archived (delta synced to main specs)
+  - specs/migracion-localstorage/spec.md: archived (delta synced to main specs)
+  - design.md: archived
+notes: >
+  No formal tasks.md, verify-report.md, or apply-progress were persisted
+  (the SDD cycle was run with direct implementation after design phase).
+  Build (220 modules) and tests (34/34) verified passing at archive time.
+  3 files changed (~30 lines): Contexto.jsx, MatrizVideo.jsx, MatrizVideo.test.jsx.
+  Archive completed with user-provided verification evidence.
+  Archived as intentional-with-warnings — missing tasks artifact noted.

@@ -42,7 +42,7 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">26 commits · 34 tests · master · Último: server security hardening (18 jul 2026)</p>
+<p class="sub">27 commits · 34 tests · master · Último: documentacion audit (18 jul 2026)</p>
 
 <div class="section-title">SDD CHANGES</div>
 
@@ -57,24 +57,14 @@
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Testing Setup</h2><p>Vitest 2.1.9 + Testing Library. 34 tests (12 API + 22 componentes). strict_tdd activo.</p></div><span class="badge badge-done">done</span></div>
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Linting & Formatting</h2><p>ESLint 9.x flat config + Prettier. 43 issues corregidos. Quedan 22 immutability warnings pendientes.</p></div><span class="badge badge-done">done</span></div>
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>State Persistence</h2><p>lowdb 7.0.1 en Express. GET/POST /api/state. Persistencia dual: servidor → localStorage. Estado compartido entre equipos en red local.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>LLM Wiki</h2><p>Vault Obsidian con 21 paginas y ~70 wikilinks. Schema de entidades en AGENTS.md. Skill global llm-wiki configurada.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>LLM Wiki</h2><p>Vault Obsidian con 28 paginas y ~85 wikilinks. Schema de entidades en AGENTS.md. Skill global llm-wiki configurada.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Documentacion</h2><p>Auditoria completa wiki vs codigo. 4 paginas criticas actualizadas, 7 paginas nuevas creadas (Body, Header, Nav, Portada, Soporte, IrCodes, Seguridad). README actualizado con nuevas features.</p></div><span class="badge badge-done">done</span></div>
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Repo privado en github.com/josersb/sportbar-unified. Collaborator tecnopulsar invitado (pendiente aceptacion).</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 1+2</h2><p>Token removido de codigo + historial git (filter-branch). Helmet con CSP. CORS restrictivo. Rate limiting /api/state. Body limit 1mb. Tabnabbing fix en Arranger.jsx. .env.example sin token.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 1+2</h2><p>Token removido de codigo + historial git. Helmet con CSP. CORS restrictivo. Rate limiting /api/state. Body limit 1mb. Tabnabbing fix en Arranger.jsx.</p></div><span class="badge badge-done">done</span></div>
 
 <div class="section-title">PENDING</div>
 
-<div class="card pending"><div class="idx">1</div><div class="body">
-  <h2>Documentacion</h2>
-  <p>Auditar y actualizar README, wiki, docs/development/ contra el estado real del codigo. La wiki tiene entidades desactualizadas post-cambios recientes.</p>
-  <ul class="tasks">
-    <li>🔲 Wiki: paginas de entidad desactualizadas (componentes, API, dispositivos)</li>
-    <li>🔲 README: instrucciones de setup y arquitectura</li>
-    <li>🔲 AGENTS.md: verificar convenciones vigentes</li>
-    <li>🔲 docs/development/: project-status, environment-summary</li>
-  </ul>
-</div><span class="badge badge-pending">todo</span></div>
-
-<div class="card wip"><div class="idx">2</div><div class="body">
+<div class="card wip"><div class="idx">1</div><div class="body">
   <h2>Seguridad — Ronda 3</h2>
   <p>CVE patches y hardening pendiente de dependencias. Los CVEs actuales son de entorno dev o requieren actualizaciones con breaking changes.</p>
   <ul class="tasks">
@@ -87,7 +77,7 @@
   </ul>
 </div><span class="badge badge-wip">wip</span></div>
 
-<div class="card pending"><div class="idx">3</div><div class="body">
+<div class="card pending"><div class="idx">2</div><div class="body">
   <h2>Robustez</h2>
   <p>Manejo de errores, retry, timeouts. La app no da feedback visual cuando fallan las requests al Arranger.</p>
   <ul class="tasks">
@@ -98,7 +88,7 @@
   </ul>
 </div><span class="badge badge-pending">todo</span></div>
 
-<div class="card pending"><div class="idx">4</div><div class="body">
+<div class="card pending"><div class="idx">3</div><div class="body">
   <h2>22 immutability warnings</h2>
   <p>Mutacion directa de objetos del Contexto en 4 componentes. ESLint los reporta como react-hooks/immutability.</p>
   <ul class="tasks">
@@ -109,7 +99,7 @@
   </ul>
 </div><span class="badge badge-pending">todo</span></div>
 
-<div class="card pending"><div class="idx">5</div><div class="body">
+<div class="card pending"><div class="idx">4</div><div class="body">
   <h2>Deploy a produccion</h2>
   <p>Reemplazar la app vieja en :3000 por sportbar-unified. Nueva app ya testeada en :3101 side-by-side.</p>
   <ul class="tasks">
@@ -120,7 +110,7 @@
   </ul>
 </div><span class="badge badge-pending">todo</span></div>
 
-<div class="card pending"><div class="idx">6</div><div class="body">
+<div class="card pending"><div class="idx">5</div><div class="body">
   <h2>Branch protection + CI</h2>
   <p>Proteccion de rama master y CI basico para validar builds y tests en cada push.</p>
   <ul class="tasks">
@@ -130,13 +120,13 @@
   </ul>
 </div><span class="badge badge-pending">todo</span></div>
 
-<div class="card pending"><div class="idx">7</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptacion.</p></div><span class="badge badge-pending">wait</span></div>
+<div class="card pending"><div class="idx">6</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptacion.</p></div><span class="badge badge-pending">wait</span></div>
 
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado (11)</span>
+  <span><span class="dot dot-done"></span> Completado (12)</span>
   <span><span class="dot dot-wip"></span> En progreso (1)</span>
-  <span><span class="dot dot-pending"></span> Pendiente (6)</span>
+  <span><span class="dot dot-pending"></span> Pendiente (5)</span>
 </div>
 
 </body>

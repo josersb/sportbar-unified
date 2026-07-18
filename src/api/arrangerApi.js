@@ -7,9 +7,10 @@
  * Listo para ser importado y utilizado en cualquier parte del proyecto.
  */
 
-const ARRANGER_BASE_URL =
-  import.meta.env.VITE_ARRANGER_API_BASE || "http://192.168.2.254/api/command";
-const ARRANGER_TOKEN = import.meta.env.VITE_ARRANGER_TOKEN || "TOKEN_REMOVED";
+const ARRANGER_BASE_URL = import.meta.env.VITE_ARRANGER_API_BASE;
+if (!ARRANGER_BASE_URL) throw new Error("Missing VITE_ARRANGER_API_BASE");
+const ARRANGER_TOKEN = import.meta.env.VITE_ARRANGER_TOKEN;
+if (!ARRANGER_TOKEN) throw new Error("Missing VITE_ARRANGER_TOKEN");
 
 /*
  * Envía un comando genérico a la API de Arranger.

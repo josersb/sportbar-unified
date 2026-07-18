@@ -184,8 +184,8 @@ docs/build/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file (keep .env but ignore local overrides)
-# .env is tracked for development configuration
+# dotenv environment variables file (keep .env.example, ignore .env)
+.env
 .env.*.local
 
 # parcel-bundler cache (https://parceljs.org/)

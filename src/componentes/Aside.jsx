@@ -24,43 +24,7 @@ const Aside = () => {
   // Boton de recarga de todos los canales selecionado en cada deco por infrarrojo
   const submitCanales = async (e) => {
     e.preventDefault();
-    // try {
-    //   const myInit = { method: "GET", mode: "no-cors", cache: "default" };
-    //   await fetch(
-    //     `http://192.168.2.254/api/command/preset%20load%20deco1canal${decos[0].canalDeco}/TOKEN_REMOVED`,
-    //     myInit
-    //   );
-    //   await fetch(
-    //     `http://192.168.2.254/api/command/preset%20load%20deco2canal${decos[1].canalDeco}/TOKEN_REMOVED`,
-    //     myInit
-    //   );
-    //   await fetch(
-    //     `http://192.168.2.254/api/command/preset%20load%20deco3canal${decos[2].canalDeco}/TOKEN_REMOVED`,
-    //     myInit
-    //   );
-    //   await fetch(
-    //     `http://192.168.2.254/api/command/preset%20load%20deco4canal${decos[3].canalDeco}/TOKEN_REMOVED`,
-    //     myInit
-    //   );
-    //   await fetch(
-    //     `http://192.168.2.254/api/command/preset%20load%20deco5canal${decos[4].canalDeco}/TOKEN_REMOVED`,
-    //     myInit
-    //   );
-    //   await fetch(
-    //     `http://192.168.2.254/api/command/preset%20load%20deco6canal${decos[5].canalDeco}/TOKEN_REMOVED`,
-    //     myInit
-    //   );
-    //   // const refreshDeco7 = await fetch(
-    //   //   `http://192.168.2.254/api/command/preset%20load%20deco7canal${decos[6].canalDeco}/TOKEN_REMOVED`,
-    //   //   myInit
-    //   // );
-    //   // const refreshDeco8 = await fetch(
-    //   //   `http://192.168.2.254/api/command/preset%20load%20deco8canal${decos[7].canalDeco}/TOKEN_REMOVED`,
-    //   //   myInit
-    //   // );
-    // } catch (error) {
-    //   console.log("error solicitud Arranger 5000");
-    // }
+    // Recarga implementada via sendChannelDigits en arrangerApi.js
   };
 
   return (

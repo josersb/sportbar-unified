@@ -1,11 +1,58 @@
 const express = require("express");
 const path = require("path");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware para parsear JSON (debe ir antes de las rutas)
-app.use(express.json());
+// ── Security: Helmet (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, etc.) ──
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: [
+          "'self'",
+          "http://localhost:5173",          // Vite dev server
+          "http://192.168.2.254",           // Arranger matrix
+        ],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameSrc: ["'self'", "http://192.168.2.254"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,       // Allow Arranger iframe embeds
+  }),
+);
+
+// ── CORS: restringido a orígenes conocidos (antes era *) ──
+const allowedOrigins = [
+  "http://localhost:5173",                  // Vite dev
+  "http://localhost:3000",                  // Express self
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000",
+  /^http:\/\/192\.168\.2\.\d{1,3}(:\d+)?$/, // Red local Arranger
+];
+app.use((req, res, next) => {
+  const origin = req.get("origin");
+  if (origin && allowedOrigins.some((o) => (typeof o === "string" ? o === origin : o.test(origin)))) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Vary", "Origin");
+  }
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// ── Body parser con límite de tamaño ──
+app.use(express.json({ limit: "1mb" }));
 
 // Load lowdb and initialize state database
 let stateDb;
@@ -16,8 +63,17 @@ let stateDb;
   });
 })();
 
+// ── Rate limiter para /api/state ──
+const stateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, try again later" },
+});
+
 // GET /api/state — returns persisted state from server/state.json
-app.get("/api/state", (req, res) => {
+app.get("/api/state", stateLimiter, (req, res) => {
   if (!stateDb) {
     return res.json({ state: null });
   }
@@ -25,13 +81,13 @@ app.get("/api/state", (req, res) => {
 });
 
 // POST /api/state — persists state to server/state.json
-app.post("/api/state", async (req, res) => {
+app.post("/api/state", stateLimiter, async (req, res) => {
   if (!stateDb) {
     return res.status(503).json({ error: "Database not ready" });
   }
   const { state } = req.body;
-  if (!state) {
-    return res.status(400).json({ error: "Missing state" });
+  if (!state || typeof state !== "object") {
+    return res.status(400).json({ error: "Missing or invalid state object" });
   }
   stateDb.data.state = state;
   await stateDb.write();
@@ -41,28 +97,13 @@ app.post("/api/state", async (req, res) => {
 // Middleware para servir archivos estáticos desde dist (build de producción)
 app.use(express.static(path.join(__dirname, "../dist")));
 
-// Headers para CORS (necesario para las llamadas a la matriz Arranger)
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-  );
-
-  if (req.method === "OPTIONS") {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
-
 // Proxy endpoint: relay get status a Arranger (server-to-server, sin CORS)
 // En dev, Vite redirige /api/device/ a este servidor Express.
 app.get("/api/device/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
-    const url = `http://192.168.2.254/api/command/get status ${id}/TOKEN_REMOVED`;
+    const token = process.env.ARRANGER_TOKEN || "TOKEN_REMOVED";
+    const url = `http://192.168.2.254/api/command/get status ${id}/${token}`;
     const response = await fetch(url);
     const text = await response.text();
 

@@ -17,9 +17,10 @@ SportBar Unified es una aplicación web React que permite controlar de manera ce
 ## 🚀 Características Principales
 
 ### Control de TVs
-- 26 TVs principales (TV01-TV26) + TVs especiales (VWN, VWC, VWS, TVRACK)
-- TVs por zonas: Barras, Escaleras, Rack
+- 47 destinos de video: 26 TVs principales + 3 VWs + TVRACK + 7 grupos de zona + 10 Zonas Adicionales (IPEX5002)
+- TVs por zonas: Barras, Escaleras, Rack, VIP, Planta -1, +15
 - Asignación dinámica de decodificadores DirecTV (DTV1-DTV8)
+- Labels legibles y colores por dispositivo en TVRACK
 
 ### Gestión de Canales
 - Catálogo completo de canales deportivos
@@ -32,12 +33,19 @@ SportBar Unified es una aplicación web React que permite controlar de manera ce
 - Control de volumen individual por zona
 - Función mute por zona
 - Selección de fuente de audio
+- Procesador Tesira vía comandos seriales (gateway DTV1 RS232)
 
 ### Sistema de Presets
 - 5 configuraciones completas guardables
 - Descripción personalizable de cada preset
 - Carga instantánea de configuraciones
-- Persistencia en localStorage
+- Persistencia dual: localStorage + lowdb (servidor)
+
+### Seguridad
+- Helmet: CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+- CORS restrictivo a orígenes conocidos
+- Rate limiting en API de estado
+- Token del Arranger en .env (no en código)
 
 ## 🛠️ Tecnologías Utilizadas
 

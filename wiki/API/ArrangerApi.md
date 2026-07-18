@@ -39,14 +39,20 @@ Ejecuta `assignSourceToDestination` secuencialmente para un array de mapeos `{so
 Envía un comando serial a un dispositivo con terminador `\x0A`. El payload se codifica como URL.
 Usado por el componente [[../Componentes/Audio]] para controlar el procesador Tesira.
 
+### `sendIrCommand(deviceId, hexCode)`
+Envía un código IR hexadecimal a un dispositivo usando el comando `send ir`. Usado por `sendChannelDigits` para cambio de canal dinámico.
+
+### `sendChannelDigits(deviceId, channel)`
+Cambia el canal de un DirecTV enviando los dígitos uno por uno vía IR con 300ms de delay entre cada uno. Busca los códigos hexadecimales en `src/data/irCodes.js`. Reemplaza a `loadChannelPreset` como método principal de cambio de canal.
+
 ### `loadChannelPreset(decoNumber, channel)`
-Carga un preset de canal en un decodificador: `preset load deco[decoNumber]canal[channel]`.
+**Backup activo**. Carga un preset de canal en un decodificador: `preset load deco[decoNumber]canal[channel]`. Mantenido como fallback si `sendChannelDigits` no está disponible.
+
+### `getDeviceStatus(deviceId)`
+Consulta el estado de un dispositivo vía el proxy Express (`/api/device/:id/status`). Retorna `{ deviceId, streams, online }`. Usado para verificar conectividad de dispositivos.
 
 ### `buildArrangerCommand(command, ...args)`
-Utilidad para construir comandos dinámicamente. Aplana arrays anidados recursivamente y une con espacios.
-
-### `ARRANGER_API_CONFIG`
-Objeto exportado con `{ baseUrl, token }` para uso en otros módulos.
+Utilidad interna para construir comandos dinámicamente.
 
 ## Referencia completa de comandos
 

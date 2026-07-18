@@ -33,7 +33,7 @@ Cada fuente puede ser asignada a cualquier TV o Video Wall mediante el comando `
 Las fuentes también alimentan las [[../Dispositivos/ZonasAudio]] a través del procesador Tesira. El componente [[../Componentes/Audio]] permite seleccionar qué fuente alimenta cada zona (Norte, Centro, Sur).
 
 ### Cambio de canal
-Los DirecTV (DTV1–DTV6) reciben comandos IR de cambio de canal mediante `preset load` de la [[../API/ArrangerApi]]. El componente [[../Componentes/Canales]] gestiona el cambio con validación contra la lista de favoritos. DTV7 y DTV8 no aceptan cambio de canal por IR.
+Los DirecTV (DTV1–DTV6) reciben comandos IR de cambio de canal mediante **`sendChannelDigits`** de la [[../API/ArrangerApi]]: envía cada dígito del canal secuencialmente vía IR con 300ms de delay, usando los códigos hexadecimales de `src/data/irCodes.js`. El método `loadChannelPreset` (presets pre-grabados en el Arranger) se mantiene como **backup activo** si el envío IR dinámico falla. DTV7 y DTV8 no aceptan cambio de canal.
 
 ## TVRACK
 

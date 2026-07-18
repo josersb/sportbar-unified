@@ -1,6 +1,6 @@
 # MatrizVideo
 
-Componente principal de control de la matriz de video. Renderiza la ruta `/matrizvideo` y permite asignar decodificadores DirecTV (DTV1 a DTV8) a cada uno de los 30+ destinos de video del SportBar, organizados por zonas: Video Walls, TVs de escalera, TVs de barra y TVRACK de monitoreo.
+Componente principal de control de la matriz de video. Renderiza la ruta `/matrizvideo` y permite asignar decodificadores DirecTV (DTV1 a DTV8) a cada uno de los **47 destinos de video** del SportBar (37 originales + 10 Zonas Adicionales), organizados por zonas: Video Walls, TVs de escalera, TVs de barra, TVRACK de monitoreo y Zonas Adicionales.
 
 ## Props / Estado
 
@@ -33,6 +33,14 @@ El componente usa `Formik` para gestionar un formulario con selects por zona. Ca
 - **Video Walls** (Norte, Centro, Sur): asignación directa 1 deco → 1 VW
 - **Perímetro de TVs**: Escalera Norte (TV23–TV26), Escalera Centro (TV19–TV22), Escalera Sur (TV15–TV18)
 - **Barras**: Barra Norte (TV11–TV14), Barra Livertador (TV01–TV03), Barra Sur (TV04–TV07), Barra Pista (TV08–TV10)
+- **Zonas Adicionales** (10 destinos IPEX5002): VIP Barra Centro, VIP Lobby Batacazo, Escenario -1, QMR75 -1 TV1, VIP Bar Bóveda, +15 Barra, QMR75 -1 TV2, Escenario -1 (2), QMC65 -1 TV2, Rack VIP Bataca. Cada uno con select individual de fuente (DTV1–DTV8) y labels legibles.
+
+## Mejoras de UI (jul 2026)
+
+- **Labels humanos**: las Zonas Adicionales muestran nombres legibles en vez de keys del Arranger
+- **TVRACK con colores**: cada botón de fuente (DTV1–DTV8) muestra su color de dispositivo, tooltip con nombre completo, y resalta el activo con borde blanco
+- **Layout fluido**: todos los contenedores usan `width: 100%` + `flex-wrap` — cero overflow
+- **Tokens de color Aside**: `--DTV1` a `--DTV8` definidos en CSS, los indicadores del Aside heredan el color de su fuente asignada
 
 ## Relaciones
 

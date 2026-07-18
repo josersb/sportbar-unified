@@ -1,11 +1,13 @@
 # StateManagement
 
-Patrón de gestión de estado global de SportBar Unified. Combina React Context API para el estado en memoria con localStorage para persistencia, más 4 handlers específicos por dominio que permiten a los componentes modificar secciones independientes del estado sin afectar al resto.
+Patrón de gestión de estado global de SportBar Unified. Combina React Context API para el estado en memoria con **persistencia dual**: localStorage (cliente) + lowdb en Express (servidor). Esto permite que múltiples equipos en la red local compartan el mismo estado.
 
 ## Arquitectura
 
 ```
-App.jsx (useState + useEffect → localStorage "estadoApp")
+App.jsx (useState + useEffect → carga servidor → localStorage → default)
+  ├── GET /api/state → lowdb (server/state.json) [prioridad 1]
+  ├── localStorage "estadoApp" [prioridad 2, fallback]
   └── ProviderUser (Context API)
         └── Body (Router)
               ├── MatrizVideo → handleChangeEstadoVideo
@@ -21,24 +23,29 @@ App.jsx (useState + useEffect → localStorage "estadoApp")
 Archivo: [[../Componentes/Contexto]] (`src/contexto/Contexto.jsx`)
 
 - `React.createContext()` — crea `ContextoUser`
-- `estadoInicial` — objeto con la estructura completa del estado (decos, tvs, audio, favoritos, descripcionPreset)
+- `estadoInicial` — objeto con la estructura completa del estado (dispositivos, tvs, audio, favoritos, descripcionPreset)
 - `ProviderUser` — alias del Provider para envolver la app
 
 ### 2. Provider y Handlers
 Archivo: [[../Componentes/App]] (`src/App.jsx`)
 
-- `useState(estadoAppGuardado)` — inicializa desde localStorage o `estadoInicial`
-- `useEffect` — persiste todo cambio de estado en `localStorage.setItem("estadoApp")`
-- 4 handlers que usan `setEstado` con spread para actualización inmutable:
-  - `handleChangeEstadoDecos(decos)`
-  - `handleChangeEstadoAudio(audio)`
-  - `handleChangeEstadoVideo(tvs)`
-  - `handleChangeEstadoPreset(descripcionPreset)`
+- `useState(estadoAppGuardado)` — inicializa desde servidor (lowdb), luego localStorage, luego `estadoInicial`
+- `useEffect` — persiste cambios en localStorage y fire-and-forget al servidor (`POST /api/state`)
+- 4 handlers que usan `setEstado` con spread para actualización inmutable
 
-### 3. localStorage
-- Key principal: `estadoApp` — estado actual de la aplicación (se actualiza en cada cambio)
-- Keys de presets: `estadoApp_Preset1` a `estadoApp_Preset5` — 5 configuraciones guardables (ver [[../Conceptos/SistemaPresets]])
-- Recuperación: al cargar la app, `App.jsx` lee `estadoApp` de localStorage; si no existe, usa `estadoInicial`
+### 3. Persistencia dual
+
+| Capa | Tecnología | Ubicación | Propósito |
+|------|-----------|-----------|-----------|
+| Servidor | lowdb 7.0.1 | `server/state.json` (Express) | Estado compartido entre equipos en red |
+| Cliente | localStorage | Navegador | Disponible sin conexión al servidor |
+
+**Flujo de carga**: `GET /api/state` → localStorage `estadoApp` → `estadoInicial` (default)  
+**Flujo de guardado**: `localStorage.setItem` + `POST /api/state` (fire-and-forget)
+
+### 4. localStorage
+- Key principal: `estadoApp` — estado actual de la aplicación
+- Keys de presets: `estadoApp_Preset1` a `estadoApp_Preset5` — 5 configuraciones guardables
 
 ## Flujo de actualización
 

@@ -12,16 +12,22 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 - [[Componentes/App]] — componente raíz, provider del contexto global
 - [[Componentes/Contexto]] — definición del estado global y contexto React
-- [[Componentes/MatrizVideo]] — control principal de la matriz de video
+- [[Componentes/Body]] — layout principal con React Router
+- [[Componentes/Header]] — cabecera con logo y título
+- [[Componentes/Nav]] — barra de navegación con NavLink
+- [[Componentes/Aside]] — panel lateral con estado en tiempo real
+- [[Componentes/MatrizVideo]] — control de matriz de video (47 destinos, Zonas Adicionales, TVRACK)
 - [[Componentes/MatrizPreset]] — gestión de 5 presets de configuración
 - [[Componentes/Canales]] — gestión de canales deportivos y favoritos
 - [[Componentes/Audio]] — control de audio por zonas (Norte, Centro, Sur)
-- [[Componentes/Aside]] — panel lateral con estado en tiempo real de decos, audio y video
-- [[Componentes/Arranger]] — links directos a la interfaz web del Arranger IPEX5000
+- [[Componentes/Arranger]] — links directos a la interfaz web del Arranger
+- [[Componentes/Portada]] — página de inicio con logo
+- [[Componentes/Soporte]] — información de soporte técnico
 
 ## APIs y Endpoints
 
-- [[API/ArrangerApi]] — cliente HTTP para comandos del Arranger (`join av`, `preset load`, `send serial`, `get status`)
+- [[API/ArrangerApi]] — cliente HTTP centralizado: `join av`, `send ir`, `send serial`, `get status`, `sendChannelDigits`
+- [[API/IrCodes]] — tabla de códigos IR hexadecimales para cambio de canal dígito a dígito
 
 ## Dispositivos Hardware
 
@@ -41,11 +47,13 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 - [[Configuracion/ViteProxy]] — proxy de desarrollo `/api` → `192.168.2.254`, chunks de build, dev server
 - [[Configuracion/PnpmSetup]] — pnpm como gestor exclusivo, `.npmrc`, `.nvmrc`, Node 18.17.1
+- [[Configuracion/Seguridad]] — helmet, CORS restrictivo, rate limiting, CSP, token cleanup
 
 ## Historial y Estado
 
 - [[wiki/log|Registro de cambios]] — registro cronológico de operaciones de la wiki
 - [[README]] — estado actual del proyecto
+- [[Docs/development/roadmap]] — roadmap de features (HTML + PDF)
 
 ## Referencias de API
 

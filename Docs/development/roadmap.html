@@ -6,65 +6,136 @@
 <title>SportBar Unified — Roadmap</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font:16px/1.5 system-ui,sans-serif;background:#0f1117;color:#c9d1d9;padding:2rem;max-width:700px;margin:0 auto}
+  body{font:16px/1.5 system-ui,sans-serif;background:#0f1117;color:#c9d1d9;padding:2rem;max-width:750px;margin:0 auto}
   h1{font-size:1.5rem;margin-bottom:.25rem;color:#f0f6fc}
   .sub{color:#8b949e;margin-bottom:2rem;font-size:.9rem}
-  .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:1rem}
   .card.done{opacity:.55;border-color:#238636}
   .card.pending{border-color:#30363d}
+  .card.wip{border-color:#d29922}
   .idx{font-size:1.75rem;min-width:2.5rem;text-align:center}
   .done .idx{color:#238636}
   .pending .idx{color:#484f58}
+  .wip .idx{color:#d29922}
   .body{flex:1}
   h2{font-size:1.1rem;margin-bottom:.2rem}
   .done h2{color:#3fb950;text-decoration:line-through}
   .pending h2{color:#8b949e}
-  p{color:#8b949e;font-size:.85rem;margin:0}
+  .wip h2{color:#e3b341}
+  p{color:#8b949e;font-size:.85rem;margin:0 0 .3rem}
+  ul.tasks{color:#8b949e;font-size:.8rem;margin:.3rem 0 0 1rem;padding:0}
+  ul.tasks li{margin-bottom:.15rem}
   .badge{font-size:.7rem;padding:.15em .6em;border-radius:10px;font-weight:600;white-space:nowrap}
   .badge-done{background:#238636;color:#fff}
   .badge-pending{background:#21262d;color:#8b949e}
+  .badge-wip{background:#9e6a03;color:#fff}
   hr{border:none;border-top:1px solid #21262d;margin:2rem 0}
-  .section-title{color:#58a6ff;font-size:.8rem;font-weight:600;margin:1.5rem 0 .5rem}
+  .section-title{color:#58a6ff;font-size:.8rem;font-weight:600;margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em}
   .legend{display:flex;gap:1.5rem;font-size:.8rem;color:#8b949e}
   .legend span{display:flex;align-items:center;gap:.35rem}
   .dot{width:10px;height:10px;border-radius:50%}
   .dot-done{background:#238636}
   .dot-pending{background:#484f58}
+  .dot-wip{background:#d29922}
 </style>
 </head>
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">25 commits · 34 tests · master · Último: security token cleanup (18 jul 2026)</p>
+<p class="sub">26 commits · 34 tests · master · Último: server security hardening (18 jul 2026)</p>
 
 <div class="section-title">SDD CHANGES</div>
 
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Modelo de Dispositivos</h2><p>Registry tipado 8 IPEX5001 + deteccion hibrida + migracion localStorage. 13 archivos.</p></div><span class="badge badge-done">v1</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>send ir dinamico</h2><p>IR digito por digito 300ms delay. 10 codigos hex. loadChannelPreset backup activo.</p></div><span class="badge badge-done">v1</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Centralize Arranger API</h2><p>83 fetchs eliminados. 3 funciones en arrangerApi.js. 4 PRs encadenados. -290 lineas netas.</p></div><span class="badge badge-done">v1</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Zonas Adicionales</h2><p>10 decoders IPEX5002 (VIP, Planta -1, +15). 47 destinos en estado.tvs. Seccion en MatrizVideo.</p></div><span class="badge badge-done">v1</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>UI MatrizVideo</h2><p>Labels legibles Zonas Adicionales. Colores Aside --DTV1..--DTV8. TVRACK con colores por dispositivo y estado activo. Layout fluido sin overflow.</p></div><span class="badge badge-done">v1</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Modelo de Dispositivos</h2><p>Registry tipado 8 IPEX5001 con capacidades, colores, y helpers. Migracion localStorage v0→v1. 13 archivos, 4 PRs encadenados.</p></div><span class="badge badge-done">v1</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>send ir dinamico</h2><p>Cambio de canal IR digito por digito (300ms delay). 10 codigos hex. Elimina dependencia de presets Arranger.</p></div><span class="badge badge-done">v1</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Centralize Arranger API</h2><p>83 fetchs eliminados. Funciones: sendArrangerCommand, joinMultipleTVs, sendSerialCommand, sendChannelDigits. -290 lineas.</p></div><span class="badge badge-done">v1</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Zonas Adicionales</h2><p>10 decoders IPEX5002 como destinos en estado.tvs (VIP, Planta -1, +15). 47 destinos totales. Seccion dedicada en MatrizVideo.</p></div><span class="badge badge-done">v1</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>UI MatrizVideo</h2><p>Labels humanos en Zonas Adicionales. Tokens --DTV1..--DTV8 en Aside.css. TVRACK con colores, tooltip, estado activo. Layout fluido 100% + flex-wrap.</p></div><span class="badge badge-done">v1</span></div>
 
 <div class="section-title">INFRA & QUALITY</div>
 
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Testing Setup</h2><p>Vitest 2.1.9 + Testing Library. 34 tests. strict_tdd activo.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Linting & Formatting</h2><p>ESLint 9.x flat config + Prettier. 43 issues corregidos. 22 immutability pendientes.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>State Persistence</h2><p>lowdb 7.0.1 en Express. GET/POST /api/state. Estado compartido entre equipos en red.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>LLM Wiki</h2><p>Vault Obsidian. 21 paginas, ~70 wikilinks. Schema en AGENTS.md. Skill global llm-wiki.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Repo privado en github.com/josersb/sportbar-unified. Collaborator tecnopulsar invitado.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Testing Setup</h2><p>Vitest 2.1.9 + Testing Library. 34 tests (12 API + 22 componentes). strict_tdd activo.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Linting & Formatting</h2><p>ESLint 9.x flat config + Prettier. 43 issues corregidos. Quedan 22 immutability warnings pendientes.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>State Persistence</h2><p>lowdb 7.0.1 en Express. GET/POST /api/state. Persistencia dual: servidor → localStorage. Estado compartido entre equipos en red local.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>LLM Wiki</h2><p>Vault Obsidian con 21 paginas y ~70 wikilinks. Schema de entidades en AGENTS.md. Skill global llm-wiki configurada.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Repo privado en github.com/josersb/sportbar-unified. Collaborator tecnopulsar invitado (pendiente aceptacion).</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 1+2</h2><p>Token removido de codigo + historial git (filter-branch). Helmet con CSP. CORS restrictivo. Rate limiting /api/state. Body limit 1mb. Tabnabbing fix en Arranger.jsx. .env.example sin token.</p></div><span class="badge badge-done">done</span></div>
 
 <div class="section-title">PENDING</div>
 
-<div class="card pending"><div class="idx">1</div><div class="body"><h2>Seguridad & Buenas Practicas</h2><p>Token removido de codigo e historial git. Pendiente: Express helmet, CORS restrictivo, rate limiting, security headers, CVEs.</p></div><span class="badge badge-pending">wip</span></div>
-<div class="card pending"><div class="idx">2</div><div class="body"><h2>Robustez</h2><p>Manejo de errores con feedback visual. Retry en proxy Express. Timeouts.</p></div><span class="badge badge-pending">todo</span></div>
-<div class="card pending"><div class="idx">3</div><div class="body"><h2>22 immutability warnings</h2><p>Mutacion directa de objetos Contexto en Audio, Canales, MatrizPreset, MatrizVideo.</p></div><span class="badge badge-pending">todo</span></div>
-<div class="card pending"><div class="idx">4</div><div class="body"><h2>Deploy a produccion</h2><p>Reemplazar vieja app en :3000 por sportbar-unified. Testeado en :3101. Side-by-side listo.</p></div><span class="badge badge-pending">todo</span></div>
-<div class="card pending"><div class="idx">5</div><div class="body"><h2>Branch protection</h2><p>Requiere GitHub Pro ($4/mes).</p></div><span class="badge badge-pending">todo</span></div>
-<div class="card pending"><div class="idx">6</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptar.</p></div><span class="badge badge-pending">wait</span></div>
+<div class="card pending"><div class="idx">1</div><div class="body">
+  <h2>Documentacion</h2>
+  <p>Auditar y actualizar README, wiki, docs/development/ contra el estado real del codigo. La wiki tiene entidades desactualizadas post-cambios recientes.</p>
+  <ul class="tasks">
+    <li>🔲 Wiki: paginas de entidad desactualizadas (componentes, API, dispositivos)</li>
+    <li>🔲 README: instrucciones de setup y arquitectura</li>
+    <li>🔲 AGENTS.md: verificar convenciones vigentes</li>
+    <li>🔲 docs/development/: project-status, environment-summary</li>
+  </ul>
+</div><span class="badge badge-pending">todo</span></div>
+
+<div class="card wip"><div class="idx">2</div><div class="body">
+  <h2>Seguridad — Ronda 3</h2>
+  <p>CVE patches y hardening pendiente de dependencias. Los CVEs actuales son de entorno dev o requieren actualizaciones con breaking changes.</p>
+  <ul class="tasks">
+    <li>✅ Token cleanup + .gitignore</li>
+    <li>✅ Helmet + CORS restrictivo + rate limiting</li>
+    <li>🔲 Vitest 2.1.9 → >=3.2.6 (CRITICAL CVE, posible breaking changes)</li>
+    <li>🔲 shell-quote via concurrently (CRITICAL CVE, solo dev)</li>
+    <li>🔲 Vite 5.4.21 → >=6.4.3 (HIGH CVE, requiere migracion)</li>
+    <li>🔲 react-router 6.30.3 → >=6.30.4 (moderate CVE)</li>
+  </ul>
+</div><span class="badge badge-wip">wip</span></div>
+
+<div class="card pending"><div class="idx">3</div><div class="body">
+  <h2>Robustez</h2>
+  <p>Manejo de errores, retry, timeouts. La app no da feedback visual cuando fallan las requests al Arranger.</p>
+  <ul class="tasks">
+    <li>🔲 Toast/notificacion de error en UI cuando Arranger no responde</li>
+    <li>🔲 Retry automatico en proxy Express (3 intentos con backoff)</li>
+    <li>🔲 Timeout configurable en fetch (actualmente sin timeout)</li>
+    <li>🔲 Estado offline/online de dispositivos en Aside</li>
+  </ul>
+</div><span class="badge badge-pending">todo</span></div>
+
+<div class="card pending"><div class="idx">4</div><div class="body">
+  <h2>22 immutability warnings</h2>
+  <p>Mutacion directa de objetos del Contexto en 4 componentes. ESLint los reporta como react-hooks/immutability.</p>
+  <ul class="tasks">
+    <li>🔲 Audio.jsx: mutacion de estado.audio</li>
+    <li>🔲 Canales.jsx: mutacion de estado.decos</li>
+    <li>🔲 MatrizPreset.jsx: mutacion via handleChangeEstadoVideo</li>
+    <li>🔲 MatrizVideo.jsx: mutacion en onSubmit</li>
+  </ul>
+</div><span class="badge badge-pending">todo</span></div>
+
+<div class="card pending"><div class="idx">5</div><div class="body">
+  <h2>Deploy a produccion</h2>
+  <p>Reemplazar la app vieja en :3000 por sportbar-unified. Nueva app ya testeada en :3101 side-by-side.</p>
+  <ul class="tasks">
+    <li>🔲 Validar que todas las funcionalidades funcionan en :3101</li>
+    <li>🔲 Migrar estado actual de localStorage al backend lowdb</li>
+    <li>🔲 Swap de puertos: nueva app → :3000</li>
+    <li>🔲 Rollback plan si algo falla</li>
+  </ul>
+</div><span class="badge badge-pending">todo</span></div>
+
+<div class="card pending"><div class="idx">6</div><div class="body">
+  <h2>Branch protection + CI</h2>
+  <p>Proteccion de rama master y CI basico para validar builds y tests en cada push.</p>
+  <ul class="tasks">
+    <li>🔲 Branch protection rules (require PR, require tests)</li>
+    <li>🔲 GitHub Actions: build + test + lint en push</li>
+    <li>🔲 Status checks required antes de merge</li>
+  </ul>
+</div><span class="badge badge-pending">todo</span></div>
+
+<div class="card pending"><div class="idx">7</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptacion.</p></div><span class="badge badge-pending">wait</span></div>
 
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado (10)</span>
+  <span><span class="dot dot-done"></span> Completado (11)</span>
+  <span><span class="dot dot-wip"></span> En progreso (1)</span>
   <span><span class="dot dot-pending"></span> Pendiente (6)</span>
 </div>
 

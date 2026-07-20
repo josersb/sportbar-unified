@@ -4,20 +4,23 @@ import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import "./MatrizVideo.css";
+import "./Toast.css";
 import { joinMultipleTVs, assignSourceToDestination } from "../api/arrangerApi";
+import { useToast } from "./Toast";
 
 const MatrizVideo = () => {
   const { estado, handleChangeEstadoVideo } = useContext(ContextoUser);
 
   const tvs = estado.tvs;
   const [loadingBtn, setLoadingBtn] = useState(null);
+  const toast = useToast();
 
   const handleBtnDTV = (deviceId) => async () => {
     setLoadingBtn(deviceId);
     try {
       await assignSourceToDestination(deviceId, "TVRACK");
     } catch (error) {
-      console.error("[ArrangerAPI] Error:", error);
+      toast.error("Error al comunicar con el Arranger");
     }
     handleChangeEstadoVideo({ ...tvs, TVRACK: deviceId });
     setLoadingBtn(null);

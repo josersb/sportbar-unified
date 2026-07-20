@@ -97,6 +97,25 @@ app.post("/api/state", stateLimiter, async (req, res) => {
 // Middleware para servir archivos estáticos desde dist (build de producción)
 app.use(express.static(path.join(__dirname, "../dist")));
 
+// ── Retry helper con exponential backoff ──
+async function fetchWithRetry(url, retries = 3, baseDelayMs = 1000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url);
+      // No reintentar en respuestas 4xx (error del cliente)
+      if (!response.ok && response.status >= 400 && response.status < 500) {
+        return response;
+      }
+      return response;
+    } catch (error) {
+      if (attempt === retries) throw error;
+      const delay = baseDelayMs * Math.pow(2, attempt - 1);
+      console.log(`[ArrangerProxy] Intento ${attempt}/${retries} falló, reintentando en ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
 // Proxy endpoint: relay get status a Arranger (server-to-server, sin CORS)
 // En dev, Vite redirige /api/device/ a este servidor Express.
 app.get("/api/device/:id/status", async (req, res) => {
@@ -104,7 +123,7 @@ app.get("/api/device/:id/status", async (req, res) => {
     const { id } = req.params;
     const token = process.env.ARRANGER_TOKEN || "TOKEN_REMOVED";
     const url = `http://192.168.2.254/api/command/get status ${id}/${token}`;
-    const response = await fetch(url);
+    const response = await fetchWithRetry(url);
     const text = await response.text();
 
     // Parsear la respuesta del Arranger para extraer streams activos

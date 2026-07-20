@@ -12,29 +12,41 @@ if (!ARRANGER_BASE_URL) throw new Error("Missing VITE_ARRANGER_API_BASE");
 const ARRANGER_TOKEN = import.meta.env.VITE_ARRANGER_TOKEN;
 if (!ARRANGER_TOKEN) throw new Error("Missing VITE_ARRANGER_TOKEN");
 
+const REQUEST_TIMEOUT_MS = 10000;
+
 /*
  * Envía un comando genérico a la API de Arranger.
  * @param {string} command - Comando completo (ej: "join av DTV1 TV01")
  * @param {object} [options] - Opciones adicionales para fetch (method, headers, etc)
+ * @param {number} [timeoutMs] - Timeout en milisegundos (default: 10000)
  * @returns {Promise<Response>} - Promesa con la respuesta de fetch
  */
-export async function sendArrangerCommand(command, options = {}) {
+export async function sendArrangerCommand(command, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const url = `${ARRANGER_BASE_URL}/${encodeURIComponent(command)}/${ARRANGER_TOKEN}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   const fetchOptions = {
     method: "GET",
     mode: "no-cors",
     cache: "default",
+    signal: controller.signal,
     ...options,
   };
 
   try {
     const response = await fetch(url, fetchOptions);
+    clearTimeout(timeoutId);
     // No se puede leer el body en modo no-cors, pero se puede loguear el status
     if (process.env.NODE_ENV === "development") {
       console.log(`[ArrangerAPI] Comando enviado: ${command} → Status: ${response.status}`);
     }
     return response;
   } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      throw new Error(`Timeout: el comando "${command}" excedió los ${timeoutMs / 1000} segundos`);
+    }
     console.error(`[ArrangerAPI] Error enviando comando "${command}":`, error);
     throw error;
   }

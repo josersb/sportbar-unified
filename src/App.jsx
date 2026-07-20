@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import { DISPOSITIVOS, getDevice } from "./contexto/dispositivos";
 import Body from "./componentes/Body";
+import { ToastProvider } from "./componentes/Toast";
+import "./componentes/Toast.css";
 
 // Migration function: converts v0 (decos[]) to v1 (dispositivos{})
 const migrarEstado = (oldData) => {
@@ -186,18 +188,20 @@ const App = () => {
   };
 
   return (
-    <ProviderUser
-      value={{
-        estado,
-        handleChangeEstadoDecos,
-        handleChangeEstadoAudio,
-        handleChangeEstadoVideo,
-        handleChangeEstadoPreset,
-        handleUpdateDispositivo,
-      }}
-    >
-      <Body />
-    </ProviderUser>
+      <ProviderUser
+        value={{
+          estado,
+          handleChangeEstadoDecos,
+          handleChangeEstadoAudio,
+          handleChangeEstadoVideo,
+          handleChangeEstadoPreset,
+          handleUpdateDispositivo,
+        }}
+      >
+        <ToastProvider>
+          <Body />
+        </ToastProvider>
+      </ProviderUser>
   );
 };
 

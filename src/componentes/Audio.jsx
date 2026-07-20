@@ -8,11 +8,14 @@ import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import { sendSerialCommand } from "../api/arrangerApi";
 import "./Audio.css";
+import "./Toast.css";
+import { useToast } from "./Toast";
 
 const Audio = () => {
   const { estado, handleChangeEstadoAudio } = useContext(ContextoUser);
 
   const audio = estado.audio;
+  const toast = useToast();
 
   //Tesira
   // TesiraMute1
@@ -67,7 +70,7 @@ const Audio = () => {
               `SourceSelector3 set sourceSelection ${values.audioSur}`
             );
           } catch {
-            console.log("error solicitud Arranger 5000");
+            toast.error("Error al comunicar con el Arranger");
           }
         }}
       >

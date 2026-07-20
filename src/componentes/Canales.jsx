@@ -22,13 +22,16 @@ import img_tnt_sports from "../imagenes/tntsports.jpg";
 import img_tyc from "../imagenes/tyc.png";
 import { loadChannelPreset, sendChannelDigits } from "../api/arrangerApi";
 import "./Canales.css";
+import "./Toast.css";
 import "../elementos/CanalFavorito.css";
+import { useToast } from "./Toast";
 
 const Canales = () => {
   const { estado, handleChangeEstadoDecos, handleUpdateDispositivo } = useContext(ContextoUser);
 
   const decos = estado.decos;
   const favoritos = estado.favoritos;
+  const toast = useToast();
 
   const selectRef = useRef();
   const inputRef = useRef();
@@ -58,7 +61,7 @@ const Canales = () => {
         inputRef.current.placeholder = "numero canal no valido";
       }
     } catch {
-      console.log("error solicitud Arranger 5000");
+      toast.error("Error al comunicar con el Arranger");
     }
     handleChangeEstadoDecos(decos);
   };

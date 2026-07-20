@@ -3,11 +3,14 @@ import ContextoUser from "../contexto/Contexto";
 import { DISPOSITIVOS } from "../contexto/dispositivos";
 import { joinMultipleTVs } from "../api/arrangerApi";
 import "./MatrizPreset.css";
+import "./Toast.css";
+import { useToast } from "./Toast";
 
 const MatrizPreset = () => {
   const { estado, handleChangeEstadoVideo, handleChangeEstadoPreset } = useContext(ContextoUser);
   const tvs = estado.tvs;
   const descripcionPreset = estado.descripcionPreset;
+  const toast = useToast();
 
   const useInputRefPreset1 = useRef();
   const useInputRefPreset2 = useRef();
@@ -50,7 +53,7 @@ const MatrizPreset = () => {
     try {
       await joinMultipleTVs(mappings);
     } catch {
-      console.log("error solicitud Arranger 5000");
+      toast.error("Error al comunicar con el Arranger");
     }
   };
 

@@ -19,9 +19,12 @@ vi.mock("../data/irCodes.js", () => ({
   },
 }));
 
+// Helper: mock de respuesta exitosa del Arranger (body "OK", sin errores)
+const mockArrangerOk = () => ({ status: 200, text: () => Promise.resolve("OK") });
+
 describe("sendIrCommand", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200 }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
   });
 
   afterEach(() => {
@@ -45,7 +48,7 @@ describe("sendIrCommand", () => {
 
 describe("sendChannelDigits", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200 }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
   });
 
   afterEach(() => {
@@ -91,7 +94,7 @@ describe("sendChannelDigits", () => {
 
 describe("joinMultipleTVs", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200 }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
   });
 
   afterEach(() => {
@@ -121,9 +124,9 @@ describe("joinMultipleTVs", () => {
   it("continues to next mapping when one fails and logs error per item", async () => {
     const mockFetch = vi
       .fn()
-      .mockResolvedValueOnce({ status: 200 })
+      .mockResolvedValueOnce(mockArrangerOk())
       .mockRejectedValueOnce(new Error("Network failure"))
-      .mockResolvedValueOnce({ status: 200 });
+      .mockResolvedValueOnce(mockArrangerOk());
 
     vi.stubGlobal("fetch", mockFetch);
 
@@ -151,7 +154,7 @@ describe("joinMultipleTVs", () => {
 
 describe("sendSerialCommand", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200 }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
   });
 
   afterEach(() => {
@@ -179,7 +182,7 @@ describe("sendSerialCommand", () => {
 
 describe("loadChannelPreset", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200 }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
   });
 
   afterEach(() => {

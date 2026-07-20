@@ -19,10 +19,10 @@ const MatrizVideo = () => {
     setLoadingBtn(deviceId);
     try {
       await assignSourceToDestination(deviceId, "TVRACK");
+      handleChangeEstadoVideo({ ...tvs, TVRACK: deviceId });
     } catch {
       toast.error("Error al comunicar con el Arranger");
     }
-    handleChangeEstadoVideo({ ...tvs, TVRACK: deviceId });
     setLoadingBtn(null);
   };
 

@@ -113,6 +113,21 @@ describe("MatrizVideo", () => {
         expect(handleChangeEstadoVideo).toHaveBeenCalled();
       }
     );
+
+    it("does NOT update TVRACK state when assignSourceToDestination fails", async () => {
+      mockAssignSourceToDestination.mockRejectedValueOnce(new Error("Network error"));
+      const handleChangeEstadoVideo = vi.fn();
+      renderWithContext({ handleChangeEstadoVideo });
+
+      fireEvent.click(screen.getByTestId("btn-DTV1"));
+
+      await vi.waitFor(() => {
+        expect(mockAssignSourceToDestination).toHaveBeenCalled();
+      });
+
+      // State must NOT change on API failure — the bug was that it DID
+      expect(handleChangeEstadoVideo).not.toHaveBeenCalled();
+    });
   });
 
   describe("onSubmit (Enviar button)", () => {

@@ -32,11 +32,15 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 ## Dispositivos Hardware
 
 - [[Dispositivos/Decodificadores]] — catálogo de 8 fuentes de video: 6 DirecTV + 2 encoders IPEX5001
-- [[Dispositivos/DirecTV-Decos]] — 6 decodificadores DirecTV físicos (DTV1–DTV6), control IR, conexión a encoders
-- [[Dispositivos/IPEX5001-Encoder]] — transmisor HDMI sobre IP, JPEG2000, PoE, IR/RS232/USB passthrough
-- [[Dispositivos/IPEX5002-Decoder]] — receptor HDMI sobre IP, video wall 16×16, CEC, idle image
-- [[Dispositivos/Arranger-IPEXCB]] — controlador central IPEXCB, API HTTP + TCP, referencia completa de comandos
-- [[Dispositivos/ZonasAudio]] — 3 zonas de audio independientes (Norte, Centro, Sur) con procesador Tesira
+- [[Dispositivos/DirecTV-Decos]] — 6 decodificadores DirecTV físicos (DTV1–DTV6), control IR
+- [[Dispositivos/IPEX5001-Encoder]] — transmisor HDMI sobre IP, JPEG2000, PoE
+- [[Dispositivos/IPEX5002-Decoder]] — receptor HDMI sobre IP, video wall 16×16
+- [[Dispositivos/Arranger-IPEXCB]] — controlador central IPEXCB, API HTTP + TCP
+- [[Dispositivos/ZonasAudio]] — 3 zonas de audio (Norte, Centro, Sur) con Tesira DSP
+- [[Dispositivos/AHM-32]] — matriz de audio Allen & Heath 32×32 (TCP, sin integrar)
+- [[Dispositivos/SQ6]] — consola de mezcla Allen & Heath para eventos en vivo
+- [[Dispositivos/Shure-ANI]] — interfaces de audio en red (ANI22/ANI4OUT)
+- [[Dispositivos/MagicInfo]] — cartelería digital Samsung (25+ TVs, sin integrar)
 
 ## Conceptos
 
@@ -54,6 +58,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 - [[wiki/log|Registro de cambios]] — registro cronológico de operaciones de la wiki
 - [[README]] — estado actual del proyecto
 - [[Docs/development/roadmap]] — roadmap de features (HTML + PDF)
+- [[Docs/referencia-instalacion]] — inventario completo de equipos, IPs y MACs (sin credenciales)
 
 ## Referencias de API
 

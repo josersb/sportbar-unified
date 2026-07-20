@@ -146,6 +146,25 @@ app.get("/api/device/:id/status", async (req, res) => {
   }
 });
 
+// ── Proxy genérico para todos los comandos del Arranger ──
+// GET /api/command/:command/:token → forwardea al Arranger y devuelve la respuesta.
+// Express es el único que necesita acceso de red al Arranger (192.168.2.254).
+// El navegador nunca más llama al Arranger directamente.
+app.get("/api/command/:command/:token", async (req, res) => {
+  try {
+    const { command, token } = req.params;
+    const url = `http://192.168.2.254/api/command/${encodeURIComponent(command)}/${token}`;
+    const response = await fetchWithRetry(url);
+    const text = await response.text();
+    res.status(response.status).send(text);
+  } catch (error) {
+    res.status(502).json({
+      error: "Arranger unreachable",
+      detail: error.message,
+    });
+  }
+});
+
 // Ruta para servir la aplicación React (SPA)
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../dist", "index.html"));

@@ -7,8 +7,11 @@
  * Listo para ser importado y utilizado en cualquier parte del proyecto.
  */
 
-const ARRANGER_BASE_URL = import.meta.env.VITE_ARRANGER_API_BASE;
-if (!ARRANGER_BASE_URL) throw new Error("Missing VITE_ARRANGER_API_BASE");
+// Las requests al Arranger van a través del proxy de Express (/api/command/*),
+// no directamente a 192.168.2.254. Esto permite que la app funcione desde
+// cualquier PC que pueda alcanzar el servidor Express, sin necesidad de
+// estar en la misma red local que el Arranger.
+const ARRANGER_BASE_URL = "/api/command";
 const ARRANGER_TOKEN = import.meta.env.VITE_ARRANGER_TOKEN;
 if (!ARRANGER_TOKEN) throw new Error("Missing VITE_ARRANGER_TOKEN");
 

@@ -37,16 +37,13 @@ const Audio = () => {
           unicaZona: "false",
         }}
         onSubmit={async (values) => {
-          audio[0].fuenteAudio = values.audioNorte;
-          audio[0].volumen = values.volumenNorte;
-          audio[0].mute = values.muteNorte;
-          audio[1].fuenteAudio = values.audioCentro;
-          audio[1].volumen = values.volumenCentro;
-          audio[1].mute = values.muteCentro;
-          audio[2].fuenteAudio = values.audioSur;
-          audio[2].volumen = values.volumenSur;
-          audio[2].mute = values.muteSur;
-          handleChangeEstadoAudio(audio);
+          const newAudio = audio.map((zona, i) => ({
+            ...zona,
+            fuenteAudio: i === 0 ? values.audioNorte : i === 1 ? values.audioCentro : values.audioSur,
+            volumen: i === 0 ? values.volumenNorte : i === 1 ? values.volumenCentro : values.volumenSur,
+            mute: i === 0 ? values.muteNorte : i === 1 ? values.muteCentro : values.muteSur,
+          }));
+          handleChangeEstadoAudio(newAudio);
           console.log(audio);
 
           try {

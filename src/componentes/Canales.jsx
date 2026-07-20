@@ -20,7 +20,7 @@ import img_nbatv from "../imagenes/nbatv.png";
 import img_pxsports from "../imagenes/pxsports.png";
 import img_tnt_sports from "../imagenes/tntsports.jpg";
 import img_tyc from "../imagenes/tyc.png";
-import { loadChannelPreset, sendChannelDigits } from "../api/arrangerApi";
+import { sendChannelDigits } from "../api/arrangerApi";
 import "./Canales.css";
 import "./Toast.css";
 import "../elementos/CanalFavorito.css";
@@ -54,7 +54,10 @@ const Canales = () => {
         handleUpdateDispositivo(selectedDeco, { canalActual: canal });
         // Also keep legacy decos array in sync for backward compat
         const decoNumber = parseInt(selectedDeco.replace("DTV", ""), 10);
-        decos[decoNumber - 1].canalDeco = canal;
+        const newDecos = decos.map((deco, i) =>
+          i === decoNumber - 1 ? { ...deco, canalDeco: canal } : deco
+        );
+        handleChangeEstadoDecos(newDecos);
         await sendChannelDigits(selectedDeco, canal);
       } else {
         inputRef.current.value = "";
@@ -63,7 +66,6 @@ const Canales = () => {
     } catch {
       toast.error("Error al comunicar con el Arranger");
     }
-    handleChangeEstadoDecos(decos);
   };
 
   return (

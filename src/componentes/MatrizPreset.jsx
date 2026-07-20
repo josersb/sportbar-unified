@@ -1,6 +1,5 @@
 import { useRef, useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
-import { DISPOSITIVOS } from "../contexto/dispositivos";
 import { joinMultipleTVs } from "../api/arrangerApi";
 import "./MatrizPreset.css";
 import "./Toast.css";
@@ -67,8 +66,10 @@ const MatrizPreset = () => {
     window.location.reload();
   };
   const handleGrabar1 = () => {
-    descripcionPreset[0].preset1 = useInputRefPreset1.current.value;
-    handleChangeEstadoPreset(descripcionPreset);
+    const newDescripcion = descripcionPreset.map((item, i) =>
+      i === 0 ? { ...item, preset1: useInputRefPreset1.current.value } : item
+    );
+    handleChangeEstadoPreset(newDescripcion);
     localStorage.setItem("estadoApp_Preset1", JSON.stringify(estado));
   };
   const handlePreset2 = () => {
@@ -81,10 +82,10 @@ const MatrizPreset = () => {
     window.location.reload();
   };
   const handleGrabar2 = () => {
-    console.log("antes", descripcionPreset[1].preset2);
-    descripcionPreset[1].preset2 = useInputRefPreset2.current.value;
-    console.log("despues", descripcionPreset[1].preset2);
-    handleChangeEstadoPreset(descripcionPreset);
+    const newDescripcion = descripcionPreset.map((item, i) =>
+      i === 1 ? { ...item, preset2: useInputRefPreset2.current.value } : item
+    );
+    handleChangeEstadoPreset(newDescripcion);
     localStorage.setItem("estadoApp_Preset2", JSON.stringify(estado));
   };
   const handlePreset3 = () => {
@@ -97,8 +98,10 @@ const MatrizPreset = () => {
     window.location.reload();
   };
   const handleGrabar3 = () => {
-    descripcionPreset[2].preset3 = useInputRefPreset3.current.value;
-    handleChangeEstadoPreset(descripcionPreset);
+    const newDescripcion = descripcionPreset.map((item, i) =>
+      i === 2 ? { ...item, preset3: useInputRefPreset3.current.value } : item
+    );
+    handleChangeEstadoPreset(newDescripcion);
     localStorage.setItem("estadoApp_Preset3", JSON.stringify(estado));
   };
   const handlePreset4 = () => {
@@ -111,8 +114,10 @@ const MatrizPreset = () => {
     window.location.reload();
   };
   const handleGrabar4 = () => {
-    descripcionPreset[3].preset4 = useInputRefPreset4.current.value;
-    handleChangeEstadoPreset(descripcionPreset);
+    const newDescripcion = descripcionPreset.map((item, i) =>
+      i === 3 ? { ...item, preset4: useInputRefPreset4.current.value } : item
+    );
+    handleChangeEstadoPreset(newDescripcion);
     localStorage.setItem("estadoApp_Preset4", JSON.stringify(estado));
   };
   const handlePreset5 = () => {
@@ -125,8 +130,10 @@ const MatrizPreset = () => {
     window.location.reload();
   };
   const handleGrabar5 = () => {
-    descripcionPreset[4].preset5 = useInputRefPreset5.current.value;
-    handleChangeEstadoPreset(descripcionPreset);
+    const newDescripcion = descripcionPreset.map((item, i) =>
+      i === 4 ? { ...item, preset5: useInputRefPreset5.current.value } : item
+    );
+    handleChangeEstadoPreset(newDescripcion);
     localStorage.setItem("estadoApp_Preset5", JSON.stringify(estado));
   };
 

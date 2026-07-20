@@ -19,7 +19,7 @@ const MatrizVideo = () => {
     setLoadingBtn(deviceId);
     try {
       await assignSourceToDestination(deviceId, "TVRACK");
-    } catch (error) {
+    } catch {
       toast.error("Error al comunicar con el Arranger");
     }
     handleChangeEstadoVideo({ ...tvs, TVRACK: deviceId });
@@ -46,305 +46,306 @@ const MatrizVideo = () => {
             TVRACK: tvs.TVRACK,
           }}
           onSubmit={async (values) => {
-            tvs.VWN = values.VWN;
-            tvs.VWC = values.VWC;
-            tvs.VWS = values.VWS;
-            tvs.TVRACK = values.TVRACK;
-            tvs.TvsBarraLivertador = values.TvsBarraLivertador;
+            const newTvs = { ...tvs };
+            newTvs.VWN = values.VWN;
+            newTvs.VWC = values.VWC;
+            newTvs.VWS = values.VWS;
+            newTvs.TVRACK = values.TVRACK;
+            newTvs.TvsBarraLivertador = values.TvsBarraLivertador;
             switch (values.TvsBarraLivertador) {
               case "DTV123":
-                tvs.TV01 = "DTV1";
-                tvs.TV02 = "DTV2";
-                tvs.TV03 = "DTV3";
+                newTvs.TV01 = "DTV1";
+                newTvs.TV02 = "DTV2";
+                newTvs.TV03 = "DTV3";
                 break;
               case "DTV121":
-                tvs.TV01 = "DTV1";
-                tvs.TV02 = "DTV2";
-                tvs.TV03 = "DTV1";
+                newTvs.TV01 = "DTV1";
+                newTvs.TV02 = "DTV2";
+                newTvs.TV03 = "DTV1";
                 break;
               case "DTV542":
-                tvs.TV01 = "DTV5";
-                tvs.TV02 = "DTV4";
-                tvs.TV03 = "DTV2";
+                newTvs.TV01 = "DTV5";
+                newTvs.TV02 = "DTV4";
+                newTvs.TV03 = "DTV2";
                 break;
               case "DTV143":
-                tvs.TV01 = "DTV1";
-                tvs.TV02 = "DTV4";
-                tvs.TV03 = "DTV3";
+                newTvs.TV01 = "DTV1";
+                newTvs.TV02 = "DTV4";
+                newTvs.TV03 = "DTV3";
                 break;
               case "DTV153":
-                tvs.TV01 = "DTV1";
-                tvs.TV02 = "DTV5";
-                tvs.TV03 = "DTV3";
+                newTvs.TV01 = "DTV1";
+                newTvs.TV02 = "DTV5";
+                newTvs.TV03 = "DTV3";
                 break;
               default:
-                tvs.TV01 = values.TvsBarraLivertador;
-                tvs.TV02 = values.TvsBarraLivertador;
-                tvs.TV03 = values.TvsBarraLivertador;
+                newTvs.TV01 = values.TvsBarraLivertador;
+                newTvs.TV02 = values.TvsBarraLivertador;
+                newTvs.TV03 = values.TvsBarraLivertador;
             }
-            tvs.TvsBarraSur = values.TvsBarraSur;
+            newTvs.TvsBarraSur = values.TvsBarraSur;
             switch (values.TvsBarraSur) {
               case "DTV1234":
-                tvs.TV04 = "DTV1";
-                tvs.TV05 = "DTV2";
-                tvs.TV06 = "DTV3";
-                tvs.TV07 = "DTV4";
+                newTvs.TV04 = "DTV1";
+                newTvs.TV05 = "DTV2";
+                newTvs.TV06 = "DTV3";
+                newTvs.TV07 = "DTV4";
                 break;
               case "DTV1212":
-                tvs.TV04 = "DTV1";
-                tvs.TV05 = "DTV2";
-                tvs.TV06 = "DTV1";
-                tvs.TV07 = "DTV2";
+                newTvs.TV04 = "DTV1";
+                newTvs.TV05 = "DTV2";
+                newTvs.TV06 = "DTV1";
+                newTvs.TV07 = "DTV2";
                 break;
               case "DTV1231":
-                tvs.TV04 = "DTV1";
-                tvs.TV05 = "DTV2";
-                tvs.TV06 = "DTV3";
-                tvs.TV07 = "DTV1";
+                newTvs.TV04 = "DTV1";
+                newTvs.TV05 = "DTV2";
+                newTvs.TV06 = "DTV3";
+                newTvs.TV07 = "DTV1";
                 break;
               case "DTV5432":
-                tvs.TV04 = "DTV5";
-                tvs.TV05 = "DTV4";
-                tvs.TV06 = "DTV3";
-                tvs.TV07 = "DTV2";
+                newTvs.TV04 = "DTV5";
+                newTvs.TV05 = "DTV4";
+                newTvs.TV06 = "DTV3";
+                newTvs.TV07 = "DTV2";
                 break;
               case "DTV3254":
-                tvs.TV04 = "DTV3";
-                tvs.TV05 = "DTV2";
-                tvs.TV06 = "DTV5";
-                tvs.TV07 = "DTV4";
+                newTvs.TV04 = "DTV3";
+                newTvs.TV05 = "DTV2";
+                newTvs.TV06 = "DTV5";
+                newTvs.TV07 = "DTV4";
                 break;
               case "DTV1354":
-                tvs.TV04 = "DTV1";
-                tvs.TV05 = "DTV3";
-                tvs.TV06 = "DTV5";
-                tvs.TV07 = "DTV4";
+                newTvs.TV04 = "DTV1";
+                newTvs.TV05 = "DTV3";
+                newTvs.TV06 = "DTV5";
+                newTvs.TV07 = "DTV4";
                 break;
               default:
-                tvs.TV04 = values.TvsBarraSur;
-                tvs.TV05 = values.TvsBarraSur;
-                tvs.TV06 = values.TvsBarraSur;
-                tvs.TV07 = values.TvsBarraSur;
+                newTvs.TV04 = values.TvsBarraSur;
+                newTvs.TV05 = values.TvsBarraSur;
+                newTvs.TV06 = values.TvsBarraSur;
+                newTvs.TV07 = values.TvsBarraSur;
             }
-            tvs.TvsBarraPista = values.TvsBarraPista;
+            newTvs.TvsBarraPista = values.TvsBarraPista;
             switch (values.TvsBarraPista) {
               case "DTV123":
-                tvs.TV08 = "DTV1";
-                tvs.TV09 = "DTV2";
-                tvs.TV10 = "DTV3";
+                newTvs.TV08 = "DTV1";
+                newTvs.TV09 = "DTV2";
+                newTvs.TV10 = "DTV3";
                 break;
               case "DTV121":
-                tvs.TV08 = "DTV1";
-                tvs.TV09 = "DTV2";
-                tvs.TV10 = "DTV1";
+                newTvs.TV08 = "DTV1";
+                newTvs.TV09 = "DTV2";
+                newTvs.TV10 = "DTV1";
                 break;
               case "DTV542":
-                tvs.TV08 = "DTV5";
-                tvs.TV09 = "DTV4";
-                tvs.TV10 = "DTV2";
+                newTvs.TV08 = "DTV5";
+                newTvs.TV09 = "DTV4";
+                newTvs.TV10 = "DTV2";
                 break;
               case "DTV143":
-                tvs.TV08 = "DTV1";
-                tvs.TV09 = "DTV4";
-                tvs.TV10 = "DTV3";
+                newTvs.TV08 = "DTV1";
+                newTvs.TV09 = "DTV4";
+                newTvs.TV10 = "DTV3";
                 break;
               case "DTV153":
-                tvs.TV08 = "DTV1";
-                tvs.TV09 = "DTV5";
-                tvs.TV10 = "DTV3";
+                newTvs.TV08 = "DTV1";
+                newTvs.TV09 = "DTV5";
+                newTvs.TV10 = "DTV3";
                 break;
               default:
-                tvs.TV08 = values.TvsBarraPista;
-                tvs.TV09 = values.TvsBarraPista;
-                tvs.TV10 = values.TvsBarraPista;
+                newTvs.TV08 = values.TvsBarraPista;
+                newTvs.TV09 = values.TvsBarraPista;
+                newTvs.TV10 = values.TvsBarraPista;
             }
-            tvs.TvsBarraNorte = values.TvsBarraNorte;
+            newTvs.TvsBarraNorte = values.TvsBarraNorte;
             switch (values.TvsBarraNorte) {
               case "DTV1234":
-                tvs.TV11 = "DTV1";
-                tvs.TV12 = "DTV2";
-                tvs.TV13 = "DTV3";
-                tvs.TV14 = "DTV4";
+                newTvs.TV11 = "DTV1";
+                newTvs.TV12 = "DTV2";
+                newTvs.TV13 = "DTV3";
+                newTvs.TV14 = "DTV4";
                 break;
               case "DTV1212":
-                tvs.TV11 = "DTV1";
-                tvs.TV12 = "DTV2";
-                tvs.TV13 = "DTV1";
-                tvs.TV14 = "DTV2";
+                newTvs.TV11 = "DTV1";
+                newTvs.TV12 = "DTV2";
+                newTvs.TV13 = "DTV1";
+                newTvs.TV14 = "DTV2";
                 break;
               case "DTV1231":
-                tvs.TV11 = "DTV1";
-                tvs.TV12 = "DTV2";
-                tvs.TV13 = "DTV3";
-                tvs.TV14 = "DTV1";
+                newTvs.TV11 = "DTV1";
+                newTvs.TV12 = "DTV2";
+                newTvs.TV13 = "DTV3";
+                newTvs.TV14 = "DTV1";
                 break;
               case "DTV5432":
-                tvs.TV11 = "DTV5";
-                tvs.TV12 = "DTV4";
-                tvs.TV13 = "DTV3";
-                tvs.TV14 = "DTV2";
+                newTvs.TV11 = "DTV5";
+                newTvs.TV12 = "DTV4";
+                newTvs.TV13 = "DTV3";
+                newTvs.TV14 = "DTV2";
                 break;
               case "DTV3254":
-                tvs.TV11 = "DTV3";
-                tvs.TV12 = "DTV2";
-                tvs.TV13 = "DTV5";
-                tvs.TV14 = "DTV4";
+                newTvs.TV11 = "DTV3";
+                newTvs.TV12 = "DTV2";
+                newTvs.TV13 = "DTV5";
+                newTvs.TV14 = "DTV4";
                 break;
               case "DTV1354":
-                tvs.TV11 = "DTV1";
-                tvs.TV12 = "DTV3";
-                tvs.TV13 = "DTV5";
-                tvs.TV14 = "DTV4";
+                newTvs.TV11 = "DTV1";
+                newTvs.TV12 = "DTV3";
+                newTvs.TV13 = "DTV5";
+                newTvs.TV14 = "DTV4";
                 break;
               default:
-                tvs.TV11 = values.TvsBarraNorte;
-                tvs.TV12 = values.TvsBarraNorte;
-                tvs.TV13 = values.TvsBarraNorte;
-                tvs.TV14 = values.TvsBarraNorte;
+                newTvs.TV11 = values.TvsBarraNorte;
+                newTvs.TV12 = values.TvsBarraNorte;
+                newTvs.TV13 = values.TvsBarraNorte;
+                newTvs.TV14 = values.TvsBarraNorte;
             }
-            tvs.TvsEscaleraNorte = values.TvsEscaleraNorte;
+            newTvs.TvsEscaleraNorte = values.TvsEscaleraNorte;
             switch (values.TvsEscaleraNorte) {
               case "DTV1234":
-                tvs.TV23 = "DTV1";
-                tvs.TV24 = "DTV2";
-                tvs.TV25 = "DTV3";
-                tvs.TV26 = "DTV4";
+                newTvs.TV23 = "DTV1";
+                newTvs.TV24 = "DTV2";
+                newTvs.TV25 = "DTV3";
+                newTvs.TV26 = "DTV4";
                 break;
               case "DTV1212":
-                tvs.TV23 = "DTV1";
-                tvs.TV24 = "DTV2";
-                tvs.TV25 = "DTV1";
-                tvs.TV26 = "DTV2";
+                newTvs.TV23 = "DTV1";
+                newTvs.TV24 = "DTV2";
+                newTvs.TV25 = "DTV1";
+                newTvs.TV26 = "DTV2";
                 break;
               case "DTV1231":
-                tvs.TV23 = "DTV1";
-                tvs.TV24 = "DTV2";
-                tvs.TV25 = "DTV3";
-                tvs.TV26 = "DTV1";
+                newTvs.TV23 = "DTV1";
+                newTvs.TV24 = "DTV2";
+                newTvs.TV25 = "DTV3";
+                newTvs.TV26 = "DTV1";
                 break;
               case "DTV5432":
-                tvs.TV23 = "DTV5";
-                tvs.TV24 = "DTV4";
-                tvs.TV25 = "DTV3";
-                tvs.TV26 = "DTV2";
+                newTvs.TV23 = "DTV5";
+                newTvs.TV24 = "DTV4";
+                newTvs.TV25 = "DTV3";
+                newTvs.TV26 = "DTV2";
                 break;
               case "DTV3254":
-                tvs.TV23 = "DTV3";
-                tvs.TV24 = "DTV2";
-                tvs.TV25 = "DTV5";
-                tvs.TV26 = "DTV4";
+                newTvs.TV23 = "DTV3";
+                newTvs.TV24 = "DTV2";
+                newTvs.TV25 = "DTV5";
+                newTvs.TV26 = "DTV4";
                 break;
               case "DTV1354":
-                tvs.TV23 = "DTV1";
-                tvs.TV24 = "DTV3";
-                tvs.TV25 = "DTV5";
-                tvs.TV26 = "DTV4";
+                newTvs.TV23 = "DTV1";
+                newTvs.TV24 = "DTV3";
+                newTvs.TV25 = "DTV5";
+                newTvs.TV26 = "DTV4";
                 break;
               default:
-                tvs.TV23 = values.TvsEscaleraNorte;
-                tvs.TV24 = values.TvsEscaleraNorte;
-                tvs.TV25 = values.TvsEscaleraNorte;
-                tvs.TV26 = values.TvsEscaleraNorte;
+                newTvs.TV23 = values.TvsEscaleraNorte;
+                newTvs.TV24 = values.TvsEscaleraNorte;
+                newTvs.TV25 = values.TvsEscaleraNorte;
+                newTvs.TV26 = values.TvsEscaleraNorte;
             }
-            tvs.TvsEscaleraCentro = values.TvsEscaleraCentro;
+            newTvs.TvsEscaleraCentro = values.TvsEscaleraCentro;
             switch (values.TvsEscaleraCentro) {
               case "DTV1234":
-                tvs.TV19 = "DTV1";
-                tvs.TV20 = "DTV2";
-                tvs.TV21 = "DTV3";
-                tvs.TV22 = "DTV4";
+                newTvs.TV19 = "DTV1";
+                newTvs.TV20 = "DTV2";
+                newTvs.TV21 = "DTV3";
+                newTvs.TV22 = "DTV4";
                 break;
               case "DTV1212":
-                tvs.TV19 = "DTV1";
-                tvs.TV20 = "DTV2";
-                tvs.TV21 = "DTV1";
-                tvs.TV22 = "DTV2";
+                newTvs.TV19 = "DTV1";
+                newTvs.TV20 = "DTV2";
+                newTvs.TV21 = "DTV1";
+                newTvs.TV22 = "DTV2";
                 break;
               case "DTV1231":
-                tvs.TV19 = "DTV1";
-                tvs.TV20 = "DTV2";
-                tvs.TV21 = "DTV3";
-                tvs.TV22 = "DTV1";
+                newTvs.TV19 = "DTV1";
+                newTvs.TV20 = "DTV2";
+                newTvs.TV21 = "DTV3";
+                newTvs.TV22 = "DTV1";
                 break;
               case "DTV5432":
-                tvs.TV19 = "DTV5";
-                tvs.TV20 = "DTV4";
-                tvs.TV21 = "DTV3";
-                tvs.TV22 = "DTV2";
+                newTvs.TV19 = "DTV5";
+                newTvs.TV20 = "DTV4";
+                newTvs.TV21 = "DTV3";
+                newTvs.TV22 = "DTV2";
                 break;
               case "DTV3254":
-                tvs.TV19 = "DTV3";
-                tvs.TV20 = "DTV2";
-                tvs.TV21 = "DTV5";
-                tvs.TV22 = "DTV4";
+                newTvs.TV19 = "DTV3";
+                newTvs.TV20 = "DTV2";
+                newTvs.TV21 = "DTV5";
+                newTvs.TV22 = "DTV4";
                 break;
               case "DTV1354":
-                tvs.TV19 = "DTV1";
-                tvs.TV20 = "DTV3";
-                tvs.TV21 = "DTV5";
-                tvs.TV22 = "DTV4";
+                newTvs.TV19 = "DTV1";
+                newTvs.TV20 = "DTV3";
+                newTvs.TV21 = "DTV5";
+                newTvs.TV22 = "DTV4";
                 break;
               default:
-                tvs.TV19 = values.TvsEscaleraCentro;
-                tvs.TV20 = values.TvsEscaleraCentro;
-                tvs.TV21 = values.TvsEscaleraCentro;
-                tvs.TV22 = values.TvsEscaleraCentro;
+                newTvs.TV19 = values.TvsEscaleraCentro;
+                newTvs.TV20 = values.TvsEscaleraCentro;
+                newTvs.TV21 = values.TvsEscaleraCentro;
+                newTvs.TV22 = values.TvsEscaleraCentro;
             }
-            tvs.TvsEscaleraSur = values.TvsEscaleraSur;
+            newTvs.TvsEscaleraSur = values.TvsEscaleraSur;
             switch (values.TvsEscaleraSur) {
               case "DTV1234":
-                tvs.TV15 = "DTV1";
-                tvs.TV16 = "DTV2";
-                tvs.TV17 = "DTV3";
-                tvs.TV18 = "DTV4";
+                newTvs.TV15 = "DTV1";
+                newTvs.TV16 = "DTV2";
+                newTvs.TV17 = "DTV3";
+                newTvs.TV18 = "DTV4";
                 break;
               case "DTV1212":
-                tvs.TV15 = "DTV1";
-                tvs.TV16 = "DTV2";
-                tvs.TV17 = "DTV1";
-                tvs.TV18 = "DTV2";
+                newTvs.TV15 = "DTV1";
+                newTvs.TV16 = "DTV2";
+                newTvs.TV17 = "DTV1";
+                newTvs.TV18 = "DTV2";
                 break;
               case "DTV1231":
-                tvs.TV15 = "DTV1";
-                tvs.TV16 = "DTV2";
-                tvs.TV17 = "DTV3";
-                tvs.TV18 = "DTV1";
+                newTvs.TV15 = "DTV1";
+                newTvs.TV16 = "DTV2";
+                newTvs.TV17 = "DTV3";
+                newTvs.TV18 = "DTV1";
                 break;
               case "DTV5432":
-                tvs.TV15 = "DTV5";
-                tvs.TV16 = "DTV4";
-                tvs.TV17 = "DTV3";
-                tvs.TV18 = "DTV2";
+                newTvs.TV15 = "DTV5";
+                newTvs.TV16 = "DTV4";
+                newTvs.TV17 = "DTV3";
+                newTvs.TV18 = "DTV2";
                 break;
               case "DTV3254":
-                tvs.TV15 = "DTV3";
-                tvs.TV16 = "DTV2";
-                tvs.TV17 = "DTV5";
-                tvs.TV18 = "DTV4";
+                newTvs.TV15 = "DTV3";
+                newTvs.TV16 = "DTV2";
+                newTvs.TV17 = "DTV5";
+                newTvs.TV18 = "DTV4";
                 break;
               case "DTV1354":
-                tvs.TV15 = "DTV1";
-                tvs.TV16 = "DTV3";
-                tvs.TV17 = "DTV5";
-                tvs.TV18 = "DTV4";
+                newTvs.TV15 = "DTV1";
+                newTvs.TV16 = "DTV3";
+                newTvs.TV17 = "DTV5";
+                newTvs.TV18 = "DTV4";
                 break;
               default:
-                tvs.TV15 = values.TvsEscaleraSur;
-                tvs.TV16 = values.TvsEscaleraSur;
-                tvs.TV17 = values.TvsEscaleraSur;
-                tvs.TV18 = values.TvsEscaleraSur;
+                newTvs.TV15 = values.TvsEscaleraSur;
+                newTvs.TV16 = values.TvsEscaleraSur;
+                newTvs.TV17 = values.TvsEscaleraSur;
+                newTvs.TV18 = values.TvsEscaleraSur;
             }
             const vwDestNames = {
               VWN: "VW-Norte",
               VWC: "VW-Centro",
               VWS: "VW-Sur",
             };
-            const mappings = Object.entries(estado.tvs).map(([tv, source]) => ({
+            const mappings = Object.entries(newTvs).map(([tv, source]) => ({
               source,
               dest: vwDestNames[tv] || tv,
             }));
             await joinMultipleTVs(mappings);
-            handleChangeEstadoVideo(tvs);
+            handleChangeEstadoVideo(newTvs);
           }}
         >
           <Form>

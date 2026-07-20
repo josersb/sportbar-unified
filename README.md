@@ -65,45 +65,55 @@ SportBar Unified es una aplicación web React que permite controlar de manera ce
 Configuración detallada del entorno: [[Docs/DEVELOPMENT_ENVIRONMENT]] | [[Docs/ENVIRONMENT_SUMMARY]]
 
 ### Backend
-- **Express.js 4.19.2** - Servidor web para producción
-- **CORS** configurado para integración Arranger
+- **Express.js 4.19.2** — servidor web para producción
+- **lowdb 7.0.1** — persistencia de estado compartido en red
+- **Helmet 8.3.0** — security headers (CSP, HSTS, X-Frame-Options)
+- **express-rate-limit 8.6.0** — rate limiting en API de estado
 
 ## 📁 Estructura del Proyecto
 
 ```
 sportbar-unified/
 ├── src/                          # Código fuente React
-│   ├── componentes/              # Componentes React
-│   │   ├── Body.jsx             # Componente principal con routing
-│   │   ├── Header.jsx           # Cabecera de la aplicación
-│   │   ├── Nav.jsx              # Navegación principal
-│   │   ├── Aside.jsx            # Panel lateral
-│   │   ├── MatrizVideo.jsx      # Control de matriz de video
-│   │   ├── Canales.jsx          # Gestión de canales
-│   │   ├── Audio.jsx            # Control de audio
-│   │   ├── Arranger.jsx         # Interface Arranger
-│   │   └── Soporte.jsx          # Información de soporte
-│   ├── contexto/                # Context API de React
-│   │   └── Contexto.jsx         # Estado global de la aplicación
-│   ├── elementos/               # Componentes reutilizables
-│   ├── hooks/                   # Custom hooks
-│   └── imagenes/                # Logos de canales deportivos
-├── public/                       # Assets estáticos
-│   └── logos/                   # Logos adicionales
+│   ├── api/                      # Cliente HTTP Arranger
+│   │   └── arrangerApi.js        # Comandos centralizados
+│   ├── componentes/              # Componentes React (15)
+│   │   ├── Body.jsx              # Layout principal con routing
+│   │   ├── Header.jsx            # Cabecera
+│   │   ├── Nav.jsx               # Navegación
+│   │   ├── Aside.jsx             # Panel lateral (estado en tiempo real)
+│   │   ├── MatrizVideo.jsx       # Control de matriz (47 destinos)
+│   │   ├── MatrizPreset.jsx      # Gestión de 5 presets
+│   │   ├── Canales.jsx           # Gestión de canales
+│   │   ├── Audio.jsx             # Control de audio
+│   │   ├── Arranger.jsx          # Links al Arranger
+│   │   ├── Portada.jsx           # Página de inicio
+│   │   ├── Soporte.jsx           # Información de soporte
+│   │   └── Toast.jsx             # Notificaciones toast
+│   ├── contexto/                 # Context API
+│   │   ├── Contexto.jsx          # Estado global
+│   │   └── dispositivos.js       # Registry de 8 dispositivos
+│   ├── data/
+│   │   └── irCodes.js            # Códigos IR para cambio de canal
+│   ├── elementos/                # Componentes reutilizables
+│   └── imagenes/                 # Logos de canales
+├── wiki/                         # Wiki interconectada (32 páginas)
+├── Docs/                         # Documentación de desarrollo
+│   ├── development/              # Roadmap, estado, setup
+│   └── referencia-instalacion.md # Inventario de equipos
 ├── server/                       # Servidor Express
-│   ├── server.js                # Servidor de producción
-│   └── package.json             # Dependencias del servidor
-├── dist/                        # Build de producción (generado)
-├── package.json                 # Configuración principal
-├── vite.config.js              # Configuración Vite
-└── README.md                   # Esta documentación
+│   └── server.js                 # API state + proxy Arranger + SPA
+├── dist/                         # Build de producción (generado)
+├── package.json
+├── vite.config.js
+└── .env.example                  # Template de variables (sin tokens)
 ```
 
 ## ⚡ Instalación y Configuración
 
 ### Requisitos Previos
-- Node.js 18.17.1
-- NPM o Yarn
+- Node.js 18.17.1 (o superior, funciona con Node 24)
+- **pnpm** (gestor de paquetes exclusivo del proyecto)
 
 ### Instalación Completa
 
@@ -112,9 +122,12 @@ Ver [[Docs/SETUP_INSTRUCTIONS]] para guía paso a paso.
 ```bash
 # Clonar e instalar dependencias
 cd sportbar-unified
-pnpm run setup
 
-# O manualmente:
+# 1. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con los valores reales (IP Arranger, token)
+
+# 2. Instalar dependencias
 pnpm install
 pnpm run install:server
 ```
@@ -281,35 +294,44 @@ Historial completo: [[Docs/MIGRATION_LOG]] | Análisis original: [[Docs/Análisi
 - ✅ Versionado coherente
 - ✅ Deploy automatizado
 
+## 📚 Documentación para Desarrolladores
+
+### Wiki del Proyecto
+
+El proyecto incluye una **wiki interconectada** con 32 páginas en formato Markdown (compatible con Obsidian). Cubre todos los componentes, APIs, dispositivos hardware, conceptos y configuración:
+
+```bash
+# Abrir la wiki con Obsidian
+obsidian vault/wiki/
+```
+
+Índice completo: [[wiki/index|Índice de la wiki]]
+
+### CodeGraph
+
+El proyecto soporta **CodeGraph** para navegación inteligente del código base:
+
+```bash
+# Inicializar (primera vez)
+codegraph init
+
+# Explorar símbolos y call paths
+codegraph explore "MatrizVideo joinMultipleTVs"
+```
+
+### Roadmap
+
+El estado del proyecto y tareas pendientes: [[Docs/development/roadmap|Roadmap (HTML + PDF)]]
+
 ## 🤝 Contribución
 
 Convenciones de IA y arquitectura: [[AGENTS]]
 
-### Estructura de Commits
-```
-feat: nueva funcionalidad
-fix: corrección de bug
-docs: documentación
-style: formateo
-refactor: refactorización
-test: pruebas
-```
-
 ### Workflow de Desarrollo
-1. Desarrollo en `pnpm run dev`
-2. Testing de funcionalidad
-3. Build con `pnpm run build`
-4. Testing en producción con `pnpm run serve`
-5. Deploy
-
-## 📄 Licencia
-
-ISC License - SportBar Team
+1. Copiar `.env.example` → `.env` y configurar variables
+2. `pnpm install` + `pnpm run install:server`
+3. `pnpm run dev` (frontend) o `pnpm run dev:full` (full stack)
+4. Build: `pnpm run build`
+5. Tests: `pnpm run test`
 
 ---
-
-## 📞 Soporte
-
-Para soporte técnico, consultar la sección `/soporte` en la aplicación o contactar al equipo de desarrollo.
-
-**¡Sistema SportBar listo para controlar tu experiencia audiovisual! 🏆**

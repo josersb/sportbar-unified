@@ -1,0 +1,6 @@
+# Evitar corrupcion de archivos binarios por CRLF conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary

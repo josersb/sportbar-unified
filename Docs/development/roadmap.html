@@ -42,7 +42,7 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">27 commits · 34 tests · master · Último: documentacion audit (18 jul 2026)</p>
+<p class="sub">32 commits · 35 tests · master · Último: Arranger bugfixes + CVE patches (21 jul 2026)</p>
 
 <div class="section-title">SDD CHANGES</div>
 
@@ -54,65 +54,45 @@
 
 <div class="section-title">INFRA & QUALITY</div>
 
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Testing Setup</h2><p>Vitest 2.1.9 + Testing Library. 34 tests (12 API + 22 componentes). strict_tdd activo.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Linting & Formatting</h2><p>ESLint 9.x flat config + Prettier. 43 issues corregidos. Quedan 22 immutability warnings pendientes.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Testing Setup</h2><p>Vitest 3.2.6 + Testing Library. 35 tests (12 API + 23 componentes). 0 errores ESLint. Cobertura de comandos Arranger, IR, canales, presets.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Linting & Formatting</h2><p>ESLint 9.x flat config + Prettier. 43 issues + 22 immutability warnings corregidos. 0 errores en todo el proyecto.</p></div><span class="badge badge-done">done</span></div>
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>State Persistence</h2><p>lowdb 7.0.1 en Express. GET/POST /api/state. Persistencia dual: servidor → localStorage. Estado compartido entre equipos en red local.</p></div><span class="badge badge-done">done</span></div>
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>LLM Wiki</h2><p>Vault Obsidian con 28 paginas y ~85 wikilinks. Schema de entidades en AGENTS.md. Skill global llm-wiki configurada.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Documentacion</h2><p>Auditoria completa wiki vs codigo. 4 paginas criticas actualizadas, 7 paginas nuevas creadas (Body, Header, Nav, Portada, Soporte, IrCodes, Seguridad). README actualizado con nuevas features.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Repo privado en github.com/josersb/sportbar-unified. Collaborator tecnopulsar invitado (pendiente aceptacion).</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 1+2</h2><p>Token removido de codigo + historial git. Helmet con CSP. CORS restrictivo. Rate limiting /api/state. Body limit 1mb. Tabnabbing fix en Arranger.jsx.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Documentacion</h2><p>Auditoria completa wiki vs codigo. Paginas criticas actualizadas, nuevas paginas creadas. README actualizado con nuevas features.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Repo privado en github.com/josersb/sportbar-unified. Branching model definido (feature → v2 → master). 3 PRs mergeados.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 1+2</h2><p>Token removido de codigo + historial git. Helmet con CSP. CORS restrictivo. Rate limiting /api/state. Body limit 1mb. Tabnabbing fix.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 3</h2><p>Vitest 2.1.9 → 3.2.6 (CRITICAL CVE). Shell-quote via concurrently 7.6.0 → 9.2.4 (CRITICAL CVE). 0 breaking changes. Audit: 0 CRITICAL.</p></div><span class="badge badge-done">done</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Robustez</h2><p>Toast de error/success (5s dismiss). Timeout fetch 10s con AbortController. Retry con backoff 1s/2s/4s en proxy Express. Feedback visual en 4 componentes.</p></div><span class="badge badge-done">done</span></div>
+
+<div class="section-title">BUGFIXES (21 jul 2026)</div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Comunicacion Arranger</h2><p>3 bugs corregidos: (1) TVRK cambiaba de color aunque Arranger fallara, (2) fetch directo a 192.168.2.254 → proxy Express, (3) Invalid Security Key no detectado por no-cors.</p></div><span class="badge badge-done">PR #3</span></div>
 
 <div class="section-title">PENDING</div>
 
-<div class="card wip"><div class="idx">1</div><div class="body">
-  <h2>Seguridad — Ronda 3</h2>
-  <p>CVE patches y hardening pendiente de dependencias. Los CVEs actuales son de entorno dev o requieren actualizaciones con breaking changes.</p>
+<div class="card pending"><div class="idx">1</div><div class="body">
+  <h2>Seguridad — Ronda 4</h2>
+  <p>CVEs pendientes que requieren migracion con breaking changes.</p>
   <ul class="tasks">
-    <li>✅ Token cleanup + .gitignore</li>
-    <li>✅ Helmet + CORS restrictivo + rate limiting</li>
-    <li>🔲 Vitest 2.1.9 → >=3.2.6 (CRITICAL CVE, posible breaking changes)</li>
-    <li>🔲 shell-quote via concurrently (CRITICAL CVE, solo dev)</li>
-    <li>🔲 Vite 5.4.21 → >=6.4.3 (HIGH CVE, requiere migracion)</li>
-    <li>🔲 react-router 6.30.3 → >=6.30.4 (moderate CVE)</li>
+    <li>🔲 Vite 5.4.21 → ≥6.4.3 (HIGH CVE, requiere migracion)</li>
+    <li>🔲 react-router 6.30.3 → ≥6.30.4 (moderate CVE)</li>
   </ul>
-</div><span class="badge badge-wip">wip</span></div>
+</div><span class="badge badge-pending">todo</span></div>
 
 <div class="card pending"><div class="idx">2</div><div class="body">
-  <h2>Robustez</h2>
-  <p>Manejo de errores, retry, timeouts. La app no da feedback visual cuando fallan las requests al Arranger.</p>
-  <ul class="tasks">
-    <li>🔲 Toast/notificacion de error en UI cuando Arranger no responde</li>
-    <li>🔲 Retry automatico en proxy Express (3 intentos con backoff)</li>
-    <li>🔲 Timeout configurable en fetch (actualmente sin timeout)</li>
-    <li>🔲 Estado offline/online de dispositivos en Aside</li>
-  </ul>
-</div><span class="badge badge-pending">todo</span></div>
-
-<div class="card pending"><div class="idx">3</div><div class="body">
-  <h2>22 immutability warnings</h2>
-  <p>Mutacion directa de objetos del Contexto en 4 componentes. ESLint los reporta como react-hooks/immutability.</p>
-  <ul class="tasks">
-    <li>🔲 Audio.jsx: mutacion de estado.audio</li>
-    <li>🔲 Canales.jsx: mutacion de estado.decos</li>
-    <li>🔲 MatrizPreset.jsx: mutacion via handleChangeEstadoVideo</li>
-    <li>🔲 MatrizVideo.jsx: mutacion en onSubmit</li>
-  </ul>
-</div><span class="badge badge-pending">todo</span></div>
-
-<div class="card pending"><div class="idx">4</div><div class="body">
   <h2>Deploy a produccion</h2>
-  <p>Reemplazar la app vieja en :3000 por sportbar-unified. Nueva app ya testeada en :3101 side-by-side.</p>
+  <p>Reemplazar la app vieja en :3000 por sportbar-unified. Ya testeada en :3101 contra Arranger real.</p>
   <ul class="tasks">
-    <li>🔲 Validar que todas las funcionalidades funcionan en :3101</li>
+    <li>✅ Validar funcionalidades en :3101 contra Arranger</li>
     <li>🔲 Migrar estado actual de localStorage al backend lowdb</li>
     <li>🔲 Swap de puertos: nueva app → :3000</li>
     <li>🔲 Rollback plan si algo falla</li>
   </ul>
 </div><span class="badge badge-pending">todo</span></div>
 
-<div class="card pending"><div class="idx">5</div><div class="body">
+<div class="card pending"><div class="idx">3</div><div class="body">
   <h2>Branch protection + CI</h2>
-  <p>Proteccion de rama master y CI basico para validar builds y tests en cada push.</p>
+  <p>Proteccion de ramas y CI basico para validar builds y tests en cada push.</p>
   <ul class="tasks">
     <li>🔲 Branch protection rules (require PR, require tests)</li>
     <li>🔲 GitHub Actions: build + test + lint en push</li>
@@ -120,12 +100,23 @@
   </ul>
 </div><span class="badge badge-pending">todo</span></div>
 
-<div class="card pending"><div class="idx">6</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptacion.</p></div><span class="badge badge-pending">wait</span></div>
+<div class="card pending"><div class="idx">4</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptacion.</p></div><span class="badge badge-pending">wait</span></div>
+
+<div class="card pending"><div class="idx">5</div><div class="body">
+  <h2>UI/UX Redesign</h2>
+  <p>Rediseno completo de la interfaz web. Mejora de componentes, layout, consistencia visual, y experiencia de usuario para control de matriz audiovisual.</p>
+  <ul class="tasks">
+    <li>🔲 Design system y tokens de diseño</li>
+    <li>🔲 Layout responsive y navegacion</li>
+    <li>🔲 Componentes redisenados (MatrizVideo, Audio, Canales, Presets)</li>
+    <li>🔲 Modo oscuro/claro</li>
+    <li>🔲 Accesibilidad (a11y)</li>
+  </ul>
+</div><span class="badge badge-pending">todo</span></div>
 
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado (12)</span>
-  <span><span class="dot dot-wip"></span> En progreso (1)</span>
+  <span><span class="dot dot-done"></span> Completado (16)</span>
   <span><span class="dot dot-pending"></span> Pendiente (5)</span>
 </div>
 

@@ -7,8 +7,11 @@
  * Listo para ser importado y utilizado en cualquier parte del proyecto.
  */
 
-const ARRANGER_BASE_URL = import.meta.env.VITE_ARRANGER_API_BASE;
-if (!ARRANGER_BASE_URL) throw new Error("Missing VITE_ARRANGER_API_BASE");
+// Las requests al Arranger van a través del proxy de Express (/api/command/*),
+// no directamente a 192.168.2.254. Esto permite que la app funcione desde
+// cualquier PC que pueda alcanzar el servidor Express, sin necesidad de
+// estar en la misma red local que el Arranger.
+const ARRANGER_BASE_URL = "/api/command";
 const ARRANGER_TOKEN = import.meta.env.VITE_ARRANGER_TOKEN;
 if (!ARRANGER_TOKEN) throw new Error("Missing VITE_ARRANGER_TOKEN");
 
@@ -26,10 +29,11 @@ export async function sendArrangerCommand(command, options = {}, timeoutMs = REQ
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+  // Ya no usamos mode: "no-cors": ahora las requests van al mismo origen
+  // (Express proxy) y CORS no es problema. Esto permite leer el body
+  // y detectar errores del Arranger como "Invalid Security Key".
   const fetchOptions = {
     method: "GET",
-    mode: "no-cors",
-    cache: "default",
     signal: controller.signal,
     ...options,
   };
@@ -37,9 +41,19 @@ export async function sendArrangerCommand(command, options = {}, timeoutMs = REQ
   try {
     const response = await fetch(url, fetchOptions);
     clearTimeout(timeoutId);
-    // No se puede leer el body en modo no-cors, pero se puede loguear el status
+
+    const text = await response.text();
+
+    // El Arranger devuelve HTTP 200 incluso con errores.
+    // Detectamos mensajes de error en el body para no tratar la
+    // respuesta como exitosa si el comando no se ejecutó realmente.
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes("invalid") || lowerText.includes("error") || lowerText.includes("not found")) {
+      throw new Error(`Arranger rechazó el comando: ${text.trim()}`);
+    }
+
     if (process.env.NODE_ENV === "development") {
-      console.log(`[ArrangerAPI] Comando enviado: ${command} → Status: ${response.status}`);
+      console.log(`[ArrangerAPI] Comando enviado: ${command} → ${text.trim()}`);
     }
     return response;
   } catch (error) {

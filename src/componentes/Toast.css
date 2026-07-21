@@ -33,6 +33,17 @@
   border: 1px solid #218838;
 }
 
+.toast--info {
+  background: #17a2b8;
+  border: 1px solid #138496;
+}
+
+.toast--warning {
+  background: #ffc107;
+  border: 1px solid #d39e00;
+  color: #1a1a2e;
+}
+
 @keyframes toast-slide-in {
   from {
     transform: translateX(100%);

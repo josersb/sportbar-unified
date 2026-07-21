@@ -1,29 +1,28 @@
-import "./Soporte.css";
+import PageContainer from "./ui/PageContainer";
+import styles from "./Soporte.module.css";
 
 const Soporte = () => {
   return (
     <main>
-      <div className="soporte-main-container">
-        <h3 className="soporte-main-titulo">Wetech Latam soporte técnico</h3>
-        <ul className="soporte-main-grillaFavoritos">
+      <PageContainer>
+        <h3 className={styles.titulo}>Wetech Latam soporte técnico</h3>
+        <ul className={styles.grillaLinks}>
           <a
             href="http://www.wetechlatam.com"
             target="blank"
-            className="soporte-link"
-            alt="http://www.wetechlatam.com"
+            className={styles.link}
           >
             Home Page Wetech Latam
           </a>
           <a
             href="mailto:soporte@wetechar.com"
             target="blank"
-            className="soporte-link"
-            alt="soporte@wetechar.com"
+            className={styles.link}
           >
             Correo electrónico soporte técnico
           </a>
         </ul>
-      </div>
+      </PageContainer>
     </main>
   );
 };

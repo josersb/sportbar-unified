@@ -3,6 +3,7 @@ import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import { DISPOSITIVOS, getDevice } from "./contexto/dispositivos";
 import Body from "./componentes/Body";
 import { ToastProvider } from "./componentes/Toast";
+import ThemeProvider from "./contexto/ThemeProvider";
 import "./componentes/Toast.css";
 
 // Migration function: converts v0 (decos[]) to v1 (dispositivos{})
@@ -188,6 +189,7 @@ const App = () => {
   };
 
   return (
+    <ThemeProvider>
       <ProviderUser
         value={{
           estado,
@@ -202,6 +204,7 @@ const App = () => {
           <Body />
         </ToastProvider>
       </ProviderUser>
+    </ThemeProvider>
   );
 };
 

@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import "./Body.css";
+import styles from "./Body.module.css";
 import Header from "./Header";
 import Nav from "./Nav";
 import Portada from "./Portada";
@@ -13,7 +13,7 @@ import Soporte from "./Soporte";
 function Body() {
   return (
     <Router>
-      <div className="container">
+      <div className={styles.container}>
         <Header />
         <Nav />
         <Aside />

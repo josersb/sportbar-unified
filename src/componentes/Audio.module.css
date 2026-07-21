@@ -1,0 +1,85 @@
+/* ============================================================
+   Audio — CSS Module
+   ============================================================ */
+
+.titulo {
+  margin: 10px;
+  max-width: 500px;
+  border-bottom: 3px solid grey;
+}
+
+.formWrapper {
+  margin: 20px;
+  font-family: var(--font-family-primary, "Roboto", sans-serif);
+  font-weight: 400;
+  font-size: var(--font-size-md, 16px);
+}
+
+.formSelect {
+  width: 100px;
+  margin-left: 10px;
+  height: 24px;
+  font-size: var(--font-size-md, 16px);
+}
+
+.formInput {
+  width: 60px;
+  margin-left: 10px;
+  height: 24px;
+  font-size: var(--font-size-md, 16px);
+}
+
+.selectZona {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: start;
+}
+
+.selectElementos {
+  width: 70%;
+  margin-bottom: 40px;
+  height: 40px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  border-bottom: 1px solid gray;
+}
+
+.formSubmit {
+  margin-left: 10px;
+  width: 150px;
+  height: 30px;
+  border: 2px solid var(--color-brand-primary, #ff3900);
+  border-radius: 5px;
+  background-color: var(--color-surface-secondary, #f5f6f9);
+  font-size: var(--font-size-md, 16px);
+  font-weight: var(--font-weight-bold, 700);
+  text-align: center;
+  transition-duration: 0.4s;
+}
+
+.formSubmit:hover {
+  cursor: pointer;
+  color: var(--color-text-inverse, white);
+  background-color: var(--color-brand-primary, #ff3900);
+  box-shadow:
+    0 2px 2px 0 rgba(0, 0, 0, 0.24),
+    0 4px 4px 0 rgba(0, 0, 0, 0.19);
+}
+
+.formSubmit:active {
+  cursor: pointer;
+  color: var(--color-text-inverse, white);
+  background-color: var(--color-brand-primary, #ff3900);
+  box-shadow: 0 5px #666;
+  transform: translateY(4px);
+}
+
+.formSubmit:focus-visible,
+.formSelect:focus-visible,
+.formInput:focus-visible {
+  outline: 3px solid var(--color-brand-primary, #ff3900);
+  outline-offset: 2px;
+}

@@ -56,11 +56,15 @@ export function useToast() {
     return {
       error: () => {},
       success: () => {},
+      info: () => {},
+      warning: () => {},
     };
   }
 
   return {
     error: (message) => addToast(message, "error"),
     success: (message) => addToast(message, "success"),
+    info: (message) => addToast(message, "info"),
+    warning: (message) => addToast(message, "warning"),
   };
 }

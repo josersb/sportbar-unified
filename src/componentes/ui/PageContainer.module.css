@@ -1,0 +1,20 @@
+/* ============================================================
+   PageContainer — shared page wrapper
+   Replaces 7+ duplicated `.X-main-container` blocks.
+   ============================================================ */
+
+.page-container {
+  margin-top: 10px;
+  width: 100%;
+  height: auto;
+  min-height: 550px;
+  padding: 20px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background-color: var(--color-surface-secondary, #f5f6f9);
+  border: 1px solid var(--color-brand-primary, #ff3900);
+  font-family: var(--font-family-primary, "Roboto", sans-serif);
+  font-weight: 400;
+  font-size: var(--font-size-lg, 20px);
+}

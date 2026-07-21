@@ -12,8 +12,6 @@ vi.mock("../api/arrangerApi", () => ({
   joinMultipleTVs: mockJoinMultipleTVs,
 }));
 
-const reloadSpy = vi.fn();
-
 // Test TV values — each TV has a distinct source so we can verify mapping correctness
 const presetTvs = {
   VWN: "DTV1",
@@ -85,11 +83,6 @@ describe("MatrizPreset", () => {
     vi.clearAllMocks();
     // Mock localStorage to return preset with known TV values
     localStorage.setItem("estadoApp_Preset1", JSON.stringify(presetState));
-    // Stub window.location.reload
-    Object.defineProperty(window, "location", {
-      value: { reload: reloadSpy },
-      writable: true,
-    });
   });
 
   afterEach(() => {
@@ -149,15 +142,18 @@ describe("MatrizPreset", () => {
       expect(mappings[28]).toEqual({ source: "DTV5", dest: "TV26" });
     });
 
-    it("calls window.location.reload after joinMultipleTVs completes", async () => {
+    it("calls handleChangeEstadoVideo after joinMultipleTVs completes (no page reload)", async () => {
       const handleChangeEstadoVideo = vi.fn();
       renderWithContext({ handleChangeEstadoVideo });
 
       fireEvent.click(screen.getByText("Preset 1"));
 
       await vi.waitFor(() => {
-        expect(reloadSpy).toHaveBeenCalled();
+        expect(handleChangeEstadoVideo).toHaveBeenCalled();
       });
+
+      // Verify the data passed to handleChangeEstadoVideo matches preset TVs
+      expect(handleChangeEstadoVideo).toHaveBeenCalledWith(presetTvs);
     });
 
     it("does not throw when joinMultipleTVs rejects (error handled internally)", async () => {

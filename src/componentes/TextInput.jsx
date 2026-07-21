@@ -1,13 +1,14 @@
 import { useField } from "formik";
 import PropTypes from "prop-types";
 
-const TextInput = ({ label, ...props }) => {
+const TextInput = ({ label, id, ...props }) => {
   const [field, meta] = useField(props);
+  const inputId = id || props.name || `input-${label}`;
 
   return (
     <div className="control">
-      <label className="label">{label}</label>
-      <input className="input" {...field} {...props} />
+      <label className="label" htmlFor={inputId}>{label}</label>
+      <input className="input" id={inputId} {...field} {...props} />
       {meta.touched && meta.error ? <div className="error">{meta.error}</div> : null}
     </div>
   );
@@ -15,6 +16,7 @@ const TextInput = ({ label, ...props }) => {
 
 TextInput.propTypes = {
   label: PropTypes.string,
+  id: PropTypes.string,
 };
 
 export default TextInput;

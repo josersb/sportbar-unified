@@ -3,10 +3,11 @@ import { Formik, Form } from "formik";
 import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
-import "./MatrizVideo.css";
 import "./Toast.css";
 import { joinMultipleTVs, assignSourceToDestination } from "../api/arrangerApi";
 import { useToast } from "./Toast";
+import PageContainer from "./ui/PageContainer";
+import styles from "./MatrizVideo.module.css";
 
 const MatrizVideo = () => {
   const { estado, handleChangeEstadoVideo } = useContext(ContextoUser);
@@ -20,6 +21,7 @@ const MatrizVideo = () => {
     try {
       await assignSourceToDestination(deviceId, "TVRACK");
       handleChangeEstadoVideo({ ...tvs, TVRACK: deviceId });
+      toast.success(`${deviceId} asignado a TVRACK`);
     } catch {
       toast.error("Error al comunicar con el Arranger");
     }
@@ -27,9 +29,9 @@ const MatrizVideo = () => {
   };
 
   return (
-    <main className="matriz-main">
-      <div className="matriz-main-container">
-        <h3 className="matriz-main-titulo">Ajustes de la matriz de video</h3>
+    <main className={styles.main}>
+      <PageContainer>
+        <h3 className={styles.titulo}>Ajustes de la matriz de video</h3>
         <Formik
           initialValues={{
             //ALLTV: tvs.all,
@@ -344,39 +346,44 @@ const MatrizVideo = () => {
               source,
               dest: vwDestNames[tv] || tv,
             }));
-            await joinMultipleTVs(mappings);
-            handleChangeEstadoVideo(newTvs);
+            try {
+              await joinMultipleTVs(mappings);
+              handleChangeEstadoVideo(newTvs);
+              toast.success("Matriz de video actualizada");
+            } catch {
+              toast.error("Error al actualizar la matriz de video");
+            }
           }}
         >
           <Form>
-            <div className="matriz-main-form">
-              <div className="matriz-select-zona">
-                <h3 className="matriz-select-zona-titulo">Videos Wall Norte - Centro - Sur</h3>
-                <div className="matriz-select-vwallNCS">
-                  <Select id="select-VWN" label="VWall Norte" name="VWN" className="matriz-select">
+            <div className={styles.formContainer}>
+              <div className={styles.selectZona}>
+                <h3 className={styles.selectZonaTitulo}>Videos Wall Norte - Centro - Sur</h3>
+                <div className={styles.selectRow}>
+                  <Select id="select-VWN" label="VWall Norte" name="VWN" className={styles.formSelect}>
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
                     ))}
                   </Select>
-                  <Select label="VWall Centro" name="VWC" className="matriz-select">
+                  <Select label="VWall Centro" name="VWC" className={styles.formSelect}>
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
                     ))}
                   </Select>
-                  <Select label="VWall Sur" name="VWS" className="matriz-select">
+                  <Select label="VWall Sur" name="VWS" className={styles.formSelect}>
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
                     ))}
                   </Select>
                 </div>
               </div>
-              <div className="matriz-select-zona">
-                <h3 className="matriz-select-zona-titulo">Perimetro de TVs Norte - Centro - Sur</h3>
-                <div className="matriz-select-perimetro">
+              <div className={styles.selectZona}>
+                <h3 className={styles.selectZonaTitulo}>Perimetro de TVs Norte - Centro - Sur</h3>
+                <div className={styles.selectRow}>
                   <Select
                     label="TVs Escalera Norte"
                     name="TvsEscaleraNorte"
-                    className="matriz-select"
+                    className={styles.formSelect}
                   >
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
@@ -391,7 +398,7 @@ const MatrizVideo = () => {
                   <Select
                     label="TVs Escalera Centro"
                     name="TvsEscaleraCentro"
-                    className="matriz-select"
+                    className={styles.formSelect}
                   >
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
@@ -403,7 +410,7 @@ const MatrizVideo = () => {
                     <option value="DTV3254">DTV3,2,5,4</option>
                     <option value="DTV1354">DTV1,3,5,4</option>
                   </Select>
-                  <Select label="TVs Escalera Sur" name="TvsEscaleraSur" className="matriz-select">
+                  <Select label="TVs Escalera Sur" name="TvsEscaleraSur" className={styles.formSelect}>
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
                     ))}
@@ -416,12 +423,12 @@ const MatrizVideo = () => {
                   </Select>
                 </div>
               </div>
-              <div className="matriz-select-zona">
-                <h3 className="matriz-select-zona-titulo">
+              <div className={styles.selectZona}>
+                <h3 className={styles.selectZonaTitulo}>
                   Tvs de la Barra Norte - Livertador - Sur - Pista
                 </h3>
-                <div className="matriz-select-barra">
-                  <Select label="TVs Barra Norte" name="TvsBarraNorte" className="matriz-select">
+                <div className={styles.selectRow}>
+                  <Select label="TVs Barra Norte" name="TvsBarraNorte" className={styles.formSelect}>
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
                     ))}
@@ -435,7 +442,7 @@ const MatrizVideo = () => {
                   <Select
                     label="TVs Barra Livertador"
                     name="TvsBarraLivertador"
-                    className="matriz-select"
+                    className={styles.formSelect}
                   >
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
@@ -446,7 +453,7 @@ const MatrizVideo = () => {
                     <option value="DTV143">DTV1,4,3</option>
                     <option value="DTV153">DTV1,5,3</option>
                   </Select>
-                  <Select label="TVs Barra Sur" name="TvsBarraSur" className="matriz-select">
+                  <Select label="TVs Barra Sur" name="TvsBarraSur" className={styles.formSelect}>
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
                     ))}
@@ -457,7 +464,7 @@ const MatrizVideo = () => {
                     <option value="DTV3254">DTV3,2,5,4</option>
                     <option value="DTV1354">DTV1,3,5,4</option>
                   </Select>
-                  <Select label="TVs Barra Pista" name="TvsBarraPista" className="matriz-select">
+                  <Select label="TVs Barra Pista" name="TvsBarraPista" className={styles.formSelect}>
                     {getByCapability('videoSource').map(d => (
                       <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
                     ))}
@@ -469,16 +476,16 @@ const MatrizVideo = () => {
                   </Select>
                 </div>
               </div>
-              <div className="matriz-submit-container">
-                <button type="submit" className="form-submit">
+              <div className={styles.submitContainer}>
+                <button type="submit" className={styles.formSubmit}>
                   Enviar
                 </button>
               </div>
-              <div className="matriz-select-zona">
-                <h3 className="matriz-select-zona-titulo">
+              <div className={styles.selectZona}>
+                <h3 className={styles.selectZonaTitulo}>
                   Select Deco al TV de Monitoreo Multimedia - TVRACK
                 </h3>
-                <div className="matriz-select-rack">
+                <div className={styles.rackRow}>
                   {getByCapability('videoSource').map(d => {
                     const isActive = d.id === tvs.TVRACK;
                     return (
@@ -487,7 +494,7 @@ const MatrizVideo = () => {
                         type="button"
                         data-testid={`btn-${d.id}`}
                         onClick={handleBtnDTV(d.id)}
-                        className={`form-submit${isActive ? ' active' : ''}`}
+                        className={`${styles.formSubmit}${isActive ? ' active' : ''}`}
                         disabled={loadingBtn === d.id}
                         title={d.connected}
                         style={{
@@ -504,11 +511,11 @@ const MatrizVideo = () => {
                   })}
                 </div>
               </div>
-              <div className="matriz-select-zona">
-                <h3 className="matriz-select-zona-titulo">
+              <div className={styles.selectZona}>
+                <h3 className={styles.selectZonaTitulo}>
                   Zonas Adicionales — VIP, Planta -1, +15
                 </h3>
-                <div className="matriz-select-zonas">
+                <div className={styles.zonasColumn}>
                   {(() => {
                     const labels = {
                       'aVip-Barra-Centro': 'VIP Barra Centro',
@@ -546,8 +553,11 @@ const MatrizVideo = () => {
             </div>
           </Form>
         </Formik>
-      </div>
-      <div className="matriz-main-preset"></div>
+      </PageContainer>
+      {/*
+        Empty div placeholder for MatrizPreset (rendered separately).
+        Kept for layout compatibility — the flex row needs a sibling.
+      */}
     </main>
   );
 };

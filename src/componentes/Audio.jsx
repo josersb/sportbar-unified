@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { Formik, Form } from "formik";
 import CheckBox from "./CheckBox";
 import Select from "./Select";
@@ -7,19 +7,17 @@ import TextInput from "./TextInput";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import { sendSerialCommand } from "../api/arrangerApi";
-import "./Audio.css";
 import "./Toast.css";
 import { useToast } from "./Toast";
+import PageContainer from "./ui/PageContainer";
+import styles from "./Audio.module.css";
 
 const Audio = () => {
   const { estado, handleChangeEstadoAudio } = useContext(ContextoUser);
 
   const audio = estado.audio;
   const toast = useToast();
-
-  //Tesira
-  // TesiraMute1
-  // send serial DTV1 "Mute1 set mute 1 true\x0A"
+  const [submitting, setSubmitting] = useState(false);
 
   return (
     <main>
@@ -37,6 +35,7 @@ const Audio = () => {
           unicaZona: "false",
         }}
         onSubmit={async (values) => {
+          setSubmitting(true);
           const newAudio = audio.map((zona, i) => ({
             ...zona,
             fuenteAudio: i === 0 ? values.audioNorte : i === 1 ? values.audioCentro : values.audioSur,
@@ -44,7 +43,6 @@ const Audio = () => {
             mute: i === 0 ? values.muteNorte : i === 1 ? values.muteCentro : values.muteSur,
           }));
           handleChangeEstadoAudio(newAudio);
-          console.log(audio);
 
           try {
             // DTV1 = RS232 gateway to Tesira DSP (not a DirecTV decoder for audio purposes)
@@ -66,21 +64,24 @@ const Audio = () => {
               "DTV1",
               `SourceSelector3 set sourceSelection ${values.audioSur}`
             );
+            toast.success("Audio actualizado correctamente");
           } catch {
             toast.error("Error al comunicar con el Arranger");
+          } finally {
+            setSubmitting(false);
           }
         }}
       >
-        <div className="audio-main-container">
-          <h3 className="audio-main-titulo">Ajuste de audio - zonas Sur-Centro-Norte</h3>
-          <div className="audio-main-form">
+        <PageContainer>
+          <h3 className={styles.titulo}>Ajuste de audio - zonas Sur-Centro-Norte</h3>
+          <div className={styles.formWrapper}>
             <Form>
-              <div className="audio-select-zona">
-                <div className="audio-select-elementos">
+              <div className={styles.selectZona}>
+                <div className={styles.selectElementos}>
                   <Select
                     label="Fuente de audio Norte...."
                     name="audioNorte"
-                    className="audio-form-select"
+                    className={styles.formSelect}
                   >
                     <option value="">--Seleccione Deco--</option>
                     {getByCapability('audioSource').map(d => (
@@ -94,15 +95,15 @@ const Audio = () => {
                     min="-40"
                     max="0"
                     step="1"
-                    className="audio-form-input"
+                    className={styles.formInput}
                   />
                   <CheckBox name="muteNorte">Mute</CheckBox>
                 </div>
-                <div className="audio-select-elementos">
+                <div className={styles.selectElementos}>
                   <Select
                     label="Fuente de audio Centro..."
                     name="audioCentro"
-                    className="audio-form-select"
+                    className={styles.formSelect}
                   >
                     <option value="">--Seleccione Deco--</option>
                     {getByCapability('audioSource').map(d => (
@@ -116,15 +117,15 @@ const Audio = () => {
                     min="-40"
                     max="0"
                     step="1"
-                    className="audio-form-input"
+                    className={styles.formInput}
                   />
                   <CheckBox name="muteCentro">Mute</CheckBox>
                 </div>
-                <div className="audio-select-elementos">
+                <div className={styles.selectElementos}>
                   <Select
                     label="Fuente de audio Sur........"
                     name="audioSur"
-                    className="audio-form-select"
+                    className={styles.formSelect}
                   >
                     <option value="">--Seleccione Deco--</option>
                     {getByCapability('audioSource').map(d => (
@@ -138,17 +139,17 @@ const Audio = () => {
                     min="-40"
                     max="0"
                     step="1"
-                    className="audio-form-input"
+                    className={styles.formInput}
                   />
                   <CheckBox name="muteSur">Mute</CheckBox>
                 </div>
               </div>
-              <button type="submit" className="form-submit">
-                Enviar
+              <button type="submit" className={styles.formSubmit} disabled={submitting}>
+                {submitting ? "Enviando..." : "Enviar"}
               </button>
             </Form>
           </div>
-        </div>
+        </PageContainer>
       </Formik>
     </main>
   );

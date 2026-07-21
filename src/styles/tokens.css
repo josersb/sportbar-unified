@@ -1,0 +1,99 @@
+/* ============================================================
+   Design Tokens — SportBar Unified
+   All CSS custom properties in :root for global availability.
+   Dark mode overrides under [data-theme="dark"].
+   ============================================================ */
+
+:root {
+  /* ---- Brand Colors ---- */
+  --color-brand-primary: #ff3900;
+  --color-brand-secondary: #807781;
+
+  /* ---- Surface Colors ---- */
+  --color-surface: #ffffff;
+  --color-surface-secondary: #f5f6f9;
+  --color-surface-aside: rgb(235, 235, 253);
+  --color-surface-footer: rgb(86, 182, 247);
+
+  /* ---- Text Colors ---- */
+  --color-text-primary: #000000;
+  --color-text-secondary: #f5f6f9;
+  --color-text-inverse: #ffffff;
+
+  /* ---- Border Colors ---- */
+  --color-border: #000000;
+
+  /* ---- Status Colors ---- */
+  --color-hover: red;
+  --color-active: #000000;
+
+  /* ---- Spacing Scale ---- */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --space-xl: 32px;
+
+  /* ---- Typography ---- */
+  --font-family-primary: "Roboto", sans-serif;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 24px;
+  --font-size-xl: 32px;
+  --font-weight-bold: 700;
+
+  /* ---- Shadows ---- */
+  --shadow-sm: 1px 1px 0px #ff3900;
+  --shadow-md: 2px 3px 0px red;
+
+  /* ---- Borders ---- */
+  --border-width: 1px;
+  --border-style: solid;
+  --border-color: var(--color-border);
+
+  /* ---- Transitions ---- */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
+
+  /* ---- Device Colors (used by Aside and MatrizVideo) ---- */
+  --DTV1: #EF9A9A;
+  --DTV2: #EC407A;
+  --DTV3: #7E57C2;
+  --DTV4: #42A5F5;
+  --DTV5: #66BB6A;
+  --DTV6: #FFEE58;
+  --DTV7: #FFCA28;
+  --DTV8: #BDBDBD;
+
+  /* ---- Layout Sizing ---- */
+  --header-height: 70px;
+  --nav-height: 25px;
+  --aside-min-height: 550px;
+}
+
+/* ============================================================
+   Dark Mode Overrides
+   ============================================================ */
+[data-theme="dark"] {
+  /* ---- Surface Colors ---- */
+  --color-surface: #1a1a2e;
+  --color-surface-secondary: #16213e;
+  --color-surface-aside: #1a1a2e;
+  --color-surface-footer: #0f3460;
+
+  /* ---- Text Colors ---- */
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #1a1a2e;
+  --color-text-inverse: #ffffff;
+
+  /* ---- Border Colors ---- */
+  --color-border: #333333;
+
+  /* ---- Status Colors ---- */
+  --color-hover: #ff6b35;
+  --color-active: #e0e0e0;
+
+  /* ---- Shadows ---- */
+  --shadow-sm: 1px 1px 0px #ff6b35;
+  --shadow-md: 2px 3px 0px #ff6b35;
+}

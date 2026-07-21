@@ -1,0 +1,58 @@
+/* ============================================================
+   Nav — CSS Module
+   ============================================================ */
+
+.container {
+  box-sizing: content-box;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  width: auto;
+  height: var(--nav-height, 25px);
+  padding: 10px var(--space-lg, 20px);
+  background-color: var(--color-brand-secondary, #807781);
+}
+
+.ulContainer {
+  max-width: 70%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.linkItem {
+  width: 150px;
+  margin-top: 5px;
+  text-align: center;
+  list-style: none;
+  font-family: var(--font-family-primary, "Roboto", sans-serif);
+  font-weight: var(--font-weight-bold, 700);
+  font-size: var(--font-size-md, 16px);
+  color: var(--color-text-secondary, #f5f6f9);
+  text-shadow: var(--shadow-sm, 1px 1px 0 #ff3900);
+  text-decoration: none;
+}
+
+.linkItem:hover {
+  cursor: pointer;
+  color: var(--color-text-inverse, #ffffff);
+  text-shadow: var(--shadow-md, 2px 3px 0 red);
+}
+
+.linkItem:active {
+  cursor: pointer;
+  color: var(--color-active, #000000);
+  text-shadow: var(--shadow-md, 2px 3px 0 red);
+}
+
+.linkItem:focus-visible {
+  outline: 3px solid var(--color-brand-primary, #ff3900);
+  outline-offset: 2px;
+}
+
+/* Active NavLink — React Router adds this class automatically
+   when the route matches. */
+.active {
+  color: #000000;
+  text-shadow: 2px 3px red;
+}

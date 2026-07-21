@@ -1,210 +1,130 @@
 import { useRef, useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
-import { joinMultipleTVs } from "../api/arrangerApi";
-import "./MatrizPreset.css";
+import { usePreset } from "../hooks/usePreset";
 import "./Toast.css";
 import { useToast } from "./Toast";
+import styles from "./MatrizPreset.module.css";
 
 const MatrizPreset = () => {
-  const { estado, handleChangeEstadoVideo, handleChangeEstadoPreset } = useContext(ContextoUser);
-  const tvs = estado.tvs;
+  const { estado } = useContext(ContextoUser);
   const descripcionPreset = estado.descripcionPreset;
   const toast = useToast();
 
-  const useInputRefPreset1 = useRef();
-  const useInputRefPreset2 = useRef();
-  const useInputRefPreset3 = useRef();
-  const useInputRefPreset4 = useRef();
-  const useInputRefPreset5 = useRef();
+  // Generic preset hook — one instance per preset (1..5)
+  const preset1 = usePreset(1);
+  const preset2 = usePreset(2);
+  const preset3 = usePreset(3);
+  const preset4 = usePreset(4);
+  const preset5 = usePreset(5);
 
-  const handleCargaMatriz = async () => {
-    const mappings = [
-      { source: tvs.VWN, dest: "VW-Norte" },
-      { source: tvs.VWC, dest: "VW-Centro" },
-      { source: tvs.VWS, dest: "VW-Sur" },
-      { source: tvs.TV01, dest: "TV01" },
-      { source: tvs.TV02, dest: "TV02" },
-      { source: tvs.TV03, dest: "TV03" },
-      { source: tvs.TV04, dest: "TV04" },
-      { source: tvs.TV05, dest: "TV05" },
-      { source: tvs.TV06, dest: "TV06" },
-      { source: tvs.TV07, dest: "TV07" },
-      { source: tvs.TV08, dest: "TV08" },
-      { source: tvs.TV09, dest: "TV09" },
-      { source: tvs.TV10, dest: "TV10" },
-      { source: tvs.TV11, dest: "TV11" },
-      { source: tvs.TV12, dest: "TV12" },
-      { source: tvs.TV13, dest: "TV13" },
-      { source: tvs.TV14, dest: "TV14" },
-      { source: tvs.TV15, dest: "TV15" },
-      { source: tvs.TV16, dest: "TV16" },
-      { source: tvs.TV17, dest: "TV17" },
-      { source: tvs.TV18, dest: "TV18" },
-      { source: tvs.TV19, dest: "TV19" },
-      { source: tvs.TV20, dest: "TV20" },
-      { source: tvs.TV21, dest: "TV21" },
-      { source: tvs.TV22, dest: "TV22" },
-      { source: tvs.TV23, dest: "TV23" },
-      { source: tvs.TV24, dest: "TV24" },
-      { source: tvs.TV25, dest: "TV25" },
-      { source: tvs.TV26, dest: "TV26" },
-    ];
+  const inputRef1 = useRef();
+  const inputRef2 = useRef();
+  const inputRef3 = useRef();
+  const inputRef4 = useRef();
+  const inputRef5 = useRef();
+
+  const handleLoadPreset = (preset, label) => async () => {
     try {
-      await joinMultipleTVs(mappings);
+      await preset.load();
+      toast.success(`Preset ${label} cargado`);
     } catch {
       toast.error("Error al comunicar con el Arranger");
     }
   };
 
-  const handlePreset1 = () => {
-    // Obtenemos las tareas guardadas de localstorage Preset 1.
-    const estadoApp_Preset1_Guardado = localStorage.getItem("estadoApp_Preset1")
-      ? JSON.parse(localStorage.getItem("estadoApp_Preset1"))
-      : null;
-    handleChangeEstadoVideo(estadoApp_Preset1_Guardado.tvs);
-    handleCargaMatriz();
-    window.location.reload();
-  };
-  const handleGrabar1 = () => {
-    const newDescripcion = descripcionPreset.map((item, i) =>
-      i === 0 ? { ...item, preset1: useInputRefPreset1.current.value } : item
-    );
-    handleChangeEstadoPreset(newDescripcion);
-    localStorage.setItem("estadoApp_Preset1", JSON.stringify(estado));
-  };
-  const handlePreset2 = () => {
-    // Obtenemos las tareas guardadas de localstorage Preset 2.
-    const estadoApp_Preset2_Guardado = localStorage.getItem("estadoApp_Preset2")
-      ? JSON.parse(localStorage.getItem("estadoApp_Preset2"))
-      : null;
-    handleChangeEstadoVideo(estadoApp_Preset2_Guardado.tvs);
-    handleCargaMatriz();
-    window.location.reload();
-  };
-  const handleGrabar2 = () => {
-    const newDescripcion = descripcionPreset.map((item, i) =>
-      i === 1 ? { ...item, preset2: useInputRefPreset2.current.value } : item
-    );
-    handleChangeEstadoPreset(newDescripcion);
-    localStorage.setItem("estadoApp_Preset2", JSON.stringify(estado));
-  };
-  const handlePreset3 = () => {
-    // Obtenemos las tareas guardadas de localstorage Preset 3.
-    const estadoApp_Preset3_Guardado = localStorage.getItem("estadoApp_Preset3")
-      ? JSON.parse(localStorage.getItem("estadoApp_Preset3"))
-      : null;
-    handleChangeEstadoVideo(estadoApp_Preset3_Guardado.tvs);
-    handleCargaMatriz();
-    window.location.reload();
-  };
-  const handleGrabar3 = () => {
-    const newDescripcion = descripcionPreset.map((item, i) =>
-      i === 2 ? { ...item, preset3: useInputRefPreset3.current.value } : item
-    );
-    handleChangeEstadoPreset(newDescripcion);
-    localStorage.setItem("estadoApp_Preset3", JSON.stringify(estado));
-  };
-  const handlePreset4 = () => {
-    // Obtenemos las tareas guardadas de localstorage Preset 4.
-    const estadoApp_Preset4_Guardado = localStorage.getItem("estadoApp_Preset4")
-      ? JSON.parse(localStorage.getItem("estadoApp_Preset4"))
-      : null;
-    handleChangeEstadoVideo(estadoApp_Preset4_Guardado.tvs);
-    handleCargaMatriz();
-    window.location.reload();
-  };
-  const handleGrabar4 = () => {
-    const newDescripcion = descripcionPreset.map((item, i) =>
-      i === 3 ? { ...item, preset4: useInputRefPreset4.current.value } : item
-    );
-    handleChangeEstadoPreset(newDescripcion);
-    localStorage.setItem("estadoApp_Preset4", JSON.stringify(estado));
-  };
-  const handlePreset5 = () => {
-    // Obtenemos las tareas guardadas de localstorage Preset 5.
-    const estadoApp_Preset5_Guardado = localStorage.getItem("estadoApp_Preset5")
-      ? JSON.parse(localStorage.getItem("estadoApp_Preset5"))
-      : null;
-    handleChangeEstadoVideo(estadoApp_Preset5_Guardado.tvs);
-    handleCargaMatriz();
-    window.location.reload();
-  };
-  const handleGrabar5 = () => {
-    const newDescripcion = descripcionPreset.map((item, i) =>
-      i === 4 ? { ...item, preset5: useInputRefPreset5.current.value } : item
-    );
-    handleChangeEstadoPreset(newDescripcion);
-    localStorage.setItem("estadoApp_Preset5", JSON.stringify(estado));
+  const handleSavePreset = (preset, ref, label) => () => {
+    preset.save(ref.current.value || "");
+    toast.success(`Preset ${label} guardado`);
   };
 
   return (
-    <div>
-      <h3 className="matriz-main-titulo">Presets</h3>
+    <div className={styles.presetContainer}>
+      <h3 className={styles.titulo}>Presets</h3>
       <ul>
-        <li className="matriz-main-item">
-          <button onClick={handlePreset1} className="btnCargarPreset">
+        <li className={styles.item}>
+          <button onClick={handleLoadPreset(preset1, "1")} className={styles.btnCargarPreset}>
             Preset 1
           </button>
           <input
             type="text"
             name="preset1"
-            ref={useInputRefPreset1}
-            placeholder={descripcionPreset[0].preset1}
+            ref={inputRef1}
+            placeholder={descripcionPreset[0]?.preset1 || ""}
             className="canales-form-input"
           />
-          <button onClick={handleGrabar1} className="btnGrabarPreset"></button>
+          <button
+            onClick={handleSavePreset(preset1, inputRef1, "1")}
+            className={styles.btnGrabarPreset}
+            aria-label="Grabar preset 1"
+          ></button>
         </li>
-        <li className="matriz-main-item">
-          <button onClick={handlePreset2} className="btnCargarPreset">
+        <li className={styles.item}>
+          <button onClick={handleLoadPreset(preset2, "2")} className={styles.btnCargarPreset}>
             Preset 2
           </button>
           <input
             type="text"
             name="preset2"
-            ref={useInputRefPreset2}
-            placeholder={descripcionPreset[1].preset2}
+            ref={inputRef2}
+            placeholder={descripcionPreset[1]?.preset2 || ""}
             className="canales-form-input"
           />
-          <button onClick={handleGrabar2} className="btnGrabarPreset"></button>
+          <button
+            onClick={handleSavePreset(preset2, inputRef2, "2")}
+            className={styles.btnGrabarPreset}
+            aria-label="Grabar preset 2"
+          ></button>
         </li>
-        <li className="matriz-main-item">
-          <button onClick={handlePreset3} className="btnCargarPreset">
+        <li className={styles.item}>
+          <button onClick={handleLoadPreset(preset3, "3")} className={styles.btnCargarPreset}>
             Preset 3
           </button>
           <input
             type="text"
             name="preset3"
-            ref={useInputRefPreset3}
-            placeholder={descripcionPreset[2].preset3}
+            ref={inputRef3}
+            placeholder={descripcionPreset[2]?.preset3 || ""}
             className="canales-form-input"
           />
-          <button onClick={handleGrabar3} className="btnGrabarPreset"></button>
+          <button
+            onClick={handleSavePreset(preset3, inputRef3, "3")}
+            className={styles.btnGrabarPreset}
+            aria-label="Grabar preset 3"
+          ></button>
         </li>
-        <li className="matriz-main-item">
-          <button onClick={handlePreset4} className="btnCargarPreset">
+        <li className={styles.item}>
+          <button onClick={handleLoadPreset(preset4, "4")} className={styles.btnCargarPreset}>
             Preset 4
           </button>
           <input
             type="text"
             name="preset4"
-            ref={useInputRefPreset4}
-            placeholder={descripcionPreset[3].preset4}
+            ref={inputRef4}
+            placeholder={descripcionPreset[3]?.preset4 || ""}
             className="canales-form-input"
           />
-          <button onClick={handleGrabar4} className="btnGrabarPreset"></button>
+          <button
+            onClick={handleSavePreset(preset4, inputRef4, "4")}
+            className={styles.btnGrabarPreset}
+            aria-label="Grabar preset 4"
+          ></button>
         </li>
-        <li className="matriz-main-item">
-          <button onClick={handlePreset5} className="btnCargarPreset">
+        <li className={styles.item}>
+          <button onClick={handleLoadPreset(preset5, "5")} className={styles.btnCargarPreset}>
             Preset 5
           </button>
           <input
             type="text"
             name="preset5"
-            ref={useInputRefPreset5}
-            placeholder={descripcionPreset[4].preset5}
+            ref={inputRef5}
+            placeholder={descripcionPreset[4]?.preset5 || ""}
             className="canales-form-input"
           />
-          <button onClick={handleGrabar5} className="btnGrabarPreset"></button>
+          <button
+            onClick={handleSavePreset(preset5, inputRef5, "5")}
+            className={styles.btnGrabarPreset}
+            aria-label="Grabar preset 5"
+          ></button>
         </li>
       </ul>
     </div>

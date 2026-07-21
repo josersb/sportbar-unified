@@ -1,0 +1,233 @@
+/* ============================================================
+   Aside — CSS Module
+   Device colors (--DTV1…--DTV8) defined in tokens.css.
+   Per-TV colors passed as inline style from state.
+   ============================================================ */
+
+.asideContainer {
+  margin-top: 10px;
+  width: 100%;
+  height: auto;
+  min-height: var(--aside-min-height, 550px);
+  padding: 11px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  border: 1px solid var(--color-brand-primary, #ff3900);
+  font-family: var(--font-family-primary, "Roboto", sans-serif);
+  font-weight: 400;
+  font-size: var(--font-size-sm, 14px);
+}
+
+/* Info canal en los decos */
+.decosInfo {
+  margin: 2px 2px;
+  padding: 5px 5px;
+  border: 1px solid;
+  border-color: rgb(247, 217, 182);
+  border-radius: 3px;
+}
+
+.decosTitulo {
+  margin: 10px;
+  max-width: 500px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  border-bottom: 1px solid grey;
+}
+
+.decosTituloRecargar {
+  margin-bottom: 2px;
+}
+
+.listaDecos {
+  margin: 10px;
+}
+
+.listaDecosEncabezados {
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  border-bottom: 1px solid lightgrey;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.itemDeco {
+  padding: 2px 2px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+/* Info zonas de audio */
+.audioInfo {
+  margin: 2px 2px;
+  padding: 5px 5px;
+  border: 1px solid;
+  border-color: rgb(247, 217, 182);
+  border-radius: 3px;
+}
+
+.audioTitulo {
+  margin: 10px;
+  max-width: 500px;
+  border-bottom: 1px solid grey;
+}
+
+.listaAudio {
+  margin: 10px;
+}
+
+.listaAudioEncabezados {
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  border-bottom: 1px solid lightgrey;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.itemAudio {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.itemAudioNorte {
+  composes: itemAudio;
+  background-color: var(--ANorte);
+}
+
+.itemAudioCentro {
+  composes: itemAudio;
+  background-color: var(--ACentro);
+}
+
+.itemAudioSur {
+  composes: itemAudio;
+  background-color: var(--ASur);
+}
+
+.itemAudioZona {
+  width: 50px;
+  text-align: center;
+}
+
+.itemAudioDeco {
+  width: 50px;
+  text-align: center;
+}
+
+.itemAudioVol {
+  width: 50px;
+  text-align: center;
+}
+
+.itemAudioMute {
+  width: 50px;
+  text-align: center;
+}
+
+/* Info matriz de video */
+.videoInfo {
+  margin: 2px 2px;
+  padding: 5px 5px;
+  border: 1px solid;
+  border-color: rgb(247, 217, 182);
+  border-radius: 3px;
+}
+
+.videoTitulo {
+  margin: 10px;
+  max-width: 500px;
+  border-bottom: 1px solid grey;
+}
+
+.listaVideo {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.containerEscaleraBarra {
+  width: 300px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* TV grid items */
+.tvItem {
+  padding: 2px;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* TV containers */
+.containerTvsVw {
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto;
+}
+
+.containerTvsEscaleraNorte {
+  max-width: 15vw;
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+  grid-template-columns: auto;
+  grid-template-rows: repeat(4, auto);
+}
+
+.containerTvsEscaleraCentro {
+  margin: 5px 10px;
+  max-width: 15vw;
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: auto;
+}
+
+.containerTvsEscaleraSur {
+  max-width: 15vw;
+  height: 100%;
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+  grid-template-columns: auto;
+  grid-template-rows: repeat(4, auto);
+}
+
+.containerTvsBarra {
+  max-width: 15vw;
+  height: 100%;
+  display: grid;
+  gap: 2px;
+  padding: 5px;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+}
+
+.containerTvsVw p,
+.containerTvsEscaleraNorte p,
+.containerTvsEscaleraCentro p,
+.containerTvsEscaleraSur p,
+.containerTvsBarra p {
+  padding: 2px;
+  font-size: 12px;
+  text-align: center;
+}

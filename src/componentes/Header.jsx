@@ -5,7 +5,7 @@ const Header = () => {
   return (
     <header>
       <div className={styles.container}>
-        <img src="/logos/logoBetwarriorCompleto.PNG " alt="betwarrior" />
+        <img src="/logos/logoBetwarriorCompleto.PNG" alt="betwarrior" />
         <h1 className={styles.title}>
           Sportbar <span>Fuentes de señales AV</span>{" "}
         </h1>

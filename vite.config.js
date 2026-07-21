@@ -50,6 +50,7 @@ export default defineConfig({
   build: {
     outDir: "dist",
     assetsDir: "assets",
+    assetsInlineLimit: 0, // Emitir todas las imagenes como archivos, nunca inline
     sourcemap: false, // Set to true for debugging production
     minify: "esbuild",
     target: "esnext",

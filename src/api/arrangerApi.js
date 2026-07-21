@@ -128,7 +128,7 @@ export async function sendIrCommand(deviceId, hexCode) {
 
 /**
  * Envía un cambio de canal dígito por dígito vía IR.
- * Cada dígito se envía con un delay de 300ms entre comandos,
+ * Cada dígito se envía con un delay de 500ms entre comandos,
  * replicando el comportamiento de los presets del Arranger.
  * @param {string} deviceId - ID del dispositivo (ej: "DTV1")
  * @param {string|number} channel - Número de canal (ej: "1603")
@@ -146,7 +146,7 @@ export async function sendChannelDigits(deviceId, channel) {
       throw new Error(`Código IR no encontrado para dígito: ${digit}`);
     }
     await sendIrCommand(deviceId, hex);
-    await delay(300);
+    await delay(500);
   }
 }
 

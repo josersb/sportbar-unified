@@ -61,12 +61,12 @@ describe("sendChannelDigits", () => {
       vi.useFakeTimers();
     });
 
-    it("sends each digit with 300ms delays", async () => {
+    it("sends each digit with 500ms delays", async () => {
       const promise = sendChannelDigits("DTV1", "16");
 
       // Advance timers to trigger each delay
-      await vi.advanceTimersByTimeAsync(300);
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(500);
       await promise;
 
       expect(global.fetch).toHaveBeenCalledTimes(2); // 2 digits
@@ -75,11 +75,11 @@ describe("sendChannelDigits", () => {
     it("sends 4 digits for a 4-digit channel", async () => {
       const promise = sendChannelDigits("DTV1", "1603");
 
-      // Advance timers for each digit delay (4 digits × 300ms)
-      await vi.advanceTimersByTimeAsync(300);
-      await vi.advanceTimersByTimeAsync(300);
-      await vi.advanceTimersByTimeAsync(300);
-      await vi.advanceTimersByTimeAsync(300);
+      // Advance timers for each digit delay (4 digits × 500ms)
+      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(500);
       await promise;
 
       expect(global.fetch).toHaveBeenCalledTimes(4);

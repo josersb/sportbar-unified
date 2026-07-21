@@ -12,9 +12,7 @@ import img_deportv from "../imagenes/deportv.png";
 import img_dtvsportshd from "../imagenes/dtvsportshd.png";
 import img_dtv2sportshd from "../imagenes/dtv2sportshd.png";
 import img_dtv3sportshd from "../imagenes/dtv3sportshd.png";
-import img_dtvfight from "../imagenes/dtvfight.png";
 import img_nbatv from "../imagenes/nbatv.png";
-import img_pxsports from "../imagenes/pxsports.png";
 import img_tnt_sports from "../imagenes/tntsports.jpg";
 import img_tyc from "../imagenes/tyc.png";
 
@@ -28,7 +26,7 @@ export const CANALES_FAVORITOS = [
   { canal: "1612", img: img_dtv2sportshd, nombre: "DTV 2 Sports HD" },
   { canal: "1613", img: img_dtv3sportshd, nombre: "DTV 3 Sports HD" },
   { canal: "1614", img: img_dtv3sportshd, nombre: "DTV 3 Sports HD" },
-  { canal: "1620", img: img_dtvfight, nombre: "DTV Fight" },
+  { canal: "1620", img: null, nombre: "DTV Fight" },
   { canal: "1621", img: img_espn, nombre: "ESPN" },
   { canal: "1622", img: img_espn2, nombre: "ESPN 2" },
   { canal: "1623", img: img_espn3, nombre: "ESPN 3" },
@@ -36,7 +34,7 @@ export const CANALES_FAVORITOS = [
   { canal: "1628", img: img_golf, nombre: "Golf Channel" },
   { canal: "1629", img: img_tyc, nombre: "TyC Sports" },
   { canal: "1631", img: img_deportv, nombre: "DeporTV" },
-  { canal: "1639", img: img_pxsports, nombre: "PX Sports" },
+  { canal: "1639", img: null, nombre: "PX Sports" },
   { canal: "1644", img: img_garagetv, nombre: "Garage TV" },
   { canal: "1677", img: img_nbatv, nombre: "NBA TV" },
   { canal: "0000", img: null, nombre: "Apagar" },

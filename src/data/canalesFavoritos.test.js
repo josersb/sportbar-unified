@@ -36,7 +36,7 @@ describe("CANALES_FAVORITOS", () => {
       "ESPN 2": "1622",
       "ESPN 3": "1623",
       "ESPN Premium HD": "1604",
-      "ESPN 4": "1625",
+      "ESPN 4": "1624",
       "Fox Sports HD": "1605",
       "Fox Sports 2 HD": "1608",
       "Fox Sports 3 HD": "1609",

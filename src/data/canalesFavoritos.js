@@ -29,7 +29,7 @@ export const CANALES_FAVORITOS = [
   { canal: "1621", img: img_espn, nombre: "ESPN" },
   { canal: "1622", img: img_espn2, nombre: "ESPN 2" },
   { canal: "1623", img: img_espn3, nombre: "ESPN 3" },
-  { canal: "1625", img: img_espn4, nombre: "ESPN 4" },
+  { canal: "1624", img: img_espn4, nombre: "ESPN 4" },
   { canal: "1628", img: img_golf, nombre: "Golf Channel" },
   { canal: "1631", img: img_deportv, nombre: "DeporTV" },
   { canal: "1639", img: null, nombre: "PX Sports" },

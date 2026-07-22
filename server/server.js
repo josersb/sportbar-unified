@@ -94,6 +94,16 @@ app.post("/api/state", stateLimiter, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Request logger ──
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    console.log(`${req.method} ${req.originalUrl} → ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});
+
 // Middleware para servir archivos estáticos desde dist (build de producción)
 app.use(express.static(path.join(__dirname, "../dist")));
 

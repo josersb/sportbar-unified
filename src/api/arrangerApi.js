@@ -141,13 +141,20 @@ export async function sendChannelDigits(deviceId, channel, useLirc = false) {
   const codes = useLirc ? IR_CODES_LIRC : IR_CODES;
   const digits = String(channel).split("");
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const decoNumber = parseInt(deviceId.replace("DTV", ""), 10);
 
   for (const digit of digits) {
-    const hex = codes[digit];
-    if (!hex) {
-      throw new Error(`Código IR no encontrado para dígito: ${digit}`);
+    if (digit === "2") {
+      // El dígito 2 falla con send ir — usar preset del Arranger en su lugar
+      // Requiere preset: decoNcanal0002 (ej: deco1canal0002, deco2canal0002...)
+      await loadChannelPreset(decoNumber, "0002");
+    } else {
+      const hex = codes[digit];
+      if (!hex) {
+        throw new Error(`Código IR no encontrado para dígito: ${digit}`);
+      }
+      await sendIrCommand(deviceId, hex);
     }
-    await sendIrCommand(deviceId, hex);
     await delay(300);
   }
 }

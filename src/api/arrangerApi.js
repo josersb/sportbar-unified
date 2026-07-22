@@ -132,16 +132,18 @@ export async function sendIrCommand(deviceId, hexCode) {
  * replicando el comportamiento de los presets del Arranger.
  * @param {string} deviceId - ID del dispositivo (ej: "DTV1")
  * @param {string|number} channel - Número de canal (ej: "1603")
+ * @param {boolean} [useLirc=false] - Usar códigos LIRC RC64 en vez de Arranger
  * @throws {Error} Si algún dígito no tiene código IR en la tabla
  * @returns {Promise<void>}
  */
-export async function sendChannelDigits(deviceId, channel) {
-  const { IR_CODES } = await import("../data/irCodes.js");
+export async function sendChannelDigits(deviceId, channel, useLirc = false) {
+  const { IR_CODES, IR_CODES_LIRC } = await import("../data/irCodes.js");
+  const codes = useLirc ? IR_CODES_LIRC : IR_CODES;
   const digits = String(channel).split("");
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   for (const digit of digits) {
-    const hex = IR_CODES[digit];
+    const hex = codes[digit];
     if (!hex) {
       throw new Error(`Código IR no encontrado para dígito: ${digit}`);
     }

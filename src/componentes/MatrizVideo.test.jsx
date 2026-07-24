@@ -4,11 +4,15 @@ import { ProviderUser } from "../contexto/Contexto";
 import MatrizVideo from "./MatrizVideo";
 
 // vi.mock is hoisted to top of file — use vi.hoisted for variables the factory needs
-const { mockJoinMultipleTVs, mockAssignSourceToDestination, mockAssignVideoSource, mockAssignAudioSource } = vi.hoisted(() => ({
+const { mockJoinMultipleTVs, mockAssignSourceToDestination, mockAssignVideoSource, mockAssignAudioSource, mockFetchTvrackState, mockSetTvrackVideo, mockSetTvrackAudio, mockSetTvrackLink } = vi.hoisted(() => ({
   mockJoinMultipleTVs: vi.fn().mockResolvedValue(undefined),
   mockAssignSourceToDestination: vi.fn().mockResolvedValue(undefined),
   mockAssignVideoSource: vi.fn().mockResolvedValue(undefined),
   mockAssignAudioSource: vi.fn().mockResolvedValue(undefined),
+  mockFetchTvrackState: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
+  mockSetTvrackVideo: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
+  mockSetTvrackAudio: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
+  mockSetTvrackLink: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
 }));
 
 vi.mock("../api/arrangerApi", () => ({
@@ -16,6 +20,10 @@ vi.mock("../api/arrangerApi", () => ({
   assignSourceToDestination: mockAssignSourceToDestination,
   assignVideoSource: mockAssignVideoSource,
   assignAudioSource: mockAssignAudioSource,
+  fetchTvrackState: mockFetchTvrackState,
+  setTvrackVideo: mockSetTvrackVideo,
+  setTvrackAudio: mockSetTvrackAudio,
+  setTvrackLink: mockSetTvrackLink,
 }));
 
 // TV values — each zone uses a different spread pattern so we can verify mapping correctness

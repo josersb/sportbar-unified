@@ -54,6 +54,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 - [[Configuracion/ViteProxy]] — proxy de desarrollo `/api` → `192.168.2.254`, chunks de build, dev server
 - [[Configuracion/PnpmSetup]] — pnpm como gestor exclusivo, `.npmrc`, `.nvmrc`, Node 18.17.1
 - [[Configuracion/Seguridad]] — helmet, CORS restrictivo, rate limiting, CSP, token cleanup
+- [[Configuracion/BranchingStrategy]] — flujo de ramas, worktrees, puertos por entorno
 
 ## Historial y Estado
 

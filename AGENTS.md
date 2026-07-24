@@ -12,6 +12,49 @@ Aplicacion React/Vite para controlar una matriz audiovisual de sport bars. Se in
 - **Estado**: Context API global (`src/contexto/Contexto.jsx`) + persistencia en localStorage (5 presets: `estadoApp_Preset1` a `estadoApp_Preset5`)
 - **Hardware**: 8 decodificadores DirecTV (DTV1-DTV8), 40+ TVs, 3 zonas de audio (Norte, Centro, Sur)
 
+## Estrategia de Branching (DETERMINISTICA — el orquestador DEBE leer esto al iniciar sesion)
+
+Este proyecto usa múltiples ramas y worktrees. El orquestador debe seguir estas reglas sin excepción.
+
+### Puertos por entorno
+
+| Rama | Worktree | Vite | Express | Script |
+|------|----------|------|---------|--------|
+| `v2` | `sportbar-unified` (principal) | 5173 | 3101 | `pnpm run sportbar:dev` |
+| `feat/ahm-integration` | `sportbar-unified-worktrees/ahm-integration` | 5174 | 3102 | `pnpm run sportbar:dev` |
+| `master` | — | — | 3000 | producción (solo deploy) |
+
+### Flujo de trabajo
+
+```
+feat/ahm-integration ──→ v2 ──→ master
+     (worktree aislado)   (staging)  (producción)
+```
+
+### Reglas obligatorias para el orquestador
+
+1. **Al iniciar sesión**, verificar `git branch --show-current` y `git worktree list`
+2. **NUNCA commit directo a `master`**. Solo merge desde `v2`.
+3. **NUNCA commit directo a `v2`**. Solo merge desde `feat/*` branches. (Excepción: hotfixes urgentes con aprobación explícita del usuario)
+4. **Si la rama actual es `master`**, preguntar al usuario: "¿Querés trabajar en `v2` (mejoras) o en `feat/ahm-integration`?". No asumir.
+5. **Si se inicia una feature nueva**, crear worktree + feature branch. Asignar puerto secuencial (3103, 3104...). Documentar en AGENTS.md y wiki.
+6. **Todo push incluye** `git push origin <branch>` — nunca trabajar solo local.
+7. **Rebase periódico**: cada feature branch se re-basea desde `v2` para mantenerse al día.
+8. **El state store del Express usa puertos diferentes por worktree** — verificar que CORS y CSP en `server/server.js` incluyan el puerto correcto.
+
+### Worktrees activos (mantener actualizado)
+
+| Worktree | Rama | Vite | Express |
+|----------|------|------|---------|
+| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified` | `v2` | 5173 | 3101 |
+| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified-worktrees\ahm-integration` | `feat/ahm-integration` | 5174 | 3102 |
+
+Para crear un nuevo worktree:
+```bash
+git worktree add -b feat/<nombre> ../sportbar-unified-worktrees/<nombre> v2
+```
+Luego configurar `vite.config.js` (puerto Vite único), `package.json` (PORT=31XX en scripts), y `server/server.js` (CORS/CSP con nuevo puerto).
+
 ## Gestor de Paquetes: pnpm (UNICO)
 
 Este proyecto usa **pnpm** como gestor de paquetes unico para frontend y server.

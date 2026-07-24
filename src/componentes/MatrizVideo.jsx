@@ -622,12 +622,12 @@ const MatrizVideo = () => {
                       'a-Menos1-Escenario2','a-QMR75-Menos1-TV1','a-QMR75-Menos1-TV2',
                       'a-QMC65-Menos1-TV2'
                     ].map(key => (
-                      <div key={key} style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.5rem'}}>
-                        <label style={{minWidth:'160px',fontSize:'0.8rem',color:'#c9d1d9'}}>{labels[key]}</label>
+                      <div key={key} className={styles.zonasRow}>
+                        <label className={styles.zonasLabel}>{labels[key]}</label>
                       <select
                         value={tvs[key] || 'DTV1'}
                         onChange={e => handleChangeEstadoVideo({...tvs, [key]: e.target.value})}
-                        style={{padding:'0.25rem',background:'#0d1117',color:'#c9d1d9',border:'1px solid #30363d',borderRadius:'4px'}}
+                        className={styles.zonasSelect}
                       >
                         {getByCapability('videoSource').map(d => (
                           <option key={d.id} value={d.id}>{d.id}</option>

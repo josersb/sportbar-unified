@@ -35,31 +35,37 @@ const MatrizVideo = () => {
   }, []);
 
   const handleTvrackBtn = (type, deviceId) => async () => {
-    if (type === "video") {
-      setLoadingVideoBtn(deviceId);
-      try {
+    const isVideo = type === "video";
+    if (isVideo) setLoadingVideoBtn(deviceId);
+    else setLoadingAudioBtn(deviceId);
+
+    try {
+      if (linkAudioVideo) {
+        // Vinculado: join av manda video + audio en un solo comando al Arranger
+        await assignSourceToDestination(deviceId, "TVRACK");
+        const newState = isVideo
+          ? await setTvrackVideo(deviceId)
+          : await setTvrackAudio(deviceId);
+        setTvrackVideoState(newState.video);
+        setTvrackAudioState(newState.audio);
+        toast.success(`${deviceId} → VIDEO + AUDIO TVRACK`);
+      } else if (isVideo) {
         await assignVideoSource(deviceId, "TVRACK");
         const newState = await setTvrackVideo(deviceId);
         setTvrackVideoState(newState.video);
-        if (newState.link) setTvrackAudioState(newState.audio);
         toast.success(`${deviceId} → VIDEO TVRACK`);
-      } catch {
-        toast.error("Error al asignar video");
-      }
-      setLoadingVideoBtn(null);
-    } else {
-      setLoadingAudioBtn(deviceId);
-      try {
+      } else {
         await assignAudioSource(deviceId, "TVRACK");
         const newState = await setTvrackAudio(deviceId);
         setTvrackAudioState(newState.audio);
-        if (newState.link) setTvrackVideoState(newState.video);
         toast.success(`${deviceId} → AUDIO TVRACK`);
-      } catch {
-        toast.error("Error al asignar audio");
       }
-      setLoadingAudioBtn(null);
+    } catch {
+      toast.error(`Error al asignar ${isVideo ? "video" : "audio"}`);
     }
+
+    if (isVideo) setLoadingVideoBtn(null);
+    else setLoadingAudioBtn(null);
   };
 
   const handleLinkToggle = async (e) => {

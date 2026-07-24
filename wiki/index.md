@@ -26,8 +26,10 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## APIs y Endpoints
 
-- [[API/ArrangerApi]] — cliente HTTP centralizado: `join av`, `send ir`, `send serial`, `get status`, `sendChannelDigits`
+- [[API/ArrangerApi]] — cliente HTTP centralizado: `join av`, `join video`, `join audio`, `send ir`, `send serial`, `get status`, `sendChannelDigits`
 - [[API/IrCodes]] — tabla de códigos IR hexadecimales para cambio de canal dígito a dígito
+- [[API/JoinVideo]] — comando `join video` del Arranger: enrutamiento de video independiente
+- [[API/JoinAudio]] — comando `join audio` del Arranger: enrutamiento de audio independiente
 
 ## Dispositivos Hardware
 

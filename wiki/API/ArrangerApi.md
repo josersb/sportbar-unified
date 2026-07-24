@@ -32,6 +32,12 @@ Envía un `fetch` con `method: "GET"`, `mode: "no-cors"`, `cache: "default"`. En
 ### `assignSourceToDestination(source, destination)`
 Wrapper para el comando `join av`. Construye el comando y llama a `sendArrangerCommand`.
 
+### `assignVideoSource(source, destination)`
+Wrapper para el comando `[[JoinVideo|join video]]`. Enruta solo video a un destino. Usado por [[../Componentes/MatrizVideo]] — sección TVRACK ▶ Video.
+
+### `assignAudioSource(source, destination)`
+Wrapper para el comando `[[JoinAudio|join audio]]`. Enruta solo audio a un destino. Usado por [[../Componentes/MatrizVideo]] — sección TVRACK ♪ Audio.
+
 ### `joinMultipleTVs(mappings)`
 Ejecuta `assignSourceToDestination` secuencialmente para un array de mapeos `{source, dest}`. Si un comando falla, loggea el error y continúa con el siguiente.
 
@@ -54,6 +60,31 @@ Consulta el estado de un dispositivo vía el proxy Express (`/api/device/:id/sta
 ### `buildArrangerCommand(command, ...args)`
 Utilidad interna para construir comandos dinámicamente.
 
+### `fetchTvrackState()`
+Obtiene el estado actual de TVRACK desde el state store del Express (`GET /api/tvrack/state`). Retorna `{ video, audio, link, lastUpdated }`.
+
+### `setTvrackVideo(deviceId)`
+Persiste la selección de video del TVRACK en el state store (`POST /api/tvrack/video`). Si `link=true`, el server sincroniza audio automáticamente.
+
+### `setTvrackAudio(deviceId)`
+Persiste la selección de audio del TVRACK en el state store (`POST /api/tvrack/audio`). Si `link=true`, el server sincroniza video automáticamente.
+
+### `setTvrackLink(linked)`
+Persiste el estado del toggle de vinculación (`POST /api/tvrack/link`).
+
+## State Store (Express)
+
+Endpoints de persistencia compartida entre clientes en el servidor Express:
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/api/tvrack/state` | GET | Estado actual: `{ video, audio, link, lastUpdated }` |
+| `/api/tvrack/video` | POST | Actualiza fuente de video (`{ deviceId }`) |
+| `/api/tvrack/audio` | POST | Actualiza fuente de audio (`{ deviceId }`) |
+| `/api/tvrack/link` | POST | Toggle de vinculación (`{ linked }`) |
+
+Estado inicial: `{ video: "DTV1", audio: "DTV1", link: false }`. En memoria — se reinicia con el server.
+
 ## Referencia completa de comandos
 
 ### Enrutamiento de video/audio
@@ -61,8 +92,8 @@ Utilidad interna para construir comandos dinámicamente.
 | Comando | Descripción | Componente que lo usa |
 |---------|-------------|----------------------|
 | `join av [SOURCE] [DEST]` | Enruta video + audio + IR + serial | [[../Componentes/MatrizVideo]], [[../Componentes/MatrizPreset]] |
-| `join video [SOURCE] [DEST]` | Enruta solo video | (no usado actualmente) |
-| `join audio [SOURCE] [DEST]` | Enruta solo audio | (no usado actualmente) |
+| [[JoinVideo\|join video [SOURCE] [DEST]]] | Enruta solo video | [[../Componentes/MatrizVideo]] — TVRACK ▶ Video |
+| [[JoinAudio\|join audio [SOURCE] [DEST]]] | Enruta solo audio | [[../Componentes/MatrizVideo]] — TVRACK ♪ Audio |
 | `unjoin [DEST]` | Desconecta destino de su fuente | (no usado actualmente) |
 
 ### Control de audio
@@ -153,13 +184,13 @@ Todas las llamadas usan `mode: "no-cors"`. Esto implica que:
 
 ## Relaciones
 
-- Usado por [[../Componentes/MatrizVideo]] — comandos `join av`
+- Usado por [[../Componentes/MatrizVideo]] — comandos `join av`, [[JoinVideo|join video]], [[JoinAudio|join audio]], state store TVRACK
 - Usado por [[../Componentes/MatrizPreset]] — comandos `join av` en carga de presets
 - Usado por [[../Componentes/Canales]] — comandos `preset load`
 - Usado por [[../Componentes/Audio]] — comandos `send serial` para Tesira
 - Controla [[../Dispositivos/Decodificadores]] y [[../Dispositivos/ZonasAudio]]
 - Se comunica con el [[../Dispositivos/Arranger-IPEXCB]] — controlador físico
 - Opera sobre los encoders [[../Dispositivos/IPEX5001-Encoder]] y decoders [[../Dispositivos/IPEX5002-Decoder]]
-- [[../Configuracion/ViteProxy]] — en desarrollo, las llamadas pasan por el proxy de Vite
+- [[../Configuracion/ViteProxy]] — en desarrollo, las llamadas pasan por el proxy de Vite (:3101)
 - [[../README]] — documentación general
 - [[../AGENTS]] — schema de la wiki

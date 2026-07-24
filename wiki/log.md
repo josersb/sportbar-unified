@@ -98,3 +98,53 @@ Registro cronológico de todas las operaciones de la wiki: ingestas, creación d
 **Contradicciones corregidas**: La página `Decodificadores.md` describía incorrectamente los 8 dispositivos como "decodificadores DirecTV". Corregido para reflejar que DTV7 y DTV8 son encoders IPEX5001 (`E-OBS_CS` y `F-STREAMING-CS`), no decodificadores.
 
 **Sin contradicciones pendientes**.
+
+---
+
+## [2026-07-22] ingest | Comandos Arranger `join video` y `join audio`
+
+**Operación**: Documentación de los comandos de enrutamiento independiente de video y audio del Arranger IPEXCB.
+
+**Fuente**: Arranger API GUIDE V1.4.0.0 — secciones 4.1 (join video) y 4.2 (join audio).
+
+**Páginas creadas (2)**:
+- `API/JoinVideo.md` — sintaxis completa, 8 argumentos (encoder, decoder, group, all, exclusive, original, auto, size), 7 modos de video, 11 códigos de error, 8 ejemplos, implementación en `assignVideoSource()`
+- `API/JoinAudio.md` — sintaxis, 5 argumentos (encoder, decoder, group, all, exclusive), 8 códigos de error, 6 ejemplos, implementación en `assignAudioSource()`
+
+**Páginas actualizadas (2)**:
+- `API/ArrangerApi.md` — comandos `join video` y `join audio` pasaron de "(no usado actualmente)" a documentados con [[wikilinks]] a sus páginas dedicadas, vinculados a [[../Componentes/MatrizVideo]] sección TVRACK
+- `index.md` — agregadas entradas para `API/JoinVideo` y `API/JoinAudio` en sección APIs y Endpoints
+
+**Links agregados**: 12 nuevos [[wikilinks]]. Conexiones clave: JoinVideo ↔ JoinAudio (comandos complementarios), ambos → ArrangerApi (wrapper functions), ambos → MatrizVideo (uso en UI), ambos → Arranger-IPEXCB (controlador físico).
+
+**Sin contradicciones detectadas**.
+
+---
+
+## [2026-07-22] update | Rediseño TVRACK — Video/Audio split, BrawlStarsButton, State Store
+
+**Operación**: Actualización masiva de documentación reflejando cambios implementados en sesión 2026-07-22.
+
+**Cambios implementados**:
+- **TVRACK Video/Audio split**: Separación en dos sub-secciones con `join video`/`join audio`, toggle 🔗 de vinculación
+- **BrawlStarsButton**: Componente personalizado estilo Brawl Stars (Lilita One, capibara SVG, glow neón), reducido al 50% (130×38px)
+- **State Store Express**: Endpoints `/api/tvrack/*` para persistencia compartida entre clientes
+- **Grid layout Aside**: Restaurado grid-template-areas 5×6 con TVRACK centrado en "Estado del video"
+- **Zonas Adicionales**: Renombradas a "ZONAS FUERA DE SPORTBAR", reordenadas
+- **Puerto 3101**: Nuevo entorno aislado del legacy :3000. Scripts `sportbar:dev` y `sportbar:build`
+- **CSP**: Agregados Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) para Lilita One
+- **CORS**: Agregados `localhost:3101` y `127.0.0.1:3101`
+
+**Páginas actualizadas (4)**:
+- `Componentes/MatrizVideo.md` — reescrito: TVRACK split, BrawlStarsButton, state store, Zonas Fuera de Sportbar
+- `API/ArrangerApi.md` — 6 funciones nuevas, state store endpoints, relaciones actualizadas
+- `Configuracion/ViteProxy.md` — proxy a :3101, rutas específicas, scripts sportbar
+- `log.md` — esta entrada
+
+**Archivos código modificados (8)**: `server/server.js`, `src/api/arrangerApi.js`, `src/componentes/MatrizVideo.jsx`, `src/componentes/MatrizVideo.module.css`, `src/componentes/Aside.module.css`, `src/componentes/MatrizVideo.test.jsx`, `vite.config.js`, `package.json`
+
+**Archivos código creados (2)**: `src/componentes/ui/BrawlStarsButton.jsx`, `src/componentes/ui/BrawlStarsButton.module.css`
+
+**Links agregados**: ~20 nuevos wikilinks.
+
+**Sin contradicciones detectadas**.

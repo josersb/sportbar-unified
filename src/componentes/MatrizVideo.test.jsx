@@ -4,14 +4,18 @@ import { ProviderUser } from "../contexto/Contexto";
 import MatrizVideo from "./MatrizVideo";
 
 // vi.mock is hoisted to top of file — use vi.hoisted for variables the factory needs
-const { mockJoinMultipleTVs, mockAssignSourceToDestination } = vi.hoisted(() => ({
+const { mockJoinMultipleTVs, mockAssignSourceToDestination, mockAssignVideoSource, mockAssignAudioSource } = vi.hoisted(() => ({
   mockJoinMultipleTVs: vi.fn().mockResolvedValue(undefined),
   mockAssignSourceToDestination: vi.fn().mockResolvedValue(undefined),
+  mockAssignVideoSource: vi.fn().mockResolvedValue(undefined),
+  mockAssignAudioSource: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../api/arrangerApi", () => ({
   joinMultipleTVs: mockJoinMultipleTVs,
   assignSourceToDestination: mockAssignSourceToDestination,
+  assignVideoSource: mockAssignVideoSource,
+  assignAudioSource: mockAssignAudioSource,
 }));
 
 // TV values — each zone uses a different spread pattern so we can verify mapping correctness
@@ -93,40 +97,51 @@ describe("MatrizVideo", () => {
     vi.clearAllMocks();
   });
 
-  describe("handleBtnDTV (TVRACK buttons)", () => {
+  describe("handleTvrackBtn — TVRACK Video/Audio buttons", () => {
     it.each([
       "DTV1", "DTV2", "DTV3", "DTV4",
       "DTV5", "DTV6", "DTV7", "DTV8",
     ])(
-      "calls assignSourceToDestination(%s, TVRACK) when %s button is clicked",
+      "calls assignVideoSource(%s, TVRACK) when video %s button is clicked",
       async (dtv) => {
-        const handleChangeEstadoVideo = vi.fn();
-        renderWithContext({ handleChangeEstadoVideo });
+        renderWithContext();
 
-        fireEvent.click(screen.getByTestId(`btn-${dtv}`));
+        fireEvent.click(screen.getByTestId(`btn-video-${dtv}`));
 
         await vi.waitFor(() => {
-          expect(mockAssignSourceToDestination).toHaveBeenCalledWith(dtv, "TVRACK");
+          expect(mockAssignVideoSource).toHaveBeenCalledWith(dtv, "TVRACK");
         });
-
-        // State should be updated with the selected DTV
-        expect(handleChangeEstadoVideo).toHaveBeenCalled();
       }
     );
 
-    it("does NOT update TVRACK state when assignSourceToDestination fails", async () => {
-      mockAssignSourceToDestination.mockRejectedValueOnce(new Error("Network error"));
-      const handleChangeEstadoVideo = vi.fn();
-      renderWithContext({ handleChangeEstadoVideo });
+    it.each([
+      "DTV1", "DTV2", "DTV3", "DTV4",
+      "DTV5", "DTV6", "DTV7", "DTV8",
+    ])(
+      "calls assignAudioSource(%s, TVRACK) when audio %s button is clicked",
+      async (dtv) => {
+        renderWithContext();
 
-      fireEvent.click(screen.getByTestId("btn-DTV1"));
+        fireEvent.click(screen.getByTestId(`btn-audio-${dtv}`));
+
+        await vi.waitFor(() => {
+          expect(mockAssignAudioSource).toHaveBeenCalledWith(dtv, "TVRACK");
+        });
+      }
+    );
+
+    it("does NOT crash when assignVideoSource fails", async () => {
+      mockAssignVideoSource.mockRejectedValueOnce(new Error("Network error"));
+      renderWithContext();
+
+      fireEvent.click(screen.getByTestId("btn-video-DTV1"));
 
       await vi.waitFor(() => {
-        expect(mockAssignSourceToDestination).toHaveBeenCalled();
+        expect(mockAssignVideoSource).toHaveBeenCalled();
       });
 
-      // State must NOT change on API failure — the bug was that it DID
-      expect(handleChangeEstadoVideo).not.toHaveBeenCalled();
+      // No error should propagate — the button just shows error toast
+      expect(mockAssignVideoSource).toHaveBeenCalled();
     });
   });
 

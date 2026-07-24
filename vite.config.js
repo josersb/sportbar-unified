@@ -14,12 +14,17 @@ export default defineConfig({
     proxy: {
       // Device status endpoint → Express (must come before the generic /api rule)
       "/api/device/": {
-        target: "http://localhost:3000",
+        target: "http://localhost:3101",
         changeOrigin: true,
       },
       // State persistence endpoint → Express (must come before the generic /api rule)
       "/api/state": {
-        target: "http://localhost:3000",
+        target: "http://localhost:3101",
+        changeOrigin: true,
+      },
+      // TVRACK shared state → Express (must come before the generic /api rule)
+      "/api/tvrack": {
+        target: "http://localhost:3101",
         changeOrigin: true,
       },
       // Proxy API calls to avoid CORS issues during development

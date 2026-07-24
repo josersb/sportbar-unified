@@ -13,14 +13,15 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "blob:"],
         connectSrc: [
           "'self'",
           "http://localhost:5173",          // Vite dev server
+          "http://localhost:3101",          // Express self (v2)
           "http://192.168.2.254",           // Arranger matrix
         ],
-        fontSrc: ["'self'"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
         frameSrc: ["'self'", "http://192.168.2.254"],
       },
@@ -32,8 +33,10 @@ app.use(
 // ── CORS: restringido a orígenes conocidos (antes era *) ──
 const allowedOrigins = [
   "http://localhost:5173",                  // Vite dev
-  "http://localhost:3000",                  // Express self
+  "http://localhost:3101",                  // Express v2
+  "http://localhost:3000",                  // Express v1 (legacy)
   "http://127.0.0.1:5173",
+  "http://127.0.0.1:3101",
   "http://127.0.0.1:3000",
   /^http:\/\/192\.168\.2\.\d{1,3}(:\d+)?$/, // Red local Arranger
 ];
@@ -102,6 +105,43 @@ app.use((req, res, next) => {
     console.log(`${req.method} ${req.originalUrl} → ${res.statusCode} (${ms}ms)`);
   });
   next();
+});
+
+// ── TVRACK Shared State ──
+const tvrackState = {
+  video: "DTV1",
+  audio: "DTV1",
+  link: false,
+  lastUpdated: null,
+};
+
+app.get("/api/tvrack/state", (req, res) => {
+  res.json(tvrackState);
+});
+
+app.post("/api/tvrack/video", (req, res) => {
+  const { deviceId } = req.body;
+  if (!deviceId) return res.status(400).json({ error: "deviceId required" });
+  tvrackState.video = deviceId;
+  if (tvrackState.link) tvrackState.audio = deviceId;
+  tvrackState.lastUpdated = new Date().toISOString();
+  res.json(tvrackState);
+});
+
+app.post("/api/tvrack/audio", (req, res) => {
+  const { deviceId } = req.body;
+  if (!deviceId) return res.status(400).json({ error: "deviceId required" });
+  tvrackState.audio = deviceId;
+  if (tvrackState.link) tvrackState.video = deviceId;
+  tvrackState.lastUpdated = new Date().toISOString();
+  res.json(tvrackState);
+});
+
+app.post("/api/tvrack/link", (req, res) => {
+  const { linked } = req.body;
+  tvrackState.link = !!linked;
+  tvrackState.lastUpdated = new Date().toISOString();
+  res.json(tvrackState);
 });
 
 // Middleware para servir archivos estáticos desde dist (build de producción)

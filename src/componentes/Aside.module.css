@@ -220,7 +220,31 @@
   padding: 5px;
   grid-template-columns: repeat(5, 1fr);
   grid-template-rows: repeat(6, 1fr);
+  grid-template-areas:
+    ".    tv03 tv02 tv01 ."
+    "tv04 .    .    .    tv14"
+    "tv05 .    tvrk .    tv13"
+    "tv06 .    .    .    tv12"
+    "tv07 .    .    .    tv11"
+    ".    tv08 tv09 tv10 .";
 }
+
+/* ── Grid area placement for Estado del video TVs ── */
+.containerTvsBarra p[id="TV01"] { grid-area: tv01; }
+.containerTvsBarra p[id="TV02"] { grid-area: tv02; }
+.containerTvsBarra p[id="TV03"] { grid-area: tv03; }
+.containerTvsBarra p[id="TV04"] { grid-area: tv04; }
+.containerTvsBarra p[id="TV05"] { grid-area: tv05; }
+.containerTvsBarra p[id="TV06"] { grid-area: tv06; }
+.containerTvsBarra p[id="TV07"] { grid-area: tv07; }
+.containerTvsBarra p[id="TV08"] { grid-area: tv08; }
+.containerTvsBarra p[id="TV09"] { grid-area: tv09; }
+.containerTvsBarra p[id="TV10"] { grid-area: tv10; }
+.containerTvsBarra p[id="TV11"] { grid-area: tv11; }
+.containerTvsBarra p[id="TV12"] { grid-area: tv12; }
+.containerTvsBarra p[id="TV13"] { grid-area: tv13; }
+.containerTvsBarra p[id="TV14"] { grid-area: tv14; }
+.containerTvsBarra p[id="TVRACK"] { grid-area: tvrk; }
 
 .containerTvsVw p,
 .containerTvsEscaleraNorte p,

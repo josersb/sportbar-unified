@@ -77,6 +77,16 @@ export async function assignSourceToDestination(source, destination) {
   return sendArrangerCommand(command);
 }
 
+export async function assignVideoSource(source, destination) {
+  const command = buildArrangerCommand("join video", source, destination);
+  return sendArrangerCommand(command);
+}
+
+export async function assignAudioSource(source, destination) {
+  const command = buildArrangerCommand("join audio", source, destination);
+  return sendArrangerCommand(command);
+}
+
 /*
  * Ejecuta join av secuencial para un array de asignaciones {source, dest}.
  * Cada ítem se ejecuta en orden; si uno falla, loggea el error y continúa.
@@ -189,6 +199,46 @@ export async function getDeviceStatus(deviceId) {
   if (!response.ok) {
     throw new Error(`Device ${deviceId} status failed: ${response.status}`);
   }
+  return response.json();
+}
+
+// ── TVRACK State Store ──
+
+const STATE_BASE_URL = "/api/tvrack";
+
+export async function fetchTvrackState() {
+  const response = await fetch(`${STATE_BASE_URL}/state`);
+  if (!response.ok) throw new Error("Failed to fetch TVRACK state");
+  return response.json();
+}
+
+export async function setTvrackVideo(deviceId) {
+  const response = await fetch(`${STATE_BASE_URL}/video`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deviceId }),
+  });
+  if (!response.ok) throw new Error("Failed to set TVRACK video");
+  return response.json();
+}
+
+export async function setTvrackAudio(deviceId) {
+  const response = await fetch(`${STATE_BASE_URL}/audio`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deviceId }),
+  });
+  if (!response.ok) throw new Error("Failed to set TVRACK audio");
+  return response.json();
+}
+
+export async function setTvrackLink(linked) {
+  const response = await fetch(`${STATE_BASE_URL}/link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ linked }),
+  });
+  if (!response.ok) throw new Error("Failed to set TVRACK link");
   return response.json();
 }
 

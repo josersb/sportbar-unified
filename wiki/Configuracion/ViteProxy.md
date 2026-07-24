@@ -1,6 +1,6 @@
 # ViteProxy
 
-Configuración del proxy de desarrollo de Vite que redirige llamadas a `/api` hacia el controlador Arranger en `192.168.2.254`, evitando problemas de CORS durante el desarrollo local. También define la estrategia de chunks para el build de producción.
+Configuración del proxy de desarrollo de Vite que redirige llamadas a Express (estado compartido y comandos) y al Arranger en `192.168.2.254`, evitando problemas de CORS durante el desarrollo local. También define la estrategia de chunks para el build de producción.
 
 Ubicación: `vite.config.js`
 
@@ -8,22 +8,29 @@ Ubicación: `vite.config.js`
 
 ```javascript
 proxy: {
-  "/api": {
-    target: "http://192.168.2.254",
-    changeOrigin: true,
-    secure: false,
-  }
+  "/api/device/": { target: "http://localhost:3101" },
+  "/api/state":   { target: "http://localhost:3101" },
+  "/api/tvrack":  { target: "http://localhost:3101" },
+  "/api":         { target: "http://192.168.2.254" },
 }
 ```
 
 ### Comportamiento
-- Toda request a `http://localhost:5173/api/*` se redirige a `http://192.168.2.254/api/*`
+- `/api/device/*`, `/api/state`, `/api/tvrack/*` → Express en `localhost:3101` (state store + comandos)
+- `/api/command/*` y resto → Arranger en `192.168.2.254`
+- Las rutas específicas (`/api/tvrack`) van **primero** para que matcheen antes que el genérico `/api`
 - `changeOrigin: true` modifica el header `Origin` para que coincida con el target
-- `secure: false` acepta certificados SSL inválidos del Arranger
 - Handlers de `error` y `proxyReq` para logging en consola
 
-### Importante
-Los componentes actualmente **no usan** el proxy — hacen fetch directo a `http://192.168.2.254/api/command/...`. El proxy está configurado y disponible, pero las llamadas usan la IP directa con `mode: "no-cors"`. La [[../API/ArrangerApi]] (`arrangerApi.js`) sí está preparada para usar variables de entorno (`VITE_ARRANGER_API_BASE`) que permitirían rutear por el proxy si se configurara.
+### Entorno de desarrollo (v2)
+
+El nuevo entorno de desarrollo usa el puerto **3101** para evitar conflictos con la versión legacy en `:3000`:
+
+| Servicio | Puerto | Script |
+|----------|--------|--------|
+| Vite (frontend) | 5173 | `pnpm run dev` |
+| Express (backend) | 3101 | `$env:PORT=3101; pnpm run serve` |
+| Ambos | — | `pnpm run sportbar:dev` |
 
 ## Dev Server
 
@@ -43,7 +50,7 @@ La configuración de Rollup separa las dependencias en 4 chunks:
 | `vendor` | react, react-dom |
 | `router` | react-router-dom |
 | `forms` | formik, react-hook-form |
-| `ui` | styled-components, react-select |
+| `ui` | react-select |
 
 ### Otras configuraciones de build
 - `outDir`: `dist`
@@ -59,7 +66,7 @@ La configuración de Rollup separa las dependencias en 4 chunks:
 
 ## Relaciones
 
-- La [[../API/ArrangerApi]] puede usar el proxy si se configura `VITE_ARRANGER_API_BASE`
+- La [[../API/ArrangerApi]] usa el proxy para comandos y el state store de TVRACK
 - [[../Configuracion/PnpmSetup]] — gestor de paquetes que ejecuta Vite
 - [[../README]] — documentación general
 - [[../AGENTS]] — schema de la wiki y arquitectura Vite

@@ -1,31 +1,78 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { Formik, Form } from "formik";
 import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import "./Toast.css";
-import { joinMultipleTVs, assignSourceToDestination } from "../api/arrangerApi";
+import { joinMultipleTVs, assignSourceToDestination, assignVideoSource, assignAudioSource, fetchTvrackState, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
+import BrawlStarsButton from "./ui/BrawlStarsButton";
 
 const MatrizVideo = () => {
   const { estado, handleChangeEstadoVideo } = useContext(ContextoUser);
 
   const tvs = estado.tvs;
-  const [loadingBtn, setLoadingBtn] = useState(null);
   const toast = useToast();
 
-  const handleBtnDTV = (deviceId) => async () => {
-    setLoadingBtn(deviceId);
-    try {
-      await assignSourceToDestination(deviceId, "TVRACK");
-      handleChangeEstadoVideo({ ...tvs, TVRACK: deviceId });
-      toast.success(`${deviceId} asignado a TVRACK`);
-    } catch {
-      toast.error("Error al comunicar con el Arranger");
+  const [tvrackVideo, setTvrackVideoState] = useState(tvs.TVRACK);
+  const [tvrackAudio, setTvrackAudioState] = useState(tvs.TVRACK);
+  const [linkAudioVideo, setLinkAudioVideoState] = useState(false);
+  const [loadingVideoBtn, setLoadingVideoBtn] = useState(null);
+  const [loadingAudioBtn, setLoadingAudioBtn] = useState(null);
+
+  useEffect(() => {
+    fetchTvrackState().then(state => {
+      setTvrackVideoState(state.video);
+      setTvrackAudioState(state.audio);
+      setLinkAudioVideoState(state.link);
+    }).catch(err => {
+      console.warn("No se pudo cargar estado de TVRACK del server:", err);
+      setTvrackVideoState(tvs.TVRACK);
+      setTvrackAudioState(tvs.TVRACK);
+    });
+  }, []);
+
+  const handleTvrackBtn = (type, deviceId) => async () => {
+    if (type === "video") {
+      setLoadingVideoBtn(deviceId);
+      try {
+        await assignVideoSource(deviceId, "TVRACK");
+        const newState = await setTvrackVideo(deviceId);
+        setTvrackVideoState(newState.video);
+        if (newState.link) setTvrackAudioState(newState.audio);
+        toast.success(`${deviceId} → VIDEO TVRACK`);
+      } catch {
+        toast.error("Error al asignar video");
+      }
+      setLoadingVideoBtn(null);
+    } else {
+      setLoadingAudioBtn(deviceId);
+      try {
+        await assignAudioSource(deviceId, "TVRACK");
+        const newState = await setTvrackAudio(deviceId);
+        setTvrackAudioState(newState.audio);
+        if (newState.link) setTvrackVideoState(newState.video);
+        toast.success(`${deviceId} → AUDIO TVRACK`);
+      } catch {
+        toast.error("Error al asignar audio");
+      }
+      setLoadingAudioBtn(null);
     }
-    setLoadingBtn(null);
+  };
+
+  const handleLinkToggle = async (e) => {
+    const linked = e.target.checked;
+    setLinkAudioVideoState(linked);
+    try {
+      const newState = await setTvrackLink(linked);
+      setTvrackVideoState(newState.video);
+      setTvrackAudioState(newState.audio);
+      setLinkAudioVideoState(newState.link);
+    } catch {
+      setLinkAudioVideoState(!linked);
+    }
   };
 
   return (
@@ -483,37 +530,71 @@ const MatrizVideo = () => {
               </div>
               <div className={styles.selectZona}>
                 <h3 className={styles.selectZonaTitulo}>
-                  Select Deco al TV de Monitoreo Multimedia - TVRACK
+                  TV Monitoreo Multimedia — TVRACK
                 </h3>
-                <div className={styles.rackRow}>
-                  {getByCapability('videoSource').map(d => {
-                    const isActive = d.id === tvs.TVRACK;
-                    return (
-                      <button
-                        key={d.id}
-                        type="button"
-                        data-testid={`btn-${d.id}`}
-                        onClick={handleBtnDTV(d.id)}
-                        className={`${styles.formSubmit}${isActive ? ' active' : ''}`}
-                        disabled={loadingBtn === d.id}
-                        title={d.connected}
-                        style={{
-                          backgroundColor: `var(--${d.id})`,
-                          color: ['DTV6', 'DTV7'].includes(d.id) ? '#1a1a2e' : '#fff',
-                          opacity: isActive ? 1 : 0.65,
-                          border: isActive ? '2px solid #fff' : '1px solid transparent',
-                          transition: 'opacity 0.2s, border 0.2s',
-                        }}
-                      >
-                        {d.id}
-                      </button>
-                    );
-                  })}
+                <div className={styles.tvrackSubSection}>
+                  <div className={styles.tvrackSubHeader}>
+                    <span className={styles.tvrackIconVideo}>▶</span>
+                    <span className={styles.tvrackLabelVideo}>Video</span>
+                    <span className={styles.tvrackActiveBadge}>
+                      ● {tvrackVideo}
+                    </span>
+                  </div>
+                  <div className={styles.rackRow}>
+                    {getByCapability("videoSource").map((d) => {
+                      const isActive = d.id === tvrackVideo;
+                      return (
+                        <BrawlStarsButton
+                          key={`video-${d.id}`}
+                          deviceId={d.id}
+                          isActive={isActive}
+                          onClick={handleTvrackBtn("video", d.id)}
+                          loading={loadingVideoBtn === d.id}
+                          dataTestId={`btn-video-${d.id}`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className={styles.tvrackLinkRow}>
+                  <span>🔗</span>
+                  <label className={styles.tvrackLinkLabel}>
+                    <input
+                      type="checkbox"
+                      checked={linkAudioVideo}
+                      onChange={handleLinkToggle}
+                    />
+                    Vincular Audio y Video
+                  </label>
+                </div>
+                <div className={styles.tvrackSubSection}>
+                  <div className={styles.tvrackSubHeader}>
+                    <span className={styles.tvrackIconAudio}>♪</span>
+                    <span className={styles.tvrackLabelAudio}>Audio</span>
+                    <span className={styles.tvrackActiveBadge}>
+                      ● {tvrackAudio}
+                    </span>
+                  </div>
+                  <div className={styles.rackRow}>
+                    {getByCapability("videoSource").map((d) => {
+                      const isActive = d.id === tvrackAudio;
+                      return (
+                        <BrawlStarsButton
+                          key={`audio-${d.id}`}
+                          deviceId={d.id}
+                          isActive={isActive}
+                          onClick={handleTvrackBtn("audio", d.id)}
+                          loading={loadingAudioBtn === d.id}
+                          dataTestId={`btn-audio-${d.id}`}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
               <div className={styles.selectZona}>
                 <h3 className={styles.selectZonaTitulo}>
-                  Zonas Adicionales — VIP, Planta -1, +15
+                  ZONAS FUERA DE SPORTBAR
                 </h3>
                 <div className={styles.zonasColumn}>
                   {(() => {
@@ -530,10 +611,10 @@ const MatrizVideo = () => {
                       'RACK-VIP-PANTALLABATACA': 'Rack VIP Bataca',
                     };
                     return [
-                      'aVip-Barra-Centro','aVip-Lobby-Batacazo','a-Menos1-Escenario',
-                      'a-QMR75-Menos1-TV1','aVip-Bar-Boveda','aMas-15-Barra',
-                      'a-QMR75-Menos1-TV2','a-Menos1-Escenario2','a-QMC65-Menos1-TV2',
-                      'RACK-VIP-PANTALLABATACA'
+                      'aVip-Barra-Centro','aVip-Lobby-Batacazo','aVip-Bar-Boveda',
+                      'RACK-VIP-PANTALLABATACA','aMas-15-Barra','a-Menos1-Escenario',
+                      'a-Menos1-Escenario2','a-QMR75-Menos1-TV1','a-QMR75-Menos1-TV2',
+                      'a-QMC65-Menos1-TV2'
                     ].map(key => (
                       <div key={key} style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.5rem'}}>
                         <label style={{minWidth:'160px',fontSize:'0.8rem',color:'#c9d1d9'}}>{labels[key]}</label>

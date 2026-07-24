@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import { DISPOSITIVOS, getDevice } from "./contexto/dispositivos";
+import { AhmProvider } from "./contexto/ContextoAHM";
 import Body from "./componentes/Body";
 import { ToastProvider } from "./componentes/Toast";
 import ThemeProvider from "./contexto/ThemeProvider";
@@ -200,9 +201,11 @@ const App = () => {
           handleUpdateDispositivo,
         }}
       >
-        <ToastProvider>
-          <Body />
-        </ToastProvider>
+        <AhmProvider>
+          <ToastProvider>
+            <Body />
+          </ToastProvider>
+        </AhmProvider>
       </ProviderUser>
     </ThemeProvider>
   );

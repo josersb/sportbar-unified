@@ -7,24 +7,30 @@ export default defineConfig({
 
   // Development server configuration
   server: {
-    port: 5173,
+    port: 5174,
     host: true, // Allow external connections
     open: true, // Auto-open browser
     cors: true,
     proxy: {
       // Device status endpoint → Express (must come before the generic /api rule)
       "/api/device/": {
-        target: "http://localhost:3101",
+        target: "http://localhost:3102",
         changeOrigin: true,
       },
       // State persistence endpoint → Express (must come before the generic /api rule)
       "/api/state": {
-        target: "http://localhost:3101",
+        target: "http://localhost:3102",
         changeOrigin: true,
       },
       // TVRACK shared state → Express (must come before the generic /api rule)
       "/api/tvrack": {
-        target: "http://localhost:3101",
+        target: "http://localhost:3102",
+        changeOrigin: true,
+      },
+      // WebSocket proxy for AHM-32 bridge (dev mode: Vite → Express)
+      "/ws": {
+        target: "http://localhost:3000",
+        ws: true,
         changeOrigin: true,
       },
       // Proxy API calls to avoid CORS issues during development

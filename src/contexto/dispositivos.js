@@ -96,6 +96,21 @@ export const DISPOSITIVOS = {
     color: '#BDBDBD',
     fallbackCapabilities: ['videoSource'],
   },
+  AHM32: {
+    id: 'AHM32',
+    hardware: 'AHM-32',
+    mac: null,
+    connected: 'Audio Matrix Processor',
+    provider: 'AHM',
+    defaultChannel: null,
+    color: '#00BCD4',
+    fallbackCapabilities: [
+      'audioProcessor',
+      'zoneControl',
+      'levelControl',
+      'muteControl',
+    ],
+  },
 };
 
 /**

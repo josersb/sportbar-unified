@@ -68,7 +68,14 @@ let stateDb;
   stateDb = await JSONFilePreset(path.join(__dirname, "state.json"), {
     state: null,
     tvrack: { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+    presets: { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null },
   });
+
+  // Migration: ensure presets key exists (state.json from older versions may lack it)
+  if (!stateDb.data.presets) {
+    stateDb.data.presets = { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null };
+    await stateDb.write();
+  }
 })();
 
 // ── Rate limiter para /api/state ──
@@ -148,6 +155,33 @@ app.post("/api/tvrack/link", stateLimiter, async (req, res) => {
   stateDb.data.tvrack.lastUpdated = new Date().toISOString();
   await stateDb.write();
   res.json(stateDb.data.tvrack);
+});
+
+// ── Presets Compartidos ──
+
+app.get("/api/presets/:n", (req, res) => {
+  const n = parseInt(req.params.n, 10);
+  if (n < 1 || n > 5) return res.status(400).json({ error: "Invalid preset number" });
+  if (!stateDb) return res.json({ preset: null });
+  res.json({ preset: stateDb.data.presets[`preset${n}`] });
+});
+
+app.post("/api/presets/:n", stateLimiter, async (req, res) => {
+  const n = parseInt(req.params.n, 10);
+  if (n < 1 || n > 5) return res.status(400).json({ error: "Invalid preset number" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.presets[`preset${n}`] = req.body;
+  await stateDb.write();
+  res.json({ ok: true });
+});
+
+app.delete("/api/presets/:n", stateLimiter, async (req, res) => {
+  const n = parseInt(req.params.n, 10);
+  if (n < 1 || n > 5) return res.status(400).json({ error: "Invalid preset number" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.presets[`preset${n}`] = null;
+  await stateDb.write();
+  res.json({ ok: true });
 });
 
 // Middleware para servir archivos estáticos desde dist (build de producción)

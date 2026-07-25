@@ -42,12 +42,12 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">60+ commits · 83 tests · v2 · Último: Issue 7 + docs API + reorg manuals (25 jul 2026)</p>
+<p class="sub">70+ commits · 83 tests · v2 · Último: Fase 3 presets + MatrizPreset UI (25 jul 2026)</p>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- PENDING — tareas por hacer, ordenadas por fecha de creación     -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="section-title">PENDIENTE (10)</div>
+<div class="section-title">PENDIENTE (9)</div>
 
 <div class="card pending"><div class="idx">1</div><div class="body">
   <h2>Seguridad — Ronda 4</h2>
@@ -81,9 +81,7 @@
 
 <div class="card pending"><div class="idx">4</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptacion.</p></div><span class="badge badge-pending">wait</span></div>
 
-<div class="card pending"><div class="idx">5</div><div class="body"><h2>Externalizar IP del Arranger</h2><p>192.168.2.254 hardcodeada en 5+ archivos. Variables de entorno en .env sin usar.</p></div><span class="badge badge-pending">todo</span></div>
-
-<div class="card pending"><div class="idx">6</div><div class="body">
+<div class="card pending"><div class="idx">5</div><div class="body">
   <h2>Documentar y testear API Arranger desde PDFs</h2>
   <p>Extraer, destilar y documentar comandos de la API del Arranger desde los manuales PDF. Cross-reference con arrangerApi.js.</p>
   <ul class="tasks">
@@ -95,7 +93,7 @@
   </ul>
 </div><span class="badge badge-pending">en progreso</span></div>
 
-<div class="card pending"><div class="idx">7</div><div class="body">
+<div class="card pending"><div class="idx">6</div><div class="body">
   <h2>Optimizar lógica de llamadas al Arranger</h2>
   <p>Auditar y optimizar todas las rutas de código que llaman al Arranger: unificar batching, paralelizar Audio.js, medir límites de concurrencia, evaluar TCP persistente.</p>
   <ul class="tasks">
@@ -107,20 +105,17 @@
   </ul>
 </div><span class="badge badge-pending">plan</span></div>
 
-<div class="card pending"><div class="idx">8</div><div class="body">
-  <h2>Persistir tvrackState con lowdb</h2>
-  <p>El state store del TVRACK (Express /api/tvrack/*) se pierde al reiniciar el servidor. lowdb 7.0.1 ya está instalado — falta implementar la persistencia en server/state.json.</p>
-</div><span class="badge badge-pending">todo</span></div>
-
-<div class="card pending"><div class="idx">9</div><div class="body">
+<div class="card pending"><div class="idx">7</div><div class="body">
   <h2>Issue #6: Zonas Fuera de Sportbar con botones independientes</h2>
   <p>Migrar el segmento de Zonas Fuera de Sportbar del modelo actual (selects + botón Enviar global) a botones independientes video/audio con link toggle, igual que TVRACK. Requiere planificación con SDD.</p>
 </div><span class="badge badge-pending">planificar</span></div>
 
-<div class="card pending"><div class="idx">10</div><div class="body">
+<div class="card pending"><div class="idx">8</div><div class="body">
   <h2>AHM-32 Audio Matrix Integration</h2>
   <p>Integración del procesador de audio Allen & Heath AHM-32. Worktree feat/ahm-integration ya creado (:3102). SDD completo (proposal, spec, design, tasks). Falta implementación del frontend.</p>
 </div><span class="badge badge-pending">planificado</span></div>
+
+<div class="card pending"><div class="idx">9</div><div class="body"><h2>Fase 4: Tema compartido (muy baja prioridad)</h2><p>Tema dark/light actualmente solo en localStorage. Evaluar si vale la pena sincronizarlo entre PCs vía servidor. Impacto mínimo, opcional.</p></div><span class="badge badge-pending">opcional</span></div>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- COMPLETADO — ordenado por fecha de finalización ascendente      -->
@@ -160,7 +155,7 @@
 
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Comunicacion Arranger (bugfix)</h2><p>3 bugs: TVRK color, fetch directo → proxy, Invalid Security Key no detectado.</p></div><span class="badge badge-done">PR #3 · jul 21</span></div>
 
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Branching model (feature → v2 → master). Worktrees con puertos dedicados. 7 PRs mergeados.</p></div><span class="badge badge-done">jul 22</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Branching model (feature → v2 → master). Worktrees con puertos dedicados. 10 PRs mergeados.</p></div><span class="badge badge-done">jul 22</span></div>
 
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Branching Strategy</h2><p>8 reglas deterministicas en AGENTS.md. feat/ahm-integration en :3102.</p></div><span class="badge badge-done">v2 · jul 22</span></div>
 
@@ -174,10 +169,16 @@
 
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Docs API Arranger + Reorg Manuals</h2><p>6 PDFs → markdown. 16 páginas wiki. Manuals reorganizados. README con catálogo completo.</p></div><span class="badge badge-done">PR #7 · jul 25</span></div>
 
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Externalizar IP del Arranger</h2><p>192.168.2.254 → variables de entorno. 17 archivos. Un solo .env para cambiar IP.</p></div><span class="badge badge-done">PR #9 · jul 25</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>lowdb tvrackState + Fase 1+2 Multi-PC</h2><p>tvrackState → lowdb (sobrevive reinicios). Polling 5s sincroniza estado entre PCs. TVRACK unificado en contexto global.</p></div><span class="badge badge-done">PR #10 · jul 25</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Fase 3: Presets compartidos + UI MatrizPreset</h2><p>GET/POST/DELETE /api/presets/:n en Express + lowdb. UI con 5 cards, estado usado/libre, Cargar/Guardar/Limpiar. Sincro multi-PC.</p></div><span class="badge badge-done">jul 25</span></div>
+
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado (23)</span>
-  <span><span class="dot dot-pending"></span> Pendiente (10)</span>
+  <span><span class="dot dot-done"></span> Completado (27)</span>
+  <span><span class="dot dot-pending"></span> Pendiente (9)</span>
 </div>
 
 </body>

@@ -31,7 +31,7 @@ Llama directamente a la [[../API/ArrangerApi]] mediante el comando `send serial`
 
 El valor de sourceSelection se extrae con `.slice(3,5)` del nombre del deco (ej: `"DTV1"` → `"1"`).
 
-URL base: `http://192.168.2.254/api/command/`  
+URL base: `http://ARRANGER_HOST/api/command/`  
 Token: `TOKEN_REMOVED`
 
 ## Dispositivos con los que interactúa

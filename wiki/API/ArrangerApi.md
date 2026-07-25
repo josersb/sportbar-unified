@@ -1,6 +1,6 @@
 # ArrangerApi
 
-API cliente para la comunicación con el controlador [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] en `192.168.2.254`. Centraliza la construcción y envío de comandos HTTP GET en modo `no-cors` para controlar la matriz audiovisual, decodificadores, procesador de audio Tesira y periféricos IR/seriales.
+API cliente para la comunicación con el controlador [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] en ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`). Centraliza la construcción y envío de comandos HTTP GET en modo `no-cors` para controlar la matriz audiovisual, decodificadores, procesador de audio Tesira y periféricos IR/seriales.
 
 Ubicación: `src/api/arrangerApi.js`
 
@@ -8,7 +8,7 @@ Ubicación: `src/api/arrangerApi.js`
 
 | Parámetro | Valor por defecto | Variable de entorno |
 |-----------|-------------------|---------------------|
-| Base URL | `http://192.168.2.254/api/command` | `VITE_ARRANGER_API_BASE` |
+| Base URL | `http://ARRANGER_HOST/api/command` (default `192.168.2.254`) | `VITE_ARRANGER_API_BASE` |
 | Token | `TOKEN_REMOVED` | `VITE_ARRANGER_TOKEN` |
 
 ## Interfaces del controlador
@@ -17,7 +17,7 @@ El [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] expone dos interfaces de 
 
 | Interfaz | Dirección | Uso en SportBar |
 |----------|-----------|-----------------|
-| HTTP API | `http://192.168.2.254/api/command/[cmd]/[token]` | Principal — todas las operaciones de la app |
+| HTTP API | `http://ARRANGER_HOST/api/command/[cmd]/[token]` | Principal — todas las operaciones de la app |
 | TCP API | Puerto `6980` | No usado directamente — disponible para sistemas de control de terceros |
 
 ## Funciones exportadas

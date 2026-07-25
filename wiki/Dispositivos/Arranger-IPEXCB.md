@@ -9,17 +9,17 @@ Controlador central del sistema **Arranger Digi IP 5000 Series** de **Liberty AV
 | Parámetro | Valor |
 |-----------|-------|
 | Modelo | IPEXCB (Arranger Controller) |
-| Dirección IP | `192.168.2.254` |
+| Dirección IP | ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`) |
 | API Token | `TOKEN_REMOVED` |
-| Interfaz web | `http://192.168.2.254` |
-| API HTTP | `http://192.168.2.254/api/command/[comando]/[token]` |
+| Interfaz web | `http://ARRANGER_HOST` |
+| API HTTP | `http://ARRANGER_HOST/api/command/[comando]/[token]` |
 | API TCP | Puerto `6980` (control de terceros) |
 
 ## API HTTP
 
 ### Formato de solicitud
 ```
-GET http://192.168.2.254/api/command/[comando_codificado]/[token]
+GET http://ARRANGER_HOST/api/command/[comando_codificado]/[token]
 ```
 
 El comando debe estar URL-encoded. El `[token]` de la instalación es `TOKEN_REMOVED`.
@@ -148,7 +148,7 @@ Respuestas típicas de `get status`: `CONNECTED`, `STOPPED`, `TIMEOUT`, `DISCONN
 
 ## Flujo de control en SportBar
 
-1. La aplicación React envía comandos HTTP GET al Arranger en `192.168.2.254`
+1. La aplicación React envía comandos HTTP GET al Arranger en ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`)
 2. En desarrollo, el proxy de [[../Configuracion/ViteProxy]] redirige `/api` al Arranger
 3. El Arranger traduce cada comando en acciones sobre los encoders y decoders
 4. Para audio, los comandos `send serial` pasan por el puerto RS232 del encoder DTV1 hacia el procesador Tesira

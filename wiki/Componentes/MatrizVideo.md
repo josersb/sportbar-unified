@@ -30,7 +30,7 @@ Estado local (TVRACK):
 - `POST /api/tvrack/audio` — persiste selección de audio
 - `POST /api/tvrack/link` — persiste estado del toggle
 
-URL base Arranger: `http://192.168.2.254/api/command/`  
+URL base Arranger: `http://ARRANGER_HOST/api/command/`  
 Token: `TOKEN_REMOVED`
 
 ## Componentes UI usados

@@ -43,10 +43,13 @@
 }
 
 .btn:hover:not(.selected) {
+  background: #ffd43b;
+  transform: scale(0.947);
   box-shadow:
     inset 0 0 0 0.66px #000,
     0 0.66px 0 0 #000,
-    0 2.3px 0.66px 0 rgba(0, 0, 0, 0.25);
+    0 2.3px 0.66px 0 rgba(0, 0, 0, 0.25),
+    0 0 12px 2px rgba(243, 188, 0, 0.4);
   -webkit-text-stroke: 0.66px var(--text-stroke);
   text-shadow: 0 1.3px 0 rgba(8, 2, 6, 1);
 }

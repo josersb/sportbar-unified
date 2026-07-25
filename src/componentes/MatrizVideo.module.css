@@ -221,3 +221,19 @@
   height: 16px;
   cursor: pointer;
 }
+
+[data-theme="dark"] .formSubmit {
+  background-color: #212d4a;
+  color: #c9d1d9;
+}
+
+[data-theme="dark"] .formSubmit:hover {
+  background-color: var(--color-brand-primary, #ff3900);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .formSelect {
+  background-color: #161b22;
+  color: #c9d1d9;
+  border-color: #30363d;
+}

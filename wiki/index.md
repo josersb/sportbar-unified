@@ -26,10 +26,19 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## APIs y Endpoints
 
-- [[API/ArrangerApi]] — cliente HTTP centralizado: `join av`, `join video`, `join audio`, `send ir`, `send serial`, `get status`, `sendChannelDigits`
+- [[API/ArrangerApi]] — cliente HTTP centralizado: `join av`, `join video`, `join audio`, `send ir`, `send serial`, `get matrix`, `get joins`, `get status`, `get devices`, `sendChannelDigits`
 - [[API/IrCodes]] — tabla de códigos IR hexadecimales para cambio de canal dígito a dígito
 - [[API/JoinVideo]] — comando `join video` del Arranger: enrutamiento de video independiente
 - [[API/JoinAudio]] — comando `join audio` del Arranger: enrutamiento de audio independiente
+- [[API/JoinAv]] — comando `join av` del Arranger: enrutamiento combinado video+audio
+- [[API/LeaveAv]] — comando `leave av` del Arranger: desconectar audio+video de un decoder
+- [[API/SendIr]] — comando `send ir` del Arranger: envío de códigos infrarrojos Pronto HEX
+- [[API/SendSerial]] — comando `send serial` del Arranger: envío de datos RS-232
+- [[API/GetStatus]] — comando `get status` del Arranger: estado de dispositivo o stream
+- [[API/GetDevices]] — comando `get devices` del Arranger: listar dispositivos (nombre + MAC)
+- [[API/GetMatrix]] — comando `get matrix` del Arranger: estado completo de la matriz por stream (✅ implementado)
+- [[API/GetJoins]] — comando `get joins` del Arranger: consultar encoder suscrito a un decoder (✅ implementado)
+- [[API/ArrangerHttpExamples]] — referencia de formatos HTTP GET/POST, seguridad key, ejemplos AJAX/fetch
 
 ## Dispositivos Hardware
 
@@ -48,6 +57,9 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 - [[Conceptos/StateManagement]] — Context API + localStorage + handlers de estado
 - [[Conceptos/SistemaPresets]] — 5 presets guardables, carga/grabación, persistencia en localStorage
+- [[Conceptos/ArrangerPresetLogic]] — lógica condicional de presets del Arranger (if/else, variables, operadores V1.4.0.0)
+- [[Conceptos/APIErrorHandling]] — errores documentados de la API del Arranger y su manejo en SportBar
+- [[Conceptos/ArrangerEventFlow]] — notificaciones push TCP en tiempo real (notify serial, network, display, source)
 
 ## Configuración
 
@@ -62,6 +74,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 - [[README]] — estado actual del proyecto
 - [[Docs/development/roadmap]] — roadmap de features (HTML + PDF)
 - [[Docs/referencia-instalacion]] — inventario completo de equipos, IPs y MACs (sin credenciales)
+- [Liberty AV Solutions](https://secure.libertycable.com/) — fabricante principal (Arranger, IPEX, periféricos)
 
 ## Referencias de API
 

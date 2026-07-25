@@ -39,7 +39,7 @@ Wrapper para el comando `[[JoinVideo|join video]]`. Enruta solo video a un desti
 Wrapper para el comando `[[JoinAudio|join audio]]`. Enruta solo audio a un destino. Usado por [[../Componentes/MatrizVideo]] — sección TVRACK ♪ Audio.
 
 ### `joinMultipleTVs(mappings)`
-Ejecuta `assignSourceToDestination` secuencialmente para un array de mapeos `{source, dest}`. Si un comando falla, loggea el error y continúa con el siguiente.
+Ejecuta `assignSourceToDestination` en lotes paralelos de 8 con `Promise.allSettled` para un array de mapeos `{source, dest}`. Si un comando falla, loggea el error y continúa con el siguiente. Procesamiento ~8× más rápido que el método secuencial anterior. El Formik submit en [[../Componentes/MatrizVideo]] ahora actualiza el estado incrementalmente: cada lote de 8 TVs actualiza `handleChangeEstadoVideo` y refresca el [[../Componentes/Aside]] antes de procesar el siguiente lote.
 
 ### `sendSerialCommand(device, command)`
 Envía un comando serial a un dispositivo con terminador `\x0A`. El payload se codifica como URL.
@@ -53,6 +53,9 @@ Cambia el canal de un DirecTV enviando los dígitos uno por uno vía IR con 300m
 
 ### `loadChannelPreset(decoNumber, channel)`
 **Backup activo**. Carga un preset de canal en un decodificador: `preset load deco[decoNumber]canal[channel]`. Mantenido como fallback si `sendChannelDigits` no está disponible.
+
+### `loadMatrixPreset(presetNumber)`
+Carga un preset completo de matriz desde localStorage. Usa el comando `preset load` del Arranger con formato `preset load preset[numero]`. Aplica la configuración guardada en `estadoApp_Preset[numero]` a la matriz física.
 
 ### `getDeviceStatus(deviceId)`
 Consulta el estado de un dispositivo vía el proxy Express (`/api/device/:id/status`). Retorna `{ deviceId, streams, online }`. Usado para verificar conectividad de dispositivos.
@@ -194,3 +197,126 @@ Todas las llamadas usan `mode: "no-cors"`. Esto implica que:
 - [[../Configuracion/ViteProxy]] — en desarrollo, las llamadas pasan por el proxy de Vite (:3101)
 - [[../README]] — documentación general
 - [[../AGENTS]] — schema de la wiki
+
+## Catálogo de comandos API
+
+Listado completo de comandos documentados del Arranger IPEX5000, agrupados por categoría, con estado de implementación en el sistema SportBar.
+
+### Routing (join / leave)
+
+| Comando | Descripción | Estado | Página |
+|---------|-------------|--------|--------|
+| [[JoinAv\|join av]] | Video + audio combinado | ✅ `assignSourceToDestination()` | [[JoinAv]] |
+| [[JoinVideo\|join video]] | Solo video | ✅ `assignVideoSource()` | [[JoinVideo]] |
+| [[JoinAudio\|join audio]] | Solo audio | ✅ `assignAudioSource()` | [[JoinAudio]] |
+| `join ir` | Enrutamiento IR independiente | 🔲 pendiente | — |
+| `join serial` | Enrutamiento serial independiente | 🔲 pendiente | — |
+| `join usb` | Enrutamiento USB independiente | 🔲 pendiente | — |
+| `join all` | Todas las señales combinadas | 🔲 pendiente | — |
+| `join kvm` | Video + audio + USB | 🔲 pendiente | — |
+| `join wall` | Configuración video wall | 🔲 pendiente | — |
+| `join usb_ext` | USB Extender externo (documentado, no usado en SportBar) | 🔲 pendiente | — |
+| [[LeaveAv\|leave av]] | Desconectar audio + video | 🔲 pendiente | [[LeaveAv]] |
+| `leave video` | Desconectar solo video | 🔲 pendiente | — |
+| `leave audio` | Desconectar solo audio | 🔲 pendiente | — |
+| `leave ir` | Desconectar IR | 🔲 pendiente | — |
+| `leave serial` | Desconectar serial | 🔲 pendiente | — |
+| `leave usb` | Desconectar USB | 🔲 pendiente | — |
+| `leave all` | Desconectar todas las señales | 🔲 pendiente | — |
+| `leave kvm` | Desconectar KVM | 🔲 pendiente | — |
+| `leave usb_ext` | Desconectar USB Extender (documentado, no usado en SportBar) | 🔲 pendiente | — |
+| `stop` | Detener stream de encoder | 🔲 pendiente | — |
+| `start` | Iniciar stream de encoder | 🔲 pendiente | — |
+
+### Send (comandos de envío)
+
+| Comando | Descripción | Estado | Página |
+|---------|-------------|--------|--------|
+| [[SendIr\|send ir]] | Enviar código infrarrojo | ✅ `sendIrCommand()` | [[SendIr]] |
+| [[SendSerial\|send serial]] | Enviar datos RS-232 | ✅ `sendSerialCommand()` (con bug) | [[SendSerial]] |
+| `send cec` | Enviar comando HDMI CEC genérico | 🔲 pendiente | — |
+| `send cec_off` | Apagar display vía CEC (comando directo) | 🔲 pendiente | — |
+| `send cec_on` | Encender display vía CEC (comando directo) | 🔲 pendiente | — |
+| `send gc` | Global Cache iTach (licenciado) | 🔲 pendiente | — |
+| `send tcp` | Comando TCP a dispositivo externo | 🔲 pendiente | — |
+
+### Get (comandos de consulta)
+
+| Comando | Descripción | Estado | Página |
+|---------|-------------|--------|--------|
+| [[GetStatus\|get status]] | Estado de dispositivo o stream | 🔲 pendiente | [[GetStatus]] |
+| [[GetDevices\|get devices]] | Lista de dispositivos (nombre + MAC) | 🔲 pendiente | [[GetDevices]] |
+| [[GetMatrix\|get matrix]] | Estado completo de la matriz por stream | ✅ `getMatrix()` | [[GetMatrix]] |
+| [[GetJoins\|get joins]] | Joins activos de un decoder | ✅ `getJoins()` | [[GetJoins]] |
+| `get video_status` | Estado de todos los streams de video | 🔲 pendiente | — |
+| `get ver` | Versión de firmware de dispositivo | 🔲 pendiente | — |
+| `get display_status` | Estado de display conectado | 🔲 pendiente | — |
+| `get edid` | EDID del display conectado | 🔲 pendiente | — |
+| `get video` | Información de video de encoder | 🔲 pendiente | — |
+| `get audio_source` | Fuente de audio de decoder | 🔲 pendiente | — |
+| `get preferred` | Resolución preferida del display | 🔲 pendiente | — |
+| `get scaler` | Estado del scaler | 🔲 pendiente | — |
+| `get rotation` | Rotación de video configurada | 🔲 pendiente | — |
+| `get frame_converter` | Frame rate del encoder | 🔲 pendiente | — |
+| `get video_mute` | Estado de mute de video | 🔲 pendiente | — |
+| `get video_quality` | Calidad de video configurada | 🔲 pendiente | — |
+| `get volume` | Volumen de decoder | 🔲 pendiente | — |
+| `get events` | Eventos del sistema | 🔲 pendiente | — |
+| `get var` | Valor de variable definida | 🔲 pendiente | — |
+| `get presets` | Lista de presets guardados | 🔲 pendiente | — |
+
+### Preset
+
+| Comando | Descripción | Estado | Página |
+|---------|-------------|--------|--------|
+| `preset load` | Cargar preset guardado | ✅ `loadChannelPreset()` + `loadMatrixPreset()` | — |
+| `preset add` | Crear preset nuevo | 🔲 pendiente | — |
+| `preset delete` | Eliminar preset | 🔲 pendiente | — |
+| `preset delay` | Agregar delay en preset | 🔲 pendiente | — |
+
+### Set (comandos de configuración)
+
+| Comando | Descripción | Estado | Página |
+|---------|-------------|--------|--------|
+| `set audio_source` | Fuente de audio de decoder | 🔲 pendiente | — |
+| `set edid` | Cargar EDID en encoder | 🔲 pendiente | — |
+| `set frame_converter` | Frame rate de encoder | 🔲 pendiente | — |
+| `set rotation` | Rotación de video | 🔲 pendiente | — |
+| `set scaler` | Modo de scaler | 🔲 pendiente | — |
+| `set video_mute` | Mute de video en decoder | 🔲 pendiente | — |
+| `set video_quality` | Calidad de video | 🔲 pendiente | — |
+| `set volume` | Volumen de decoder | 🔲 pendiente | — |
+
+### System
+
+| Comando | Descripción | Estado | Página |
+|---------|-------------|--------|--------|
+| `reboot` | Reiniciar dispositivo(s) | 🔲 pendiente | — |
+| `set events` | Configurar eventos | 🔲 pendiente | — |
+| `set listener` | Configurar listener TCP (licenciado, documentado API V1.4.0.0) | 🔲 pendiente | — |
+| `set var` | Definir variable de sistema | 🔲 pendiente | — |
+
+### UI (User Interfaces — licenciado)
+
+| Comando | Descripción | Estado |
+|---------|-------------|--------|
+| `set ui` | Configurar UI | 🔲 pendiente |
+| `set ui_button` | Configurar botón UI | 🔲 pendiente |
+| `set ui_image` | Configurar imagen UI | 🔲 pendiente |
+| `set ui_indicator` | Configurar indicador UI | 🔲 pendiente |
+| `set ui_label` | Configurar etiqueta UI | 🔲 pendiente |
+| `set ui_page` | Configurar página UI | 🔲 pendiente |
+| `set ui_redirect` | Configurar redirección UI | 🔲 pendiente |
+| `set ui_revert` | Configurar revert UI | 🔲 pendiente |
+| `set ui_slider` | Configurar slider UI | 🔲 pendiente |
+
+### Notify (mensajes del sistema)
+
+| Comando | Descripción | Estado |
+|---------|-------------|--------|
+| `notify serial` | Notificación de datos seriales | 🔲 pendiente |
+| `notify network` | Notificación de red | 🔲 pendiente |
+| `notify display` | Notificación de display | 🔲 pendiente |
+| `notify source` | Notificación de fuente | 🔲 pendiente |
+
+**Total de comandos documentados**: 67 | **Implementados**: 10 (`join av`, `join video`, `join audio`, `send ir`, `send serial`, `get devices`, `get status`, `get matrix`, `get joins`, `preset load`) — `preset load` con dos wrappers: `loadChannelPreset()` y `loadMatrixPreset()`

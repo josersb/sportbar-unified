@@ -11,26 +11,19 @@ import styles from "./MatrizVideo.module.css";
 import BrawlStarsButton from "./ui/BrawlStarsButton";
 
 const MatrizVideo = () => {
-  const { estado, handleChangeEstadoVideo } = useContext(ContextoUser);
+  const { estado, handleChangeEstadoVideo, tvrackState, handleChangeTvrack } = useContext(ContextoUser);
 
   const tvs = estado.tvs;
   const toast = useToast();
 
-  const [tvrackVideo, setTvrackVideoState] = useState(tvs.TVRACK);
-  const [tvrackAudio, setTvrackAudioState] = useState(tvs.TVRACK);
-  const [linkAudioVideo, setLinkAudioVideoState] = useState(false);
   const [loadingVideoBtn, setLoadingVideoBtn] = useState(null);
   const [loadingAudioBtn, setLoadingAudioBtn] = useState(null);
 
   useEffect(() => {
     fetchTvrackState().then(state => {
-      setTvrackVideoState(state.video);
-      setTvrackAudioState(state.audio);
-      setLinkAudioVideoState(state.link);
+      handleChangeTvrack(state);
     }).catch(err => {
       console.warn("No se pudo cargar estado de TVRACK del server:", err);
-      setTvrackVideoState(tvs.TVRACK);
-      setTvrackAudioState(tvs.TVRACK);
     });
   }, []);
 
@@ -40,24 +33,23 @@ const MatrizVideo = () => {
     else setLoadingAudioBtn(deviceId);
 
     try {
-      if (linkAudioVideo) {
+      if (tvrackState.link) {
         // Vinculado: join av manda video + audio en un solo comando al Arranger
         await assignSourceToDestination(deviceId, "TVRACK");
         const newState = isVideo
           ? await setTvrackVideo(deviceId)
           : await setTvrackAudio(deviceId);
-        setTvrackVideoState(newState.video);
-        setTvrackAudioState(newState.audio);
+        handleChangeTvrack(newState);
         toast.success(`${deviceId} → VIDEO + AUDIO TVRACK`);
       } else if (isVideo) {
         await assignVideoSource(deviceId, "TVRACK");
         const newState = await setTvrackVideo(deviceId);
-        setTvrackVideoState(newState.video);
+        handleChangeTvrack({ ...tvrackState, video: newState.video });
         toast.success(`${deviceId} → VIDEO TVRACK`);
       } else {
         await assignAudioSource(deviceId, "TVRACK");
         const newState = await setTvrackAudio(deviceId);
-        setTvrackAudioState(newState.audio);
+        handleChangeTvrack({ ...tvrackState, audio: newState.audio });
         toast.success(`${deviceId} → AUDIO TVRACK`);
       }
     } catch {
@@ -70,14 +62,12 @@ const MatrizVideo = () => {
 
   const handleLinkToggle = async (e) => {
     const linked = e.target.checked;
-    setLinkAudioVideoState(linked);
+    handleChangeTvrack({ ...tvrackState, link: linked });
     try {
       const newState = await setTvrackLink(linked);
-      setTvrackVideoState(newState.video);
-      setTvrackAudioState(newState.audio);
-      setLinkAudioVideoState(newState.link);
+      handleChangeTvrack(newState);
     } catch {
-      setLinkAudioVideoState(!linked);
+      handleChangeTvrack({ ...tvrackState, link: !linked });
     }
   };
 
@@ -554,12 +544,12 @@ const MatrizVideo = () => {
                     <span className={styles.tvrackIconVideo}>▶</span>
                     <span className={styles.tvrackLabelVideo}>Video</span>
                     <span className={styles.tvrackActiveBadge}>
-                      ● {tvrackVideo}
+                      ● {tvrackState.video}
                     </span>
                   </div>
                   <div className={styles.rackRow}>
                     {getByCapability("videoSource").map((d) => {
-                      const isActive = d.id === tvrackVideo;
+                      const isActive = d.id === tvrackState.video;
                       return (
                         <BrawlStarsButton
                           key={`video-${d.id}`}
@@ -578,7 +568,7 @@ const MatrizVideo = () => {
                   <label className={styles.tvrackLinkLabel}>
                     <input
                       type="checkbox"
-                      checked={linkAudioVideo}
+                      checked={tvrackState.link}
                       onChange={handleLinkToggle}
                     />
                     Vincular Audio y Video
@@ -589,12 +579,12 @@ const MatrizVideo = () => {
                     <span className={styles.tvrackIconAudio}>♪</span>
                     <span className={styles.tvrackLabelAudio}>Audio</span>
                     <span className={styles.tvrackActiveBadge}>
-                      ● {tvrackAudio}
+                      ● {tvrackState.audio}
                     </span>
                   </div>
                   <div className={styles.rackRow}>
                     {getByCapability("videoSource").map((d) => {
-                      const isActive = d.id === tvrackAudio;
+                      const isActive = d.id === tvrackState.audio;
                       return (
                         <BrawlStarsButton
                           key={`audio-${d.id}`}

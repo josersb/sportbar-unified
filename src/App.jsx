@@ -45,6 +45,7 @@ const migrarEstado = (oldData) => {
 
 const App = () => {
   const [estado, setEstado] = useState(estadoInicial);
+  const [tvrackState, setTvrackState] = useState({ video: "DTV1", audio: "DTV1", link: false });
   const [estadoLoaded, setEstadoLoaded] = useState(false);
 
   // Load state: server first, localStorage fallback, then initial state
@@ -131,6 +132,57 @@ const App = () => {
     });
   }, [estado, estadoLoaded]);
 
+  // ── Polling: sync state from server every 5s (multi-PC support) ──
+  const POLL_INTERVAL_MS = 5000;
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/state");
+        if (!res.ok) return;
+        const { state: serverState } = await res.json();
+        if (!serverState) return;
+
+        setEstado((prev) => {
+          // Only update if tvs changed (avoids unnecessary re-renders)
+          if (JSON.stringify(prev.tvs) === JSON.stringify(serverState.tvs)) {
+            return prev;
+          }
+          return { ...serverState };
+        });
+      } catch {
+        // Server not available — ignore
+      }
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Polling: sync TVRACK state from server every 5s ──
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/tvrack/state");
+        if (!res.ok) return;
+        const tvrack = await res.json();
+        setTvrackState((prev) => {
+          if (
+            prev.video === tvrack.video &&
+            prev.audio === tvrack.audio &&
+            prev.link === tvrack.link
+          ) {
+            return prev;
+          }
+          return tvrack;
+        });
+      } catch {
+        // Server not available
+      }
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handleChangeEstadoDecos = (decos) => {
     setEstado((prev) => {
       const dispositivos = { ...prev.dispositivos };
@@ -187,17 +239,22 @@ const App = () => {
       };
     });
   };
+  const handleChangeTvrack = (newTvrack) => {
+    setTvrackState(newTvrack);
+  };
 
   return (
     <ThemeProvider>
       <ProviderUser
         value={{
           estado,
+          tvrackState,
           handleChangeEstadoDecos,
           handleChangeEstadoAudio,
           handleChangeEstadoVideo,
           handleChangeEstadoPreset,
           handleUpdateDispositivo,
+          handleChangeTvrack,
         }}
       >
         <ToastProvider>

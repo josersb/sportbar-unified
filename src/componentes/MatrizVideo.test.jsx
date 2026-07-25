@@ -91,6 +91,8 @@ function renderWithContext(overrideValue = {}) {
     estado: baseState,
     handleChangeEstadoVideo: vi.fn(),
     handleChangeEstadoPreset: vi.fn(),
+    tvrackState: { video: "DTV1", audio: "DTV1", link: false },
+    handleChangeTvrack: vi.fn(),
     ...overrideValue,
   };
   return render(

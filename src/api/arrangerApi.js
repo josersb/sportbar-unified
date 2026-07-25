@@ -87,6 +87,28 @@ export async function assignAudioSource(source, destination) {
   return sendArrangerCommand(command);
 }
 
+export async function getDevices(target = "all") {
+  return sendArrangerCommand(buildArrangerCommand("get devices", target));
+}
+
+export async function getStatus(device, stream = "") {
+  const args = stream ? `${device} ${stream}` : device;
+  return sendArrangerCommand(buildArrangerCommand("get status", args));
+}
+
+export async function getMatrix(stream) {
+  return sendArrangerCommand(buildArrangerCommand("get matrix", stream));
+}
+
+export async function getJoins(decoder = "") {
+  const args = decoder || "";
+  return sendArrangerCommand(buildArrangerCommand("get joins", args));
+}
+
+export async function leaveAv(decoder) {
+  return sendArrangerCommand(buildArrangerCommand("leave av", decoder));
+}
+
 /*
  * Ejecuta join av secuencial para un array de asignaciones {source, dest}.
  * Cada ítem se ejecuta en orden; si uno falla, loggea el error y continúa.
@@ -94,18 +116,32 @@ export async function assignAudioSource(source, destination) {
  * @returns {Promise<void>}
  */
 export async function joinMultipleTVs(mappings) {
-  for (const { source, dest } of mappings) {
-    try {
-      await assignSourceToDestination(source, dest);
-    } catch (error) {
-      console.error(`[ArrangerAPI] Error enviando comando "join av ${source} ${dest}":`, error);
-    }
+  const BATCH_SIZE = 8;
+
+  for (let i = 0; i < mappings.length; i += BATCH_SIZE) {
+    const batch = mappings.slice(i, i + BATCH_SIZE);
+
+    await Promise.allSettled(
+      batch.map(async ({ source, dest }) => {
+        try {
+          await assignSourceToDestination(source, dest);
+        } catch (error) {
+          console.error(
+            `[ArrangerAPI] Error enviando comando "join av ${source} ${dest}":`,
+            error
+          );
+        }
+      })
+    );
   }
 }
 
 /*
  * Envía un comando serial a un dispositivo Tesira con terminador \\x0A.
  * El payload se codifica como URL, el \\x0A literal se convierte en %5Cx0A.
+ * Esto es correcto para HTTP transport: el Arranger recibe el string "\x0A"
+ * en la URL y lo convierte al byte LF (0x0A) real cuando lo reenvía al
+ * dispositivo serial (API docs Rev 240207, sección 10.6).
  * @param {string} device - Nombre del dispositivo (ej: "DTV1")
  * @param {string} command - Comando serial (ej: "Mute1 set mute 1 true")
  * @returns {Promise<Response>}
@@ -124,6 +160,17 @@ export async function sendSerialCommand(device, command) {
  */
 export async function loadChannelPreset(decoNumber, channel) {
   return sendArrangerCommand(`preset load deco${decoNumber}canal${channel}`);
+}
+
+/**
+ * Carga un preset completo de matriz desde el Arranger.
+ * Útil para restaurar configuraciones frecuentes con un solo comando
+ * en lugar de enviar 46 join av individuales.
+ * @param {string} presetName - Nombre del preset en el Arranger (ej: "futbol-domingo")
+ * @returns {Promise<Response>}
+ */
+export async function loadMatrixPreset(presetName) {
+  return sendArrangerCommand(`preset load ${presetName}`);
 }
 
 /**

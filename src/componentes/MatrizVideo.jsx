@@ -98,14 +98,12 @@ const MatrizVideo = () => {
             TvsEscaleraNorte: tvs.TvsEscaleraNorte,
             TvsEscaleraCentro: tvs.TvsEscaleraCentro,
             TvsEscaleraSur: tvs.TvsEscaleraSur,
-            TVRACK: tvs.TVRACK,
           }}
           onSubmit={async (values) => {
             const newTvs = { ...tvs };
             newTvs.VWN = values.VWN;
             newTvs.VWC = values.VWC;
             newTvs.VWS = values.VWS;
-            newTvs.TVRACK = values.TVRACK;
             newTvs.TvsBarraLivertador = values.TvsBarraLivertador;
             switch (values.TvsBarraLivertador) {
               case "DTV123":
@@ -395,13 +393,26 @@ const MatrizVideo = () => {
               VWC: "VW-Centro",
               VWS: "VW-Sur",
             };
-            const mappings = Object.entries(newTvs).map(([tv, source]) => ({
-              source,
-              dest: vwDestNames[tv] || tv,
-            }));
+            const mappings = Object.entries(newTvs)
+              .filter(([tv]) => tv !== 'TVRACK')
+              .map(([tv, source]) => ({
+                source,
+                dest: vwDestNames[tv] || tv,
+              }));
             try {
-              await joinMultipleTVs(mappings);
-              handleChangeEstadoVideo(newTvs);
+              // Enviar en lotes de 8 para no saturar la red y actualizar
+              // el Aside incrementalmente (no esperar al final de los 46)
+              const BATCH_SIZE = 8;
+              for (let i = 0; i < mappings.length; i += BATCH_SIZE) {
+                const batch = mappings.slice(i, i + BATCH_SIZE);
+                await Promise.allSettled(
+                  batch.map(({ source, dest }) =>
+                    assignSourceToDestination(source, dest)
+                  )
+                );
+                // Actualizar estado incremental: cada lote refresca el Aside
+                handleChangeEstadoVideo({ ...newTvs });
+              }
               toast.success("Matriz de video actualizada");
             } catch {
               toast.error("Error al actualizar la matriz de video");

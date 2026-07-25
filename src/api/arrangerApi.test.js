@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits } from "./arrangerApi";
+import { joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getStatus, getMatrix, getJoins, leaveAv } from "./arrangerApi";
 
 // Mock IR_CODES so the dynamic import inside sendChannelDigits resolves synchronously
 // and doesn't interfere with vi.useFakeTimers
@@ -213,5 +213,103 @@ describe("loadChannelPreset", () => {
 
     const calledUrl = fetch.mock.calls[0][0];
     expect(calledUrl).toContain("preset%20load%20deco1canal77");
+  });
+});
+
+describe("getDevices", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends get devices all by default", async () => {
+    await getDevices();
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20devices%20all");
+  });
+
+  it("sends get devices with specific target", async () => {
+    await getDevices("Encoders");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20devices%20Encoders");
+  });
+});
+
+describe("getStatus", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends get status for a specific device", async () => {
+    await getStatus("TVRACK");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20status%20TVRACK");
+  });
+
+  it("sends get status with stream parameter", async () => {
+    await getStatus("DTV1", "video");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20status%20DTV1%20video");
+  });
+});
+
+describe("getMatrix", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends get matrix video", async () => {
+    await getMatrix("video");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20matrix%20video");
+  });
+
+  it("sends get matrix audio", async () => {
+    await getMatrix("audio");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20matrix%20audio");
+  });
+});
+
+describe("getJoins", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends get joins without arguments", async () => {
+    await getJoins();
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20joins");
+  });
+});
+
+describe("leaveAv", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends leave av for a decoder", async () => {
+    await leaveAv("TVRACK");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("leave%20av%20TVRACK");
   });
 });

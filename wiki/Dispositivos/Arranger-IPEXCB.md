@@ -1,6 +1,8 @@
 # Arranger IPEXCB
 
-Controlador central del sistema **Arranger Digi IP 5000 Series** de Liberty AV / DigitaLinx IP. Orquesta la comunicación entre encoders [[IPEX5001-Encoder]], decoders [[IPEX5002-Decoder]] y sistemas de control de terceros. Es el cerebro de la matriz audiovisual del SportBar.
+Controlador central del sistema **Arranger Digi IP 5000 Series** de **Liberty AV Solutions** (antes DigitaLinx IP). Orquesta la comunicación entre encoders [[IPEX5001-Encoder]], decoders [[IPEX5002-Decoder]] y sistemas de control de terceros. Es el cerebro de la matriz audiovisual del SportBar.
+
+> **Fabricante**: [Liberty AV Solutions](https://secure.libertycable.com/) — fabricante principal de equipos Arranger, IPEX5000/5001/5002 y periféricos. Documentación oficial en `Docs/manuals arranger/`.
 
 ## Datos de la instalación
 

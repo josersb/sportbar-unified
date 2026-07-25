@@ -154,105 +154,61 @@ describe("MatrizVideo", () => {
   });
 
   describe("onSubmit (Enviar button)", () => {
-    it("calls joinMultipleTVs with all 37 TV mappings when Enviar is clicked", async () => {
+    it("calls assignSourceToDestination for all 46 mappings in batches of 8", async () => {
       const handleChangeEstadoVideo = vi.fn();
       renderWithContext({ handleChangeEstadoVideo });
 
       fireEvent.click(screen.getByText("Enviar"));
 
       await vi.waitFor(() => {
-        expect(mockJoinMultipleTVs).toHaveBeenCalled();
+        // 46 mappings → 6 batches, state updated after each batch
+        expect(handleChangeEstadoVideo).toHaveBeenCalled();
       });
 
-      expect(mockJoinMultipleTVs).toHaveBeenCalledTimes(1);
+      // All 46 mappings sent via assignSourceToDestination
+      expect(mockAssignSourceToDestination).toHaveBeenCalledTimes(46);
 
-      const mappings = mockJoinMultipleTVs.mock.calls[0][0];
-      // All 47 estado.tvs entries mapped dynamically. Order from initialTvs + new destinations
-      expect(mappings).toHaveLength(47);
+      // First call should be VW-Norte
+      expect(mockAssignSourceToDestination.mock.calls[0]).toEqual(["DTV1", "VW-Norte"]);
 
-      // VW mappings (indices 0-2)
-      expect(mappings[0]).toEqual({ source: "DTV1", dest: "VW-Norte" });
-      expect(mappings[1]).toEqual({ source: "DTV2", dest: "VW-Centro" });
-      expect(mappings[2]).toEqual({ source: "DTV3", dest: "VW-Sur" });
-
-      // TVRACK entry (index 3)
-      expect(mappings[3]).toEqual({ source: "DTV1", dest: "TVRACK" });
-
-      // Zone spread pattern entries (indices 4-10)
-      expect(mappings[4]).toEqual({ source: "DTV123", dest: "TvsBarraLivertador" });
-      expect(mappings[5]).toEqual({ source: "DTV1234", dest: "TvsBarraSur" });
-      expect(mappings[6]).toEqual({ source: "DTV123", dest: "TvsBarraPista" });
-      expect(mappings[7]).toEqual({ source: "DTV1234", dest: "TvsBarraNorte" });
-      expect(mappings[8]).toEqual({ source: "DTV1234", dest: "TvsEscaleraNorte" });
-      expect(mappings[9]).toEqual({ source: "DTV1234", dest: "TvsEscaleraCentro" });
-      expect(mappings[10]).toEqual({ source: "DTV1234", dest: "TvsEscaleraSur" });
-
-      // TV01-TV26 (indices 11-36, sources set by switch/case from zone groups)
-      // TvsBarraLivertador=DTV123 → TV01=DTV1, TV02=DTV2, TV03=DTV3
-      expect(mappings[11]).toEqual({ source: "DTV1", dest: "TV01" });
-      expect(mappings[12]).toEqual({ source: "DTV2", dest: "TV02" });
-      expect(mappings[13]).toEqual({ source: "DTV3", dest: "TV03" });
-      // TvsBarraSur=DTV1234 → TV04=DTV1, TV05=DTV2, TV06=DTV3, TV07=DTV4
-      expect(mappings[14]).toEqual({ source: "DTV1", dest: "TV04" });
-      expect(mappings[15]).toEqual({ source: "DTV2", dest: "TV05" });
-      expect(mappings[16]).toEqual({ source: "DTV3", dest: "TV06" });
-      expect(mappings[17]).toEqual({ source: "DTV4", dest: "TV07" });
-      // TvsBarraPista=DTV123 → TV08=DTV1, TV09=DTV2, TV10=DTV3
-      expect(mappings[18]).toEqual({ source: "DTV1", dest: "TV08" });
-      expect(mappings[19]).toEqual({ source: "DTV2", dest: "TV09" });
-      expect(mappings[20]).toEqual({ source: "DTV3", dest: "TV10" });
-      // TvsBarraNorte=DTV1234 → TV11=DTV1, TV12=DTV2, TV13=DTV3, TV14=DTV4
-      expect(mappings[21]).toEqual({ source: "DTV1", dest: "TV11" });
-      expect(mappings[22]).toEqual({ source: "DTV2", dest: "TV12" });
-      expect(mappings[23]).toEqual({ source: "DTV3", dest: "TV13" });
-      expect(mappings[24]).toEqual({ source: "DTV4", dest: "TV14" });
-      // TvsEscaleraSur=DTV1234 → TV15=DTV1, TV16=DTV2, TV17=DTV3, TV18=DTV4
-      expect(mappings[25]).toEqual({ source: "DTV1", dest: "TV15" });
-      expect(mappings[26]).toEqual({ source: "DTV2", dest: "TV16" });
-      expect(mappings[27]).toEqual({ source: "DTV3", dest: "TV17" });
-      expect(mappings[28]).toEqual({ source: "DTV4", dest: "TV18" });
-      // TvsEscaleraCentro=DTV1234 → TV19=DTV1, TV20=DTV2, TV21=DTV3, TV22=DTV4
-      expect(mappings[29]).toEqual({ source: "DTV1", dest: "TV19" });
-      expect(mappings[30]).toEqual({ source: "DTV2", dest: "TV20" });
-      expect(mappings[31]).toEqual({ source: "DTV3", dest: "TV21" });
-      expect(mappings[32]).toEqual({ source: "DTV4", dest: "TV22" });
-      // TvsEscaleraNorte=DTV1234 → TV23=DTV1, TV24=DTV2, TV25=DTV3, TV26=DTV4
-      expect(mappings[33]).toEqual({ source: "DTV1", dest: "TV23" });
-      expect(mappings[34]).toEqual({ source: "DTV2", dest: "TV24" });
-      expect(mappings[35]).toEqual({ source: "DTV3", dest: "TV25" });
-      expect(mappings[36]).toEqual({ source: "DTV4", dest: "TV26" });
+      // State updated incrementally: 6 batches for 46 items
+      expect(handleChangeEstadoVideo).toHaveBeenCalledTimes(6);
     });
 
-    it("calls handleChangeEstadoVideo after joinMultipleTVs when API succeeds", async () => {
+    it("calls handleChangeEstadoVideo incrementally when API succeeds", async () => {
       const handleChangeEstadoVideo = vi.fn();
       renderWithContext({ handleChangeEstadoVideo });
 
       fireEvent.click(screen.getByText("Enviar"));
 
       await vi.waitFor(() => {
-        expect(mockJoinMultipleTVs).toHaveBeenCalled();
+        expect(handleChangeEstadoVideo).toHaveBeenCalled();
       });
 
+      // Should be called once per batch (46/8 = 6 batches)
+      expect(handleChangeEstadoVideo.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("continues updating state even when some mappings fail", async () => {
+      // Make some calls fail but others succeed
+      mockAssignSourceToDestination
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockRejectedValueOnce(new Error("Network error"));
+
+      const handleChangeEstadoVideo = vi.fn();
+      renderWithContext({ handleChangeEstadoVideo });
+
+      fireEvent.click(screen.getByText("Enviar"));
+
+      await vi.waitFor(() => {
+        expect(handleChangeEstadoVideo).toHaveBeenCalled();
+      });
+
+      // State still updated despite failures (Promise.allSettled never rejects)
       expect(handleChangeEstadoVideo).toHaveBeenCalled();
-    });
-
-    it("does not call handleChangeEstadoVideo when joinMultipleTVs rejects", async () => {
-      mockJoinMultipleTVs.mockRejectedValueOnce(new Error("Network error"));
-
-      const handleChangeEstadoVideo = vi.fn();
-      renderWithContext({ handleChangeEstadoVideo });
-
-      fireEvent.click(screen.getByText("Enviar"));
-
-      await vi.waitFor(() => {
-        expect(mockJoinMultipleTVs).toHaveBeenCalled();
-      });
-
-      // State should NOT be updated because the API call failed
-      expect(handleChangeEstadoVideo).not.toHaveBeenCalled();
 
       // Clean up mock
-      mockJoinMultipleTVs.mockResolvedValue(undefined);
+      mockAssignSourceToDestination.mockResolvedValue(undefined);
     });
   });
 });

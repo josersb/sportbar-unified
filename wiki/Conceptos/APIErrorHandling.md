@@ -116,7 +116,7 @@ En versiones anteriores del cliente, `mode: "no-cors"` implicaba:
 - Imposibilidad de detectar errores del Arranger
 - Dependencia de logs del servidor para diagnóstico
 
-Con la migración al proxy Express (`/api/command/*` → `192.168.2.254`), el cliente ahora puede leer respuestas completas, eliminando esta limitación.
+Con la migración al proxy Express (`/api/command/*` → ARRANGER_HOST), el cliente ahora puede leer respuestas completas, eliminando esta limitación.
 
 ## Recomendaciones de mejora
 

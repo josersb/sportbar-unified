@@ -22,37 +22,37 @@ http://<controller_ip>/api/command/<command>/<security_key>
 #### Comando simple (join av)
 
 ```
-GET http://192.168.2.254/api/command/join%20av%20DTV1%20TV01/TOKEN_REMOVED
+GET http://ARRANGER_HOST/api/command/join%20av%20DTV1%20TV01/TOKEN_REMOVED
 ```
 
 Equivalente sin URL-encoding:
 
 ```
-GET http://192.168.2.254/api/command/join av DTV1 TV01/TOKEN_REMOVED
+GET http://ARRANGER_HOST/api/command/join av DTV1 TV01/TOKEN_REMOVED
 ```
 
 #### Comando con argumentos (get matrix)
 
 ```
-GET http://192.168.2.254/api/command/get%20matrix%20video/TOKEN_REMOVED
+GET http://ARRANGER_HOST/api/command/get%20matrix%20video/TOKEN_REMOVED
 ```
 
 #### Comando serial (con comillas en payload)
 
 ```
-GET http://192.168.2.254/api/command/send%20serial%20DTV1%20%22Mute1%20set%20mute%201%20true%5Cx0A%22/TOKEN_REMOVED
+GET http://ARRANGER_HOST/api/command/send%20serial%20DTV1%20%22Mute1%20set%20mute%201%20true%5Cx0A%22/TOKEN_REMOVED
 ```
 
 #### Comando de preset
 
 ```
-GET http://192.168.2.254/api/command/preset%20load%20deco1canal1603/TOKEN_REMOVED
+GET http://ARRANGER_HOST/api/command/preset%20load%20deco1canal1603/TOKEN_REMOVED
 ```
 
 #### Comando con key inline (alternativa al token en path)
 
 ```
-GET http://192.168.2.254/api/command/get%20status%20DTV1/key:TOKEN_REMOVED
+GET http://ARRANGER_HOST/api/command/get%20status%20DTV1/key:TOKEN_REMOVED
 ```
 
 ## HTTP POST
@@ -72,7 +72,7 @@ Content-Type: application/json
 ### Ejemplo
 
 ```json
-POST http://192.168.2.254/api/command/
+POST http://ARRANGER_HOST/api/command/
 
 {
   "command": "join av DTV1 TV01",
@@ -119,7 +119,7 @@ La key se inyecta en build time desde `.env` y NO debe comitearse.
 
 ```javascript
 $.ajax({
-  url: "http://192.168.2.254/api/command/join%20av%20DTV1%20TV01/abc123",
+  url: "http://ARRANGER_HOST/api/command/join%20av%20DTV1%20TV01/abc123",
   type: "GET",
   success: function(data) {
     console.log("Comando exitoso:", data);
@@ -133,7 +133,7 @@ $.ajax({
 ### Ejemplo con fetch (vanilla JS)
 
 ```javascript
-fetch("http://192.168.2.254/api/command/join%20av%20DTV1%20TV01/abc123")
+fetch("http://ARRANGER_HOST/api/command/join%20av%20DTV1%20TV01/abc123")
   .then(response => response.text())
   .then(body => {
     if (body.includes("error")) {
@@ -150,7 +150,7 @@ fetch("http://192.168.2.254/api/command/join%20av%20DTV1%20TV01/abc123")
 En producción, las llamadas no van directo al Arranger sino a través del proxy Express:
 
 ```
-Cliente React ──► Express :3101/api/command/* ──► Arranger 192.168.2.254:80/api/command/*
+Cliente React ──► Express :3101/api/command/* ──► Arranger ARRANGER_HOST:80/api/command/*
 ```
 
 Esto permite:

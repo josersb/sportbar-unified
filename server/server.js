@@ -6,6 +6,10 @@ const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const ARRANGER_HOST = process.env.ARRANGER_HOST || "192.168.2.254";
+const ARRANGER_PORT = process.env.ARRANGER_PORT || "80";
+const ARRANGER_BASE = `http://${ARRANGER_HOST}:${ARRANGER_PORT}`;
+
 // ── Security: Helmet (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, etc.) ──
 app.use(
   helmet({
@@ -19,11 +23,11 @@ app.use(
           "'self'",
           "http://localhost:5173",          // Vite dev server
           "http://localhost:3101",          // Express self (v2)
-          "http://192.168.2.254",           // Arranger matrix
+          ARRANGER_BASE,           // Arranger matrix
         ],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
-        frameSrc: ["'self'", "http://192.168.2.254"],
+        frameSrc: ["'self'", ARRANGER_BASE],
       },
     },
     crossOriginEmbedderPolicy: false,       // Allow Arranger iframe embeds
@@ -172,7 +176,7 @@ app.get("/api/device/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
     const token = process.env.ARRANGER_TOKEN || "TOKEN_REMOVED";
-    const url = `http://192.168.2.254/api/command/get status ${id}/${token}`;
+    const url = `${ARRANGER_BASE}/api/command/get status ${id}/${token}`;
     const response = await fetchWithRetry(url);
     const text = await response.text();
 
@@ -203,7 +207,7 @@ app.get("/api/device/:id/status", async (req, res) => {
 app.get("/api/command/:command/:token", async (req, res) => {
   try {
     const { command, token } = req.params;
-    const url = `http://192.168.2.254/api/command/${encodeURIComponent(command)}/${token}`;
+    const url = `${ARRANGER_BASE}/api/command/${encodeURIComponent(command)}/${token}`;
     const response = await fetchWithRetry(url);
     const text = await response.text();
     res.status(response.status).send(text);

@@ -10,8 +10,8 @@ Middleware de seguridad que agrega headers HTTP: CSP, HSTS, X-Frame-Options, X-C
 **CSP configurado**:
 - `scriptSrc`: `'self'` + `'unsafe-inline'` (necesario para React)
 - `styleSrc`: `'self'` + `'unsafe-inline'`
-- `connectSrc`: `'self'` + `localhost:5173` + `192.168.2.254`
-- `frameSrc`: `'self'` + `192.168.2.254` (iframe del Arranger)
+- `connectSrc`: `'self'` + `localhost:5173` + ARRANGER_HOST
+- `frameSrc`: `'self'` + ARRANGER_HOST (iframe del Arranger)
 
 ### CORS restrictivo
 Orígenes permitidos: `localhost:5173`, `localhost:3000`, `127.0.0.1:*`, `192.168.2.x:*`. Reemplaza el `*` anterior.

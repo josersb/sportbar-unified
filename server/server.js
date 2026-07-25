@@ -67,6 +67,7 @@ let stateDb;
   const { JSONFilePreset } = await import("lowdb/node");
   stateDb = await JSONFilePreset(path.join(__dirname, "state.json"), {
     state: null,
+    tvrack: { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
   });
 })();
 
@@ -111,41 +112,42 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── TVRACK Shared State ──
-const tvrackState = {
-  video: "DTV1",
-  audio: "DTV1",
-  link: false,
-  lastUpdated: null,
-};
+// ── TVRACK Shared State (persisted via lowdb) ──
 
 app.get("/api/tvrack/state", (req, res) => {
-  res.json(tvrackState);
+  if (!stateDb) return res.json({ video: "DTV1", audio: "DTV1", link: false });
+  res.json(stateDb.data.tvrack);
 });
 
-app.post("/api/tvrack/video", (req, res) => {
+app.post("/api/tvrack/video", stateLimiter, async (req, res) => {
   const { deviceId } = req.body;
   if (!deviceId) return res.status(400).json({ error: "deviceId required" });
-  tvrackState.video = deviceId;
-  if (tvrackState.link) tvrackState.audio = deviceId;
-  tvrackState.lastUpdated = new Date().toISOString();
-  res.json(tvrackState);
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.tvrack.video = deviceId;
+  if (stateDb.data.tvrack.link) stateDb.data.tvrack.audio = deviceId;
+  stateDb.data.tvrack.lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json(stateDb.data.tvrack);
 });
 
-app.post("/api/tvrack/audio", (req, res) => {
+app.post("/api/tvrack/audio", stateLimiter, async (req, res) => {
   const { deviceId } = req.body;
   if (!deviceId) return res.status(400).json({ error: "deviceId required" });
-  tvrackState.audio = deviceId;
-  if (tvrackState.link) tvrackState.video = deviceId;
-  tvrackState.lastUpdated = new Date().toISOString();
-  res.json(tvrackState);
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.tvrack.audio = deviceId;
+  if (stateDb.data.tvrack.link) stateDb.data.tvrack.video = deviceId;
+  stateDb.data.tvrack.lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json(stateDb.data.tvrack);
 });
 
-app.post("/api/tvrack/link", (req, res) => {
+app.post("/api/tvrack/link", stateLimiter, async (req, res) => {
   const { linked } = req.body;
-  tvrackState.link = !!linked;
-  tvrackState.lastUpdated = new Date().toISOString();
-  res.json(tvrackState);
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.tvrack.link = !!linked;
+  stateDb.data.tvrack.lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json(stateDb.data.tvrack);
 });
 
 // Middleware para servir archivos estáticos desde dist (build de producción)

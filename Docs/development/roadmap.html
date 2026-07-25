@@ -42,7 +42,7 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">40+ commits · 67 tests · master · Último: UI/UX Redesign completado (21 jul 2026)</p>
+<p class="sub">50+ commits · 78 tests · v2 · Último: TVRACK Video/Audio split + BrawlStarsButton (22 jul 2026)</p>
 
 <div class="section-title">SDD CHANGES</div>
 
@@ -51,6 +51,8 @@
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Centralize Arranger API</h2><p>83 fetchs eliminados. Funciones: sendArrangerCommand, joinMultipleTVs, sendSerialCommand, sendChannelDigits. -290 lineas.</p></div><span class="badge badge-done">v1</span></div>
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Zonas Adicionales</h2><p>10 decoders IPEX5002 como destinos en estado.tvs (VIP, Planta -1, +15). 47 destinos totales. Seccion dedicada en MatrizVideo.</p></div><span class="badge badge-done">v1</span></div>
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>UI MatrizVideo</h2><p>Labels humanos en Zonas Adicionales. Tokens --DTV1..--DTV8 en Aside.css. TVRACK con colores, tooltip, estado activo. Layout fluido 100% + flex-wrap.</p></div><span class="badge badge-done">v1</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>UI/UX Redesign</h2><p>CSS Modules + design tokens (60+ variables). Dark mode con toggle. Responsive 3 breakpoints. Accesibilidad. usePreset hook. Canales data-driven. 78 tests.</p></div><span class="badge badge-done">v2</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>TVRACK Video/Audio Split</h2><p>Separacion independiente de video (join video) y audio (join audio). Toggle de vinculacion. State store Express /api/tvrack/* para persistencia entre clientes. BrawlStarsButton: componente cartoon 3D con capibara SVG y glow neon.</p></div><span class="badge badge-done">v2</span></div>
 
 <div class="section-title">INFRA & QUALITY</div>
 
@@ -102,12 +104,16 @@
 
 <div class="card pending"><div class="idx">4</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptacion.</p></div><span class="badge badge-pending">wait</span></div>
 
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>UI/UX Redesign</h2><p>CSS Modules + design tokens (60+ variables). Dark mode con toggle. Responsive 3 breakpoints. Accesibilidad (:focus-visible, aria-label). usePreset hook. Canales data-driven. 67 tests. 31 tareas en 4 fases.</p></div><span class="badge badge-done">v2</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Zonas Fuera de Sportbar</h2><p>Renombrado desde "Zonas Adicionales". Reordenado por categoria: VIPs → +15 → Escenarios → QMR/QMC. Labels humanos.</p></div><span class="badge badge-done">v2</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Branching Strategy</h2><p>feature → v2 → master documentado. 8 reglas deterministicas en AGENTS.md. Worktrees con puertos dedicados. feat/ahm-integration en :3102.</p></div><span class="badge badge-done">v2</span></div>
+
+<div class="card pending"><div class="idx">5</div><div class="body"><h2>Externalizar IP del Arranger</h2><p>192.168.2.254 hardcodeada en 5+ archivos. Variables de entorno en .env sin usar. SDD arranger-api-centralized quedo incompleto.</p></div><span class="badge badge-pending">todo</span></div>
 
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado (17)</span>
-  <span><span class="dot dot-pending"></span> Pendiente (4)</span>
+  <span><span class="dot dot-done"></span> Completado (20)</span>
+  <span><span class="dot dot-pending"></span> Pendiente (5)</span>
 </div>
 
 </body>

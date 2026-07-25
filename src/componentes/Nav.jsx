@@ -26,6 +26,9 @@ const Nav = () => {
           <NavLink to="/arranger" className={linkClass} aria-current={linkAria}>
             Links-Arranger
           </NavLink>
+          <NavLink to="/presets" className={linkClass} aria-current={linkAria}>
+            Presets Guardados
+          </NavLink>
         </ul>
         <div className={styles.ulContainer}>
           <NavLink to="/soporte" className={linkClass} aria-current={linkAria}>

@@ -143,21 +143,9 @@ export const estadoInicial = {
   ],
 };
 
-// Creamos si no existen los 5 presets de estados en el localstorage.
-localStorage.getItem("estadoApp_Preset1") ||
-  localStorage.setItem("estadoApp_Preset1", JSON.stringify(estadoInicial));
-
-localStorage.getItem("estadoApp_Preset2") ||
-  localStorage.setItem("estadoApp_Preset2", JSON.stringify(estadoInicial));
-
-localStorage.getItem("estadoApp_Preset3") ||
-  localStorage.setItem("estadoApp_Preset3", JSON.stringify(estadoInicial));
-
-localStorage.getItem("estadoApp_Preset4") ||
-  localStorage.setItem("estadoApp_Preset4", JSON.stringify(estadoInicial));
-
-localStorage.getItem("estadoApp_Preset5") ||
-  localStorage.setItem("estadoApp_Preset5", JSON.stringify(estadoInicial));
+// Los presets ya no se auto-inicializan. Se crean cuando el usuario
+// guarda desde MatrizPreset y se sincronizan con el servidor (lowdb).
+// Si no hay datos en localStorage ni en el servidor, el preset está libre.
 
 export const ProviderUser = ContextoUser.Provider;
 export default ContextoUser;

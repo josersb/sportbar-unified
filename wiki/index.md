@@ -17,7 +17,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 - [[Componentes/Nav]] — barra de navegación con NavLink
 - [[Componentes/Aside]] — panel lateral con estado en tiempo real
 - [[Componentes/MatrizVideo]] — control de matriz de video (47 destinos, Zonas Adicionales, TVRACK)
-- [[Componentes/MatrizPreset]] — gestión de 5 presets de configuración
+- [[Componentes/MatrizPreset]] — gestión de 5 presets con estado usado/libre, Cargar/Guardar/Limpiar, sincronización servidor
 - [[Componentes/Canales]] — gestión de canales deportivos y favoritos
 - [[Componentes/Audio]] — control de audio por zonas (Norte, Centro, Sur)
 - [[Componentes/Arranger]] — links directos a la interfaz web del Arranger
@@ -26,7 +26,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## APIs y Endpoints
 
-- [[API/ArrangerApi]] — cliente HTTP centralizado: `join av`, `join video`, `join audio`, `send ir`, `send serial`, `get matrix`, `get joins`, `get status`, `get devices`, `sendChannelDigits`
+- [[API/ArrangerApi]] — cliente HTTP centralizado: 12 comandos implementados, 67 documentados. Incluye endpoints de presets (`GET/POST/DELETE /api/presets/:n`) y TVRACK
 - [[API/IrCodes]] — tabla de códigos IR hexadecimales para cambio de canal dígito a dígito
 - [[API/JoinVideo]] — comando `join video` del Arranger: enrutamiento de video independiente
 - [[API/JoinAudio]] — comando `join audio` del Arranger: enrutamiento de audio independiente
@@ -63,7 +63,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## Configuración
 
-- [[Configuracion/ViteProxy]] — proxy de desarrollo `/api` → `192.168.2.254`, chunks de build, dev server
+- [[Configuracion/ViteProxy]] — proxy de desarrollo `/api` → ARRANGER_HOST, chunks de build, dev server
 - [[Configuracion/PnpmSetup]] — pnpm como gestor exclusivo, `.npmrc`, `.nvmrc`, Node 18.17.1
 - [[Configuracion/Seguridad]] — helmet, CORS restrictivo, rate limiting, CSP, token cleanup
 - [[Configuracion/BranchingStrategy]] — flujo de ramas, worktrees, puertos por entorno

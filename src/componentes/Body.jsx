@@ -9,6 +9,7 @@ import Audio from "./Audio";
 import Aside from "./Aside";
 import Arranger from "./Arranger";
 import Soporte from "./Soporte";
+import MatrizPreset from "./MatrizPreset";
 
 function Body() {
   return (
@@ -23,6 +24,7 @@ function Body() {
           <Route path="/canales" element={<Canales />} />
           <Route path="/audio" element={<Audio />} />
           <Route path="/arranger" element={<Arranger />} />
+          <Route path="/presets" element={<MatrizPreset />} />
           <Route path="/soporte" element={<Soporte />} />
           <Route path="/" element={<Portada />} />
         </Routes>

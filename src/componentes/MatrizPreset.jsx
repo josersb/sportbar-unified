@@ -1,6 +1,7 @@
-import { useRef, useContext } from "react";
+import { useRef, useContext, useEffect, useState } from "react";
 import ContextoUser from "../contexto/Contexto";
 import { usePreset } from "../hooks/usePreset";
+import PageContainer from "./ui/PageContainer";
 import "./Toast.css";
 import { useToast } from "./Toast";
 import styles from "./MatrizPreset.module.css";
@@ -10,20 +11,54 @@ const MatrizPreset = () => {
   const descripcionPreset = estado.descripcionPreset;
   const toast = useToast();
 
-  // Generic preset hook — one instance per preset (1..5)
-  const preset1 = usePreset(1);
-  const preset2 = usePreset(2);
-  const preset3 = usePreset(3);
-  const preset4 = usePreset(4);
-  const preset5 = usePreset(5);
+  const presets = [
+    { n: 1, hook: usePreset(1), ref: useRef() },
+    { n: 2, hook: usePreset(2), ref: useRef() },
+    { n: 3, hook: usePreset(3), ref: useRef() },
+    { n: 4, hook: usePreset(4), ref: useRef() },
+    { n: 5, hook: usePreset(5), ref: useRef() },
+  ];
 
-  const inputRef1 = useRef();
-  const inputRef2 = useRef();
-  const inputRef3 = useRef();
-  const inputRef4 = useRef();
-  const inputRef5 = useRef();
+  // Estado de carga desde el servidor (null = cargando, false = libre, true = en uso)
+  const [serverStatus, setServerStatus] = useState([null, null, null, null, null]);
 
-  const handleLoadPreset = (preset, label) => async () => {
+  // Al montar, consultar al servidor qué presets existen
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncFromServer() {
+      const results = [];
+      for (let n = 1; n <= 5; n++) {
+        try {
+          const res = await fetch(`/api/presets/${n}`);
+          if (res.ok) {
+            const { preset } = await res.json();
+            results.push(!!preset);
+          } else {
+            results.push(false);
+          }
+        } catch {
+          results.push(false);
+        }
+      }
+      if (!cancelled) setServerStatus(results);
+    }
+
+    syncFromServer();
+    return () => { cancelled = true; };
+  }, []);
+
+  const hasPreset = (idx) => {
+    // Servidor manda, localStorage es respaldo
+    if (serverStatus[idx] !== null) return serverStatus[idx];
+    return presets[idx].hook.isLoaded;
+  };
+
+  const handleLoad = (preset, label) => async () => {
+    if (!hasPreset(label - 1)) {
+      toast.error(`Preset ${label} está vacío`);
+      return;
+    }
     try {
       await preset.load();
       toast.success(`Preset ${label} cargado`);
@@ -32,102 +67,94 @@ const MatrizPreset = () => {
     }
   };
 
-  const handleSavePreset = (preset, ref, label) => () => {
-    preset.save(ref.current.value || "");
+  const handleSave = (preset, ref, label) => async () => {
+    await preset.save(ref.current?.value || "");
     toast.success(`Preset ${label} guardado`);
+    // Actualizar estado local
+    setServerStatus(prev => {
+      const next = [...prev];
+      next[label - 1] = true;
+      return next;
+    });
   };
 
+  const handleClear = (preset, label) => async () => {
+    try {
+      await fetch(`/api/presets/${label}`, { method: "DELETE" });
+    } catch {}
+    localStorage.removeItem(`estadoApp_Preset${label}`);
+    toast.info(`Preset ${label} limpiado`);
+    setServerStatus(prev => {
+      const next = [...prev];
+      next[label - 1] = false;
+      return next;
+    });
+  };
+
+  const usedCount = serverStatus.filter(Boolean).length;
+
   return (
-    <div className={styles.presetContainer}>
-      <h3 className={styles.titulo}>Presets</h3>
-      <ul>
-        <li className={styles.item}>
-          <button onClick={handleLoadPreset(preset1, "1")} className={styles.btnCargarPreset}>
-            Preset 1
-          </button>
-          <input
-            type="text"
-            name="preset1"
-            ref={inputRef1}
-            placeholder={descripcionPreset[0]?.preset1 || ""}
-            className="canales-form-input"
-          />
-          <button
-            onClick={handleSavePreset(preset1, inputRef1, "1")}
-            className={styles.btnGrabarPreset}
-            aria-label="Grabar preset 1"
-          ></button>
-        </li>
-        <li className={styles.item}>
-          <button onClick={handleLoadPreset(preset2, "2")} className={styles.btnCargarPreset}>
-            Preset 2
-          </button>
-          <input
-            type="text"
-            name="preset2"
-            ref={inputRef2}
-            placeholder={descripcionPreset[1]?.preset2 || ""}
-            className="canales-form-input"
-          />
-          <button
-            onClick={handleSavePreset(preset2, inputRef2, "2")}
-            className={styles.btnGrabarPreset}
-            aria-label="Grabar preset 2"
-          ></button>
-        </li>
-        <li className={styles.item}>
-          <button onClick={handleLoadPreset(preset3, "3")} className={styles.btnCargarPreset}>
-            Preset 3
-          </button>
-          <input
-            type="text"
-            name="preset3"
-            ref={inputRef3}
-            placeholder={descripcionPreset[2]?.preset3 || ""}
-            className="canales-form-input"
-          />
-          <button
-            onClick={handleSavePreset(preset3, inputRef3, "3")}
-            className={styles.btnGrabarPreset}
-            aria-label="Grabar preset 3"
-          ></button>
-        </li>
-        <li className={styles.item}>
-          <button onClick={handleLoadPreset(preset4, "4")} className={styles.btnCargarPreset}>
-            Preset 4
-          </button>
-          <input
-            type="text"
-            name="preset4"
-            ref={inputRef4}
-            placeholder={descripcionPreset[3]?.preset4 || ""}
-            className="canales-form-input"
-          />
-          <button
-            onClick={handleSavePreset(preset4, inputRef4, "4")}
-            className={styles.btnGrabarPreset}
-            aria-label="Grabar preset 4"
-          ></button>
-        </li>
-        <li className={styles.item}>
-          <button onClick={handleLoadPreset(preset5, "5")} className={styles.btnCargarPreset}>
-            Preset 5
-          </button>
-          <input
-            type="text"
-            name="preset5"
-            ref={inputRef5}
-            placeholder={descripcionPreset[4]?.preset5 || ""}
-            className="canales-form-input"
-          />
-          <button
-            onClick={handleSavePreset(preset5, inputRef5, "5")}
-            className={styles.btnGrabarPreset}
-            aria-label="Grabar preset 5"
-          ></button>
-        </li>
-      </ul>
-    </div>
+    <main>
+      <PageContainer>
+        <h3 className={styles.titulo}>Presets Guardados</h3>
+        <p className={styles.subtitle}>
+          {serverStatus.includes(null)
+            ? "Sincronizando con el servidor..."
+            : `${usedCount} de 5 presets en uso`}
+        </p>
+
+        <div className={styles.grid}>
+          {presets.map(({ n, hook, ref }, idx) => {
+            const loaded = hasPreset(idx);
+            return (
+              <div
+                key={n}
+                className={`${styles.card} ${loaded ? styles.cardUsed : styles.cardFree}`}
+              >
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardNumber}>Preset {n}</span>
+                  <span className={`${styles.badge} ${loaded ? styles.badgeUsed : styles.badgeFree}`}>
+                    {loaded ? "En uso" : "Libre"}
+                  </span>
+                </div>
+
+                <input
+                  type="text"
+                  ref={ref}
+                  key={`preset-${n}-${serverStatus[idx]}`}
+                  defaultValue={descripcionPreset[idx]?.[`preset${n}`] || ""}
+                  placeholder={loaded ? "Descripción del preset..." : "Nombre del preset..."}
+                  className={styles.cardInput}
+                />
+
+                <div className={styles.cardActions}>
+                  <button
+                    onClick={handleLoad(hook, n)}
+                    className={`${styles.btn} ${styles.btnLoad}`}
+                    disabled={!loaded}
+                  >
+                    Cargar
+                  </button>
+                  <button
+                    onClick={handleSave(hook, ref, n)}
+                    className={`${styles.btn} ${styles.btnSave}`}
+                  >
+                    Guardar
+                  </button>
+                  <button
+                    onClick={handleClear(hook, n)}
+                    className={`${styles.btn} ${styles.btnClear}`}
+                    disabled={!loaded}
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </PageContainer>
+    </main>
   );
 };
 

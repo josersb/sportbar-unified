@@ -528,11 +528,9 @@ function phase4UpdateIndex() {
 
   // ---- Restructure "## Dispositivos Hardware" section ----
   // Find the section and replace it with hierarchical index.
-  const dispositivosSectionRegex = /(## Dispositivos Hardware\n\n)([\s\S]*?)(?=\n## )/;
+  const dispositivosSectionRegex = /(## Dispositivos Hardware\r?\n\r?\n)([\s\S]*?)(?=\r?\n## )/;
 
-  const hierarchicalIndex = `## Dispositivos Hardware
-
-### DirecTV
+  const hierarchicalIndex = `### DirecTV
 
 - [[Dispositivos/DirecTV/Decodificadores/Decodificadores]] — catálogo de 8 fuentes de video: 6 DirecTV + 2 encoders IPEX5001
 

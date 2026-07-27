@@ -247,3 +247,20 @@ Registro cronológico de todas las operaciones de la wiki: ingestas, creación d
 - La latencia del IPEX5002 (17-33ms) es de 1-2 frames a 60Hz — irrelevante para el caso de uso de sport bar (TVs mirando deportes), pero crítico para aplicaciones de gaming o video wall sincronizado.
 
 **Sin contradicciones detectadas**.
+
+---
+
+## [2026-07-27] migration | Jerarquía Fabricante → Categoría
+
+**Operación**: Migración de `wiki/Dispositivos/` de estructura plana a jerarquía Fabricante → Categoría.
+
+**Cambios**:
+- Creadas 10 carpetas (7 fabricantes)
+- Fusionados `Decodificadores.md` + `DirecTV-Decos.md` → `DirecTV/Decodificadores/Decodificadores.md`
+- Migrados 7 archivos a paths jerárquicos con wikilinks reescritos: IPEX5001-Encoder.md, IPEX5002-Decoder.md, Arranger-IPEXCB.md, AHM-32.md, SQ6.md, Shure-ANI.md, MagicInfo.md
+- Migrado `ZonasAudio.md` → `Conceptos/ZonasAudio.md` (cross-type)
+- Creados 3 placeholders: Samsung/Televisores/DBE-DME-DHE.md, dbx/Procesadores/ZonePRO-1260.md, Kramer/Distribucion/VM-8H.md
+- Actualizados `index.md`, `AGENTS.md`, y este archivo
+
+**Archivos**: scripts/migrate-dispositivos-hierarchy.js, wiki/ (11 dirs, 8 movidos, 3 placeholders, 2 eliminados)
+**Script**: `scripts/migrate-dispositivos-hierarchy.js`

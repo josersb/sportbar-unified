@@ -17,7 +17,7 @@ El AHM-32 podría ser un reemplazo o complemento del procesador Tesira actual (1
 
 ## Relaciones
 
-- [[../Dispositivos/ZonasAudio]] — posible nuevo controlador de audio
-- [[../API/ArrangerApi]] — los comandos seriales actuales van al Tesira
-- [[../Docs/referencia-instalacion]] — referencia completa de la instalación
-- [[../README]] — documentación general
+- [[../../../../Dispositivos/Conceptos/ZonasAudio]] — posible nuevo controlador de audio
+- [[../../../../API/ArrangerApi]] — los comandos seriales actuales van al Tesira
+- [[../../../../Docs/referencia-instalacion]] — referencia completa de la instalación
+- [[../../../../README]] — documentación general

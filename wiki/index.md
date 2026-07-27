@@ -42,16 +42,36 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## Dispositivos Hardware
 
-- [[Dispositivos/Decodificadores]] — catálogo de 8 fuentes de video: 6 DirecTV + 2 encoders IPEX5001
-- [[Dispositivos/DirecTV-Decos]] — 6 decodificadores DirecTV físicos (DTV1–DTV6), control IR
-- [[Dispositivos/IPEX5001-Encoder]] — transmisor HDMI sobre IP, JPEG2000, PoE
-- [[Dispositivos/IPEX5002-Decoder]] — receptor HDMI sobre IP, video wall 16×16
-- [[Dispositivos/Arranger-IPEXCB]] — controlador central IPEXCB, API HTTP + TCP
-- [[Dispositivos/ZonasAudio]] — 3 zonas de audio (Norte, Centro, Sur) con Tesira DSP
-- [[Dispositivos/AHM-32]] — matriz de audio Allen & Heath 32×32 (TCP, sin integrar)
-- [[Dispositivos/SQ6]] — consola de mezcla Allen & Heath para eventos en vivo
-- [[Dispositivos/Shure-ANI]] — interfaces de audio en red (ANI22/ANI4OUT)
-- [[Dispositivos/MagicInfo]] — cartelería digital Samsung (25+ TVs, sin integrar)
+### DirecTV
+
+- [[Dispositivos/DirecTV/Decodificadores/Decodificadores]] — catálogo de 8 fuentes de video: 6 DirecTV + 2 encoders IPEX5001
+
+### Liberty
+
+- [[Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] — transmisor HDMI sobre IP, JPEG2000, PoE
+- [[Dispositivos/Liberty/Distribucion/IPEX5002-Decoder]] — receptor HDMI sobre IP, video wall 16×16
+- [[Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador central IPEXCB, API HTTP + TCP
+
+### Allen-Heath
+
+- [[Dispositivos/Allen-Heath/Procesadores/AHM-32]] — matriz de audio Allen & Heath 32×32 (TCP, sin integrar)
+- [[Dispositivos/Allen-Heath/Mezcladoras/SQ6]] — consola de mezcla Allen & Heath para eventos en vivo
+
+### Shure
+
+- [[Dispositivos/Shure/Audio/ANI]] — interfaces de audio en red (ANI22/ANI4OUT)
+
+### Samsung
+
+- [[Dispositivos/Samsung/Software/MagicInfo]] — cartelería digital Samsung (25+ TVs, sin integrar)
+
+### dbx
+
+- [[Dispositivos/dbx/Procesadores/ZonePRO-1260]] — procesador de audio (documentación pendiente)
+
+### Kramer
+
+- [[Dispositivos/Kramer/Distribucion/VM-8H]] — distribuidor de video (documentación pendiente)
 
 ## Conceptos
 
@@ -79,7 +99,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 ## Referencias de API
 
 - [[API/ArrangerApi]] — implementación del cliente API y referencia completa de comandos del Arranger
-- [[Dispositivos/Arranger-IPEXCB]] — documentación del controlador físico, IP, token, puertos
+- [[Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — documentación del controlador físico, IP, token, puertos
 
 ## Sources
 

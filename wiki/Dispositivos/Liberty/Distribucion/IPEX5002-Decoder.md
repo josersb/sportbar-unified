@@ -13,7 +13,7 @@ Receptor HDMI sobre IP fabricado por **Liberty AV / DigitaLinx IP**. Decodifica 
 | Bitrate promedio 4K | 250 Mbps |
 | Bitrate promedio 1080p | 150 Mbps |
 | Bitrate pico | 850 Mbps |
-| Video wall máximo | 16×16 con [[IPEX5001-Encoder]] |
+| Video wall máximo | 16×16 con [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] |
 | Alimentación | 12V DC o PoE 802.3af Alternative B (6W) |
 | Escalado | Auto-escala a la resolución nativa del display conectado |
 
@@ -59,7 +59,7 @@ Receptor HDMI sobre IP fabricado por **Liberty AV / DigitaLinx IP**. Decodifica 
 | Consumo típico | 6W |
 | Potencia máxima | 12.95W (entregada por el switch) |
 
-> **Diferencia con el encoder**: El [[IPEX5001-Encoder]] usa Alternative A (pares 1-2 y 3-6). Esto es relevante para switches PoE que solo soportan un modo.
+> **Diferencia con el encoder**: El [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] usa Alternative A (pares 1-2 y 3-6). Esto es relevante para switches PoE que solo soportan un modo.
 
 ## DIP Switch — Configuración de ID
 
@@ -78,7 +78,7 @@ El ID se usa para identificación en el Arranger y para video wall (posición en
 
 ## Diferencias con el Encoder
 
-| Característica | [[IPEX5001-Encoder]] | IPEX5002 Decoder |
+| Característica | [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] | IPEX5002 Decoder |
 |---------------|----------------------|-------------------|
 | Dirección de video | Entrada HDMI → Red IP | Red IP → Salida HDMI |
 | PoE | Alternative A | Alternative B |
@@ -114,7 +114,7 @@ El ID se usa para identificación en el Arranger y para video wall (posición en
 ## Capacidades
 
 ### Enrutamiento IR
-Las señales IR siguen la ruta de video en sentido inverso: un control remoto apuntado al IR IN del decoder transmite la señal IR por la red IP hasta el [[IPEX5001-Encoder]] asociado, que la emite por su puerto IR OUT hacia el dispositivo fuente (ej: decodificador DirecTV).
+Las señales IR siguen la ruta de video en sentido inverso: un control remoto apuntado al IR IN del decoder transmite la señal IR por la red IP hasta el [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] asociado, que la emite por su puerto IR OUT hacia el dispositivo fuente (ej: decodificador DirecTV).
 
 ### RS232
 - Passthrough serial bidireccional entre encoder y decoder
@@ -125,14 +125,14 @@ Las señales IR siguen la ruta de video en sentido inverso: un control remoto ap
 
 ### USB HID
 - Dos puertos USB Type A en el panel frontal
-- Teclado y mouse conectados al decoder controlan la PC conectada al [[IPEX5001-Encoder]] vía USB HOST
+- Teclado y mouse conectados al decoder controlan la PC conectada al [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] vía USB HOST
 - La señal USB sigue la ruta de video igual que IR y RS232
 
 ### CEC
 - Controla encendido/apagado del display conectado mediante comandos HDMI CEC
 - El decoder puede enviar comandos CEC al TV sin intervención del controlador
 - Comandos API: `send cec`, `send cec_on`, `send cec_off`
-- [[../Componentes/Audio]] podría beneficiarse de CEC para control de displays en zonas de audio
+- [[../../../../Componentes/Audio]] podría beneficiarse de CEC para control de displays en zonas de audio
 
 ### Funciones de display
 - **Identify**: muestra el nombre del dispositivo en pantalla durante 30 segundos (útil para identificar TVs en instalaciones grandes)
@@ -145,7 +145,7 @@ Las señales IR siguen la ruta de video en sentido inverso: un control remoto ap
 
 | Síntoma | Causa probable | Acción |
 |---------|---------------|--------|
-| Sin imagen en el TV | Decoder no recibiendo stream | Verificar comando `get status` en el [[../Dispositivos/Arranger-IPEXCB|Arranger-IPEXCB]] |
+| Sin imagen en el TV | Decoder no recibiendo stream | Verificar comando `get status` en el [[../../../../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger-IPEXCB]] |
 | Imagen con artifacts | Pérdida de paquetes en red | Verificar IGMP snooping y jumbo frames en el switch |
 | IR no controla la fuente | Ruta de video incorrecta | Verificar que el `join av` asocie el decoder correcto con el encoder fuente |
 | Display no enciende con CEC | CEC no soportado por el TV | Verificar que CEC esté habilitado en el menú del TV |
@@ -162,13 +162,13 @@ Las señales IR siguen la ruta de video en sentido inverso: un control remoto ap
 
 ## Relaciones
 
-- [[../Dispositivos/IPEX5001-Encoder]] — encoder complementario que origina el stream
-- [[../Dispositivos/Arranger-IPEXCB]] — controlador central que enruta los streams
-- [[../API/ArrangerApi]] — API de control del sistema
-- [[../API/SendSerial]] — comando `send serial` para control RS-232 remoto
-- [[../Conceptos/SistemaPresets]] — presets que almacenan asignaciones de video
-- [[../API/GetMatrix]] — validación de conexiones activas de video
-- [[../API/GetJoins]] — consulta de encoder conectado a este decoder
-- [[../API/GetStatus]] — consulta de estado individual de este decoder
-- [[../README]] — documentación general
-- [[../AGENTS]] — schema de la wiki
+- [[../../../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] — encoder complementario que origina el stream
+- [[../../../../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador central que enruta los streams
+- [[../../../../API/ArrangerApi]] — API de control del sistema
+- [[../../../../API/SendSerial]] — comando `send serial` para control RS-232 remoto
+- [[../../../../Conceptos/SistemaPresets]] — presets que almacenan asignaciones de video
+- [[../../../../API/GetMatrix]] — validación de conexiones activas de video
+- [[../../../../API/GetJoins]] — consulta de encoder conectado a este decoder
+- [[../../../../API/GetStatus]] — consulta de estado individual de este decoder
+- [[../../../../README]] — documentación general
+- [[../../../../AGENTS]] — schema de la wiki

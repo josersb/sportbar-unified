@@ -265,7 +265,7 @@ Tipos de páginas que pueden existir en esta wiki:
 |------|-------------|-------------------|---------|
 | Componente React | Página funcional o UI del frontend | `Componentes/Nombre.md` | `Componentes/MatrizVideo.md` |
 | API / Endpoint | Integración externa o endpoint del servidor | `API/Nombre.md` | `API/ArrangerApi.md` |
-| Dispositivo Hardware | Equipo físico conectado a la matriz | `Dispositivos/Nombre.md` | `Dispositivos/DTV1.md` |
+| Dispositivo Hardware | Equipo físico conectado a la matriz | `Dispositivos/{Fabricante}/{Categoria}/Dispositivo.md` | `Dispositivos/DirecTV/Decodificadores/Decodificadores.md` |
 | Concepto | Patrón, idea o principio de diseño | `Conceptos/Nombre.md` | `Conceptos/StateManagement.md` |
 | Configuración | Archivo o conjunto de settings del proyecto | `Configuracion/Nombre.md` | `Configuracion/Vite.md` |
 | Preset | Configuración guardada de estado de la matriz | `Presets/Nombre.md` | `Presets/Preset1.md` |
@@ -383,10 +383,12 @@ Secciones del `index.md`:
 - **Cross-linking esperado por tipo**:
   - Componente → vinculado desde su Concepto (State Management) y desde la página de ruta que lo renderiza.
   - API → vinculado desde los Componentes que la consumen y desde Dispositivos que controla.
-  - Dispositivo → vinculado desde la API que lo gestiona y desde los Componentes que lo usan.
+  - Dispositivo → vinculado desde la API que lo gestiona y desde los Componentes que lo usan
+  - Dispositivo jerárquico → mismo que Dispositivo plano, más los placeholders de su misma categoría..
   - Concepto → vinculado desde todos los Componentes y APIs que lo implementan.
   - Preset → vinculado desde `MatrizPreset` y desde los Dispositivos que referencia.
   - Decision → vinculado desde las entidades y conceptos que afecta.
+- **Dispositivos jerárquicos**: `[[Dispositivos/{Fabricante}/{Categoria}/Dispositivo]]` para dispositivos en la nueva estructura. Ej: `[[Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]]`.
 - **No usar paths absolutos** (con `C:\` o `/home/`). Solo paths relativos dentro del vault.
 - **No usar Markdown links** `[texto](path)`. Siempre `[[wikilinks]]`.
 

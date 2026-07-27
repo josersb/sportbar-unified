@@ -15,7 +15,7 @@ Transmisor HDMI sobre IP fabricado por **Liberty AV / DigitaLinx IP**. Codifica 
 | Bitrate pico | 850 Mbps |
 | Latencia | 17–33 ms (1–2 frames) |
 | Matriz máxima | 45 encoders en switch 48 puertos |
-| Video wall máximo | 16×16 con decoders [[IPEX5002-Decoder]] |
+| Video wall máximo | 16×16 con decoders [[../../../../../Liberty/Distribucion/IPEX5002-Decoder]] |
 | Alimentación | 12V DC o PoE 802.3af Alternative A (6W) |
 
 ## Puertos (panel trasero)
@@ -44,7 +44,7 @@ Transmisor HDMI sobre IP fabricado por **Liberty AV / DigitaLinx IP**. Codifica 
 ## Capacidades
 
 ### Enrutamiento IR
-Las señales IR viajan junto con el video: cuando un decodificador [[IPEX5002-Decoder]] recibe IR en su puerto IR IN, la señal viaja de vuelta por la red IP hacia el encoder y sale por el puerto IR OUT. Esto permite controlar remotamente el dispositivo fuente (ej: decodificador DirecTV) desde la ubicación del TV.
+Las señales IR viajan junto con el video: cuando un decodificador [[../../../../../Liberty/Distribucion/IPEX5002-Decoder]] recibe IR en su puerto IR IN, la señal viaja de vuelta por la red IP hacia el encoder y sale por el puerto IR OUT. Esto permite controlar remotamente el dispositivo fuente (ej: decodificador DirecTV) desde la ubicación del TV.
 
 ### RS232
 - Baud rates soportados: 2400 a 115200
@@ -76,9 +76,9 @@ Las señales IR viajan junto con el video: cuando un decodificador [[IPEX5002-De
 
 ## Integración en SportBar
 
-Cada fuente de video del SportBar se conecta a un IPEX5001. Los encoders convierten las señales HDMI de los decodificadores y otras fuentes en streams IP que el controlador [[Arranger-IPEXCB]] enruta hacia los decodificadores y TVs del local.
+Cada fuente de video del SportBar se conecta a un IPEX5001. Los encoders convierten las señales HDMI de los decodificadores y otras fuentes en streams IP que el controlador [[../../../../../Liberty/Controladores/Arranger-IPEXCB]] enruta hacia los decodificadores y TVs del local.
 
-En la instalación actual, los dispositivos **DTV7** y **DTV8** del sistema NO son decodificadores DirecTV sino encoders IPEX5001 adicionales identificados como `E-OBS_CS` y `F-STREAMING-CS` en el controlador Arranger (ver [[DirecTV-Decos]]).
+En la instalación actual, los dispositivos **DTV7** y **DTV8** del sistema NO son decodificadores DirecTV sino encoders IPEX5001 adicionales identificados como `E-OBS_CS` y `F-STREAMING-CS` en el controlador Arranger (ver [[../../../../../Dispositivos/DirecTV/Decodificadores/Decodificadores]]).
 
 ## Solución de problemas
 
@@ -100,11 +100,11 @@ En la instalación actual, los dispositivos **DTV7** y **DTV8** del sistema NO s
 
 ## Relaciones
 
-- [[../Dispositivos/IPEX5002-Decoder]] — decoder complementario que recibe el stream
-- [[../Dispositivos/Arranger-IPEXCB]] — controlador central requerido para sistemas multi-dispositivo
-- [[../Dispositivos/DirecTV-Decos]] — fuentes de video conectadas a estos encoders
-- [[../Dispositivos/Decodificadores]] — listado general de fuentes del sistema
-- [[../Dispositivos/ZonasAudio]] — audio desembebido desde HDMI hacia el procesador Tesira
-- [[../API/ArrangerApi]] — API de control del sistema
-- [[../README]] — documentación general
-- [[../AGENTS]] — schema de la wiki
+- [[../../../../Dispositivos/Liberty/Distribucion/IPEX5002-Decoder]] — decoder complementario que recibe el stream
+- [[../../../../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador central requerido para sistemas multi-dispositivo
+- [[../../../../Dispositivos/Dispositivos/DirecTV/Decodificadores/Decodificadores]] — fuentes de video conectadas a estos encoders
+- [[../../../../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — listado general de fuentes del sistema
+- [[../../../../Dispositivos/Conceptos/ZonasAudio]] — audio desembebido desde HDMI hacia el procesador Tesira
+- [[../../../../API/ArrangerApi]] — API de control del sistema
+- [[../../../../README]] — documentación general
+- [[../../../../AGENTS]] — schema de la wiki

@@ -11,6 +11,7 @@ import {
 } from "./api/arrangerApi";
 import Body from "./componentes/Body";
 import { ToastProvider } from "./componentes/Toast";
+import { useToast } from "./componentes/Toast";
 import ThemeProvider from "./contexto/ThemeProvider";
 import "./componentes/Toast.css";
 
@@ -55,6 +56,7 @@ const App = () => {
   const [estado, setEstado] = useState(estadoInicial);
   const [tvrackState, setTvrackState] = useState({ video: "DTV1", audio: "DTV1", link: false });
   const [zonasFueraState, setZonasFueraState] = useState({});
+  const toast = useToast();
   const [estadoLoaded, setEstadoLoaded] = useState(false);
 
   // Load state: server first, localStorage fallback, then initial state
@@ -288,16 +290,16 @@ const App = () => {
     try {
       if (type === "video") {
         response = await setZonasFueraVideo(zoneId, deviceId);
-        // Enviar comando al Arranger
         await assignVideoSource(deviceId, zoneId);
-        // Si link está activo, también actualizar audio en server + Arranger
         if (prev.link) {
           await setZonasFueraAudio(zoneId, deviceId);
           await assignAudioSource(deviceId, zoneId);
         }
+        toast.success(`${deviceId} → VIDEO ${zoneId}`);
       } else if (type === "audio") {
         response = await setZonasFueraAudio(zoneId, deviceId);
         await assignAudioSource(deviceId, zoneId);
+        toast.success(`${deviceId} → AUDIO ${zoneId}`);
       } else if (type === "link") {
         response = await setZonasFueraLink(zoneId, deviceId);
       }
@@ -310,6 +312,7 @@ const App = () => {
       }
     } catch (err) {
       console.error(`[zonas-fuera] Error en ${type} para ${zoneId}:`, err);
+      toast.error(`Error al cambiar ${type} en ${zoneId}`);
     }
   };
 

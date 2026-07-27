@@ -6,6 +6,8 @@ import {
   setZonasFueraVideo,
   setZonasFueraAudio,
   setZonasFueraLink,
+  assignVideoSource,
+  assignAudioSource,
 } from "./api/arrangerApi";
 import Body from "./componentes/Body";
 import { ToastProvider } from "./componentes/Toast";
@@ -286,12 +288,16 @@ const App = () => {
     try {
       if (type === "video") {
         response = await setZonasFueraVideo(zoneId, deviceId);
-        // If link is true, also update audio on the server
+        // Enviar comando al Arranger
+        await assignVideoSource(deviceId, zoneId);
+        // Si link está activo, también actualizar audio en server + Arranger
         if (prev.link) {
           await setZonasFueraAudio(zoneId, deviceId);
+          await assignAudioSource(deviceId, zoneId);
         }
       } else if (type === "audio") {
         response = await setZonasFueraAudio(zoneId, deviceId);
+        await assignAudioSource(deviceId, zoneId);
       } else if (type === "link") {
         response = await setZonasFueraLink(zoneId, deviceId);
       }
@@ -302,8 +308,8 @@ const App = () => {
           [zoneId]: response,
         }));
       }
-    } catch {
-      // Server error — next poll will re-sync
+    } catch (err) {
+      console.error(`[zonas-fuera] Error en ${type} para ${zoneId}:`, err);
     }
   };
 

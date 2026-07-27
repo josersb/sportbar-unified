@@ -25,7 +25,7 @@ Token: `TOKEN_REMOVED`
 
 ## Dispositivos con los que interactúa
 
-- 8 [[../Dispositivos/Decodificadores]] (DTV1–DTV8) — cada uno recibe el comando de preset load con el número de canal
+- 8 [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] (DTV1–DTV8) — cada uno recibe el comando de preset load con el número de canal
 
 ## Canales favoritos
 
@@ -38,7 +38,7 @@ Al hacer clic en un favorito, se copia el número al input. Luego el usuario sel
 
 - Usado por [[../Componentes/App]] a través del router
 - [[../API/ArrangerApi]] — comandos `preset load`
-- [[../Dispositivos/Decodificadores]] — hardware controlado
+- [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — hardware controlado
 - [[../Conceptos/StateManagement]] — estado global
 - [[../README]] — documentación general
 - [[../AGENTS]] — schema de la wiki

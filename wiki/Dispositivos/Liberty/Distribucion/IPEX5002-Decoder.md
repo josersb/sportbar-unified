@@ -13,7 +13,7 @@ Receptor HDMI sobre IP fabricado por **Liberty AV / DigitaLinx IP**. Decodifica 
 | Bitrate promedio 4K | 250 Mbps |
 | Bitrate promedio 1080p | 150 Mbps |
 | Bitrate pico | 850 Mbps |
-| Video wall máximo | 16×16 con [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] |
+| Video wall máximo | 16×16 con [[../../../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] |
 | Alimentación | 12V DC o PoE 802.3af Alternative B (6W) |
 | Escalado | Auto-escala a la resolución nativa del display conectado |
 
@@ -59,7 +59,7 @@ Receptor HDMI sobre IP fabricado por **Liberty AV / DigitaLinx IP**. Decodifica 
 | Consumo típico | 6W |
 | Potencia máxima | 12.95W (entregada por el switch) |
 
-> **Diferencia con el encoder**: El [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] usa Alternative A (pares 1-2 y 3-6). Esto es relevante para switches PoE que solo soportan un modo.
+> **Diferencia con el encoder**: El [[../../../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] usa Alternative A (pares 1-2 y 3-6). Esto es relevante para switches PoE que solo soportan un modo.
 
 ## DIP Switch — Configuración de ID
 
@@ -78,7 +78,7 @@ El ID se usa para identificación en el Arranger y para video wall (posición en
 
 ## Diferencias con el Encoder
 
-| Característica | [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] | IPEX5002 Decoder |
+| Característica | [[../../../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] | IPEX5002 Decoder |
 |---------------|----------------------|-------------------|
 | Dirección de video | Entrada HDMI → Red IP | Red IP → Salida HDMI |
 | PoE | Alternative A | Alternative B |
@@ -114,7 +114,7 @@ El ID se usa para identificación en el Arranger y para video wall (posición en
 ## Capacidades
 
 ### Enrutamiento IR
-Las señales IR siguen la ruta de video en sentido inverso: un control remoto apuntado al IR IN del decoder transmite la señal IR por la red IP hasta el [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] asociado, que la emite por su puerto IR OUT hacia el dispositivo fuente (ej: decodificador DirecTV).
+Las señales IR siguen la ruta de video en sentido inverso: un control remoto apuntado al IR IN del decoder transmite la señal IR por la red IP hasta el [[../../../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] asociado, que la emite por su puerto IR OUT hacia el dispositivo fuente (ej: decodificador DirecTV).
 
 ### RS232
 - Passthrough serial bidireccional entre encoder y decoder
@@ -125,7 +125,7 @@ Las señales IR siguen la ruta de video en sentido inverso: un control remoto ap
 
 ### USB HID
 - Dos puertos USB Type A en el panel frontal
-- Teclado y mouse conectados al decoder controlan la PC conectada al [[../../../../../Liberty/Distribucion/IPEX5001-Encoder]] vía USB HOST
+- Teclado y mouse conectados al decoder controlan la PC conectada al [[../../../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] vía USB HOST
 - La señal USB sigue la ruta de video igual que IR y RS232
 
 ### CEC

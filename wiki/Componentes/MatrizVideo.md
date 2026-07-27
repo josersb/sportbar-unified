@@ -40,10 +40,10 @@ Token: `TOKEN_REMOVED`
 
 ## Dispositivos con los que interactúa
 
-- 8 [[../Dispositivos/Decodificadores]] (DTV1–DTV8)
+- 8 [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] (DTV1–DTV8)
 - 3 Video Walls (VWN, VWC, VWS)
 - 26 TVs principales (TV01–TV26)
-- 1 TV de rack ([[../Dispositivos/Decodificadores#TVRACK|TVRACK]])
+- 1 TV de rack ([[../Dispositivos/DirecTV/Decodificadores/Decodificadores#TVRACK|TVRACK]])
 
 ## Lógica de agrupación por zona
 

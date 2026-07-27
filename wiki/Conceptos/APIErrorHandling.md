@@ -1,6 +1,6 @@
 # APIErrorHandling
 
-Sistema de manejo de errores de la API HTTP del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] y su integración con el cliente `arrangerApi.js` de SportBar Unified.
+Sistema de manejo de errores de la API HTTP del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] y su integración con el cliente `arrangerApi.js` de SportBar Unified.
 
 ## Formato de respuesta de error
 
@@ -135,4 +135,4 @@ Con la migración al proxy Express (`/api/command/*` → ARRANGER_HOST), el clie
 - [[../Componentes/Audio]] — comandos `send serial`, afectado por errores de dispositivo desconectado
 - [[../Componentes/Canales]] — comandos `preset load`, afectado por errores de preset no encontrado
 - [[../API/GetMatrix]] — comando para validar estado post-error
-- [[../Dispositivos/Arranger-IPEXCB]] — hardware que genera estos errores
+- [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — hardware que genera estos errores

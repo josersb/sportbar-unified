@@ -1,6 +1,6 @@
 # ArrangerHttpExamples
 
-Referencia de formatos HTTP soportados por la API del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para el envío de comandos.
+Referencia de formatos HTTP soportados por la API del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para el envío de comandos.
 
 ## Métodos soportados
 
@@ -162,7 +162,7 @@ Esto permite:
 ## Relaciones
 
 - [[ArrangerApi]] — implementación del cliente que usa estos formatos HTTP
-- [[../Dispositivos/Arranger-IPEXCB]] — hardware que recibe estas llamadas
+- [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — hardware que recibe estas llamadas
 - [[../Configuracion/ViteProxy]] — proxy Express que intermedia las llamadas HTTP
 - [[../Conceptos/APIErrorHandling]] — manejo de respuestas de error del Arranger
 - [[../AGENTS]] — convenciones del proyecto

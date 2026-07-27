@@ -1,6 +1,6 @@
 # SendIr
 
-Comando `send ir` del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para enviar señales infrarrojas (IR) a encoders y decoders desde un sistema de control.
+Comando `send ir` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para enviar señales infrarrojas (IR) a encoders y decoders desde un sistema de control.
 
 ## Sintaxis
 
@@ -59,5 +59,5 @@ send ir key:abc123 all_rx 000006D0000002200AC00AC001500400015004000150040...
 
 - [[IrCodes]] — tabla de códigos IR hexadecimales para DirecTV
 - [[ArrangerApi]] — cliente API central del sistema
-- [[../Dispositivos/DirecTV-Decos]] — decodificadores controlados vía IR
+- [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — decodificadores controlados vía IR
 - [[SendSerial]] — envío de comandos RS-232

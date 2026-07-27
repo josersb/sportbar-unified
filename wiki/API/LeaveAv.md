@@ -1,6 +1,6 @@
 # LeaveAv
 
-Comando `leave av` del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para desconectar un decoder de ambos streams de audio y video simultáneamente.
+Comando `leave av` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para desconectar un decoder de ambos streams de audio y video simultáneamente.
 
 ## Sintaxis
 

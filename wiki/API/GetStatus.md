@@ -1,6 +1,6 @@
 # GetStatus
 
-Comando `get status` del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para consultar el estado de un dispositivo específico o de un stream individual (video, audio, usb, serial, ir).
+Comando `get status` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para consultar el estado de un dispositivo específico o de un stream individual (video, audio, usb, serial, ir).
 
 ## Sintaxis
 
@@ -62,4 +62,4 @@ get status key:abc123 Encoder1
 ## Ver también
 
 - [[ArrangerApi]] — cliente API central del sistema
-- [[../Dispositivos/Arranger-IPEXCB]] — controlador físico
+- [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador físico

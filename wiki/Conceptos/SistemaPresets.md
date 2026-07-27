@@ -37,9 +37,9 @@ En [[../Componentes/Contexto]] (`Contexto.jsx`), al cargar el módulo se verific
 ## Qué guarda cada preset
 
 Un preset captura el estado completo de la aplicación:
-- Los 8 [[../Dispositivos/Decodificadores]] con sus canales actuales
+- Los 8 [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] con sus canales actuales
 - Las 30+ asignaciones de TVs a decos ([[../Componentes/MatrizVideo]])
-- Las 3 [[../Dispositivos/ZonasAudio]] con fuente, volumen y mute
+- Las 3 [[../Conceptos/ZonasAudio]] con fuente, volumen y mute
 - Las descripciones personalizadas de los 5 presets
 - La lista de canales favoritos
 
@@ -53,6 +53,6 @@ Al cargar un preset, el componente fuerza un `window.location.reload()`. Esto es
 - Inicializado en [[../Componentes/Contexto]]
 - Depende de [[../Conceptos/StateManagement]] para los handlers
 - Usa la [[../API/ArrangerApi]] para aplicar presets al hardware
-- Afecta a [[../Dispositivos/Decodificadores]] y [[../Dispositivos/ZonasAudio]]
+- Afecta a [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] y [[../Conceptos/ZonasAudio]]
 - [[../README]] — documentación general
 - [[../AGENTS]] — schema de la wiki

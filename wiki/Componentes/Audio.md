@@ -36,16 +36,16 @@ Token: `TOKEN_REMOVED`
 
 ## Dispositivos con los que interactúa
 
-- 3 [[../Dispositivos/ZonasAudio]] (Norte, Centro, Sur)
+- 3 [[../Conceptos/ZonasAudio]] (Norte, Centro, Sur)
 - Procesador Tesira (via comando `send serial`)
-- 8 [[../Dispositivos/Decodificadores]] como fuentes de audio seleccionables
+- 8 [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] como fuentes de audio seleccionables
 
 ## Relaciones
 
 - Usado por [[../Componentes/App]] a través del router
 - [[../API/ArrangerApi]] — comandos `send serial`
-- [[../Dispositivos/ZonasAudio]] — hardware controlado
-- [[../Dispositivos/Decodificadores]] — fuentes de audio
+- [[../Conceptos/ZonasAudio]] — hardware controlado
+- [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — fuentes de audio
 - [[../Conceptos/StateManagement]] — estado global
 - [[../README]] — documentación general
 - [[../AGENTS]] — schema de la wiki

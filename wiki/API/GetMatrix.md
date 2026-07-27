@@ -1,6 +1,6 @@
 # GetMatrix
 
-Comando `get matrix` del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para obtener el estado completo del enrutamiento de la matriz por tipo de stream. Retorna un JSON con todas las conexiones encoder-decoder activas.
+Comando `get matrix` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para obtener el estado completo del enrutamiento de la matriz por tipo de stream. Retorna un JSON con todas las conexiones encoder-decoder activas.
 
 ## Sintaxis
 

@@ -80,7 +80,7 @@ El componente [[../../Componentes/Aside]] muestra en tiempo real:
 - [[../../Componentes/Audio]] — interfaz de control
 - [[../../Componentes/Aside]] — panel de monitoreo
 - [[../../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — fuentes de audio
-- [[../../Dispositivos/Dispositivos/DirecTV/Decodificadores/Decodificadores]] — detalle de los DirecTV como fuentes
+- [[../../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — detalle de los DirecTV como fuentes
 - [[../../Conceptos/StateManagement]] — persistencia del estado
 - [[../../README]] — documentación general
 - [[../../AGENTS]] — schema de la wiki

@@ -1,6 +1,6 @@
 # GetDevices
 
-Comando `get devices` del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para obtener el nombre y dirección MAC de todos los dispositivos disponibles en el sistema.
+Comando `get devices` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para obtener el nombre y dirección MAC de todos los dispositivos disponibles en el sistema.
 
 ## Sintaxis
 
@@ -56,5 +56,5 @@ get devices key:abc123 all
 ## Ver también
 
 - [[ArrangerApi]] — cliente API central del sistema
-- [[../Dispositivos/Arranger-IPEXCB]] — controlador físico
-- [[../Dispositivos/Decodificadores]] — catálogo de decodificadores del sistema
+- [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador físico
+- [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — catálogo de decodificadores del sistema

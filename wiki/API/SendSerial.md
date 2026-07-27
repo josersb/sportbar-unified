@@ -1,6 +1,6 @@
 # SendSerial
 
-Comando `send serial` del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para enviar datos seriales RS-232 desde un sistema de control a encoders y decoders.
+Comando `send serial` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para enviar datos seriales RS-232 desde un sistema de control a encoders y decoders.
 
 ## Sintaxis
 
@@ -83,5 +83,5 @@ send serial MyGroup "my data string\x0D"
 
 - [[ArrangerApi]] — cliente API central del sistema
 - [[../Componentes/Audio]] — control de audio que usa `send serial`
-- [[../Dispositivos/ZonasAudio]] — zonas controladas vía Tesira/RS-232
+- [[../Conceptos/ZonasAudio]] — zonas controladas vía Tesira/RS-232
 - [[SendIr]] — envío de comandos infrarrojos

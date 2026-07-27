@@ -66,17 +66,8 @@ const initialTvs = {
   TV24: "DTV1",
   TV25: "DTV1",
   TV26: "DTV1",
-  // Zonas adicionales
-  "aVip-Barra-Centro": "DTV1",
-  "aVip-Lobby-Batacazo": "DTV1",
-  "a-Menos1-Escenario": "DTV1",
-  "a-QMR75-Menos1-TV1": "DTV1",
-  "aVip-Bar-Boveda": "DTV1",
-  "aMas-15-Barra": "DTV1",
-  "a-QMR75-Menos1-TV2": "DTV1",
-  "a-Menos1-Escenario2": "DTV1",
-  "a-QMC65-Menos1-TV2": "DTV1",
-  "RACK-VIP-PANTALLABATACA": "DTV1",
+  // Zonas adicionales removidas — ahora en zonasFueraState independiente
+  // Ver: zonas-fuera-botones-independientes SDD
 };
 
 const baseState = {
@@ -86,6 +77,8 @@ const baseState = {
   audio: [],
 };
 
+const mockHandleZonasFueraChange = vi.fn();
+
 function renderWithContext(overrideValue = {}) {
   const contextValue = {
     estado: baseState,
@@ -93,6 +86,8 @@ function renderWithContext(overrideValue = {}) {
     handleChangeEstadoPreset: vi.fn(),
     tvrackState: { video: "DTV1", audio: "DTV1", link: false },
     handleChangeTvrack: vi.fn(),
+    zonasFueraState: {},
+    handleZonasFueraChange: mockHandleZonasFueraChange,
     ...overrideValue,
   };
   return render(
@@ -105,6 +100,7 @@ function renderWithContext(overrideValue = {}) {
 describe("MatrizVideo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockHandleZonasFueraChange.mockClear();
   });
 
   describe("handleTvrackBtn — TVRACK Video/Audio buttons", () => {
@@ -155,26 +151,118 @@ describe("MatrizVideo", () => {
     });
   });
 
+  describe("ZonasFueraSection — mini-card zone controls", () => {
+    it("renders 10 zona cards with zone labels from ZONE_LABELS", () => {
+      const zonasFueraState = {
+        "aVip-Barra-Centro": { video: "DTV3", audio: "DTV3", link: true },
+        "aVip-Lobby-Batacazo": { video: "DTV5", audio: "DTV5", link: false },
+        "aVip-Bar-Boveda": { video: "DTV1", audio: "DTV1", link: true },
+        "RACK-VIP-PANTALLABATACA": { video: "DTV2", audio: "DTV2", link: false },
+        "aMas-15-Barra": { video: "DTV4", audio: "DTV1", link: true },
+        "a-Menos1-Escenario": { video: "DTV6", audio: "DTV6", link: false },
+        "a-Menos1-Escenario2": { video: "DTV7", audio: "DTV7", link: true },
+        "a-QMR75-Menos1-TV1": { video: "DTV8", audio: "DTV1", link: false },
+        "a-QMR75-Menos1-TV2": { video: "DTV1", audio: "DTV1", link: true },
+        "a-QMC65-Menos1-TV2": { video: "DTV3", audio: "DTV3", link: false },
+      };
+
+      renderWithContext({ zonasFueraState });
+
+      expect(screen.getByText("VIP Barra Centro")).toBeInTheDocument();
+      expect(screen.getByText("VIP Lobby Batacazo")).toBeInTheDocument();
+      expect(screen.getByText("VIP Bar Bóveda")).toBeInTheDocument();
+      expect(screen.getByText("Rack VIP Bataca")).toBeInTheDocument();
+      expect(screen.getByText("+15 Barra")).toBeInTheDocument();
+      expect(screen.getByText("Escenario -1")).toBeInTheDocument();
+      expect(screen.getByText("Escenario -1 (2)")).toBeInTheDocument();
+      expect(screen.getByText("QMR75 -1 TV1")).toBeInTheDocument();
+      expect(screen.getByText("QMR75 -1 TV2")).toBeInTheDocument();
+      expect(screen.getByText("QMC65 -1 TV2")).toBeInTheDocument();
+    });
+
+    it("renders active badge showing current video source", () => {
+      const zonasFueraState = {
+        "aVip-Barra-Centro": { video: "DTV3", audio: "DTV3", link: true },
+      };
+
+      renderWithContext({ zonasFueraState });
+
+      const badges = screen.getAllByText("DTV3");
+      expect(badges.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("shows em dash when no video source is set", () => {
+      renderWithContext({ zonasFueraState: {} });
+
+      const dashes = screen.getAllByText("\u2014");
+      expect(dashes.length).toBe(10);
+    });
+
+    it("calls handleZonasFueraChange with zoneId, 'video', deviceId when button clicked", () => {
+      const zonasFueraState = {
+        "aVip-Barra-Centro": { video: "DTV1", audio: "DTV1", link: false },
+      };
+
+      const handleZonasFueraChange = vi.fn();
+      renderWithContext({ zonasFueraState, handleZonasFueraChange });
+
+      fireEvent.click(screen.getByTestId("btn-zf-video-aVip-Barra-Centro-DTV3"));
+
+      expect(handleZonasFueraChange).toHaveBeenCalledWith(
+        "aVip-Barra-Centro",
+        "video",
+        "DTV3"
+      );
+    });
+
+    it("renders link toggle checkbox for each zone", () => {
+      renderWithContext();
+
+      const linkLabels = screen.getAllByText("Vincular video + audio");
+      expect(linkLabels.length).toBe(10);
+    });
+
+    it("calls handleZonasFueraChange with link type when toggle clicked", () => {
+      const zonasFueraState = {
+        "aVip-Barra-Centro": { video: "DTV1", audio: "DTV1", link: false },
+      };
+
+      const handleZonasFueraChange = vi.fn();
+      renderWithContext({ zonasFueraState, handleZonasFueraChange });
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      // First checkbox is TVRACK link, skip it — zona checkboxes start after
+      const zonaLinkCheckbox = checkboxes[1];
+      fireEvent.click(zonaLinkCheckbox);
+
+      expect(handleZonasFueraChange).toHaveBeenCalledWith(
+        "aVip-Barra-Centro",
+        "link",
+        true
+      );
+    });
+  });
+
   describe("onSubmit (Enviar button)", () => {
-    it("calls assignSourceToDestination for all 46 mappings in batches of 8", async () => {
+    it("calls assignSourceToDestination for all 36 mappings in batches of 8", async () => {
       const handleChangeEstadoVideo = vi.fn();
       renderWithContext({ handleChangeEstadoVideo });
 
       fireEvent.click(screen.getByText("Enviar"));
 
       await vi.waitFor(() => {
-        // 46 mappings → 6 batches, state updated after each batch
+        // 36 mappings → 5 batches, state updated after each batch
         expect(handleChangeEstadoVideo).toHaveBeenCalled();
       });
 
-      // All 46 mappings sent via assignSourceToDestination
-      expect(mockAssignSourceToDestination).toHaveBeenCalledTimes(46);
+      // All 36 mappings sent via assignSourceToDestination
+      expect(mockAssignSourceToDestination).toHaveBeenCalledTimes(36);
 
       // First call should be VW-Norte
       expect(mockAssignSourceToDestination.mock.calls[0]).toEqual(["DTV1", "VW-Norte"]);
 
-      // State updated incrementally: 6 batches for 46 items
-      expect(handleChangeEstadoVideo).toHaveBeenCalledTimes(6);
+      // State updated incrementally: 5 batches for 36 items
+      expect(handleChangeEstadoVideo).toHaveBeenCalledTimes(5);
     });
 
     it("calls handleChangeEstadoVideo incrementally when API succeeds", async () => {
@@ -187,7 +275,7 @@ describe("MatrizVideo", () => {
         expect(handleChangeEstadoVideo).toHaveBeenCalled();
       });
 
-      // Should be called once per batch (46/8 = 6 batches)
+      // Should be called once per batch (36/8 = 5 batches)
       expect(handleChangeEstadoVideo.mock.calls.length).toBeGreaterThanOrEqual(1);
     });
 

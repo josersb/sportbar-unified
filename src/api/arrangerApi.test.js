@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getStatus, getMatrix, getJoins, leaveAv } from "./arrangerApi";
+import { joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getStatus, getMatrix, getJoins, leaveAv, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
 
 // Mock IR_CODES so the dynamic import inside sendChannelDigits resolves synchronously
 // and doesn't interfere with vi.useFakeTimers
@@ -311,5 +311,135 @@ describe("leaveAv", () => {
     await leaveAv("TVRACK");
     const calledUrl = fetch.mock.calls[0][0];
     expect(calledUrl).toContain("leave%20av%20TVRACK");
+  });
+});
+
+describe("Zonas Fuera State Functions", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  describe("fetchZonasFueraState", () => {
+    it("fetches GET /api/zonas-fuera/state and returns JSON", async () => {
+      const mockState = {
+        "aVip-Barra-Centro": { video: "DTV1", audio: "DTV1", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" },
+      };
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockState),
+      });
+
+      const result = await fetchZonasFueraState();
+
+      expect(fetch).toHaveBeenCalledWith("/api/zonas-fuera/state");
+      expect(result).toEqual(mockState);
+    });
+
+    it("throws when response is not ok", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 500 });
+
+      await expect(fetchZonasFueraState()).rejects.toThrow("Failed to fetch zonas fuera state: 500");
+    });
+  });
+
+  describe("setZonasFueraVideo", () => {
+    it("POSTs to /api/zonas-fuera/:id/video with deviceId", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ zoneId: "aVip-Barra-Centro", video: "DTV3", audio: "DTV3", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" }),
+      });
+
+      const result = await setZonasFueraVideo("aVip-Barra-Centro", "DTV3");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/zonas-fuera/aVip-Barra-Centro/video",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: "DTV3" }),
+        }),
+      );
+      expect(result.video).toBe("DTV3");
+    });
+
+    it("throws when response is not ok", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 400 });
+
+      await expect(setZonasFueraVideo("INVALID", "DTV1")).rejects.toThrow("Failed to set video for INVALID: 400");
+    });
+  });
+
+  describe("setZonasFueraAudio", () => {
+    it("POSTs to /api/zonas-fuera/:id/audio with deviceId", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ zoneId: "aVip-Bar-Boveda", video: "DTV5", audio: "DTV5", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" }),
+      });
+
+      const result = await setZonasFueraAudio("aVip-Bar-Boveda", "DTV5");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/zonas-fuera/aVip-Bar-Boveda/audio",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: "DTV5" }),
+        }),
+      );
+      expect(result.audio).toBe("DTV5");
+    });
+
+    it("throws when response is not ok", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 503 });
+
+      await expect(setZonasFueraAudio("aVip-Barra-Centro", "DTV2")).rejects.toThrow("Failed to set audio for aVip-Barra-Centro: 503");
+    });
+  });
+
+  describe("setZonasFueraLink", () => {
+    it("POSTs to /api/zonas-fuera/:id/link with linked boolean", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ zoneId: "aVip-Barra-Centro", video: "DTV1", audio: "DTV1", link: false, lastUpdated: "2026-01-01T00:00:00.000Z" }),
+      });
+
+      const result = await setZonasFueraLink("aVip-Barra-Centro", false);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/zonas-fuera/aVip-Barra-Centro/link",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ linked: false }),
+        }),
+      );
+      expect(result.link).toBe(false);
+    });
+
+    it("accepts true for linked", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ zoneId: "aVip-Barra-Centro", video: "DTV4", audio: "DTV4", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" }),
+      });
+
+      await setZonasFueraLink("aVip-Barra-Centro", true);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/zonas-fuera/aVip-Barra-Centro/link",
+        expect.objectContaining({
+          body: JSON.stringify({ linked: true }),
+        }),
+      );
+    });
+
+    it("throws when response is not ok", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 400 });
+
+      await expect(setZonasFueraLink("INVALID", true)).rejects.toThrow("Failed to set link for INVALID: 400");
+    });
   });
 });

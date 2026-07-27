@@ -42,12 +42,12 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">71 commits · 83 tests · v2 · Último: Fase 3 presets + MatrizPreset UI (25 jul 2026)</p>
+<p class="sub">71 commits · 98 tests · v2 · Issue #6: Zonas Fuera botones independientes (27 jul 2026)</p>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- PENDING — tareas por hacer, ordenadas por fecha de creación     -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="section-title">PENDIENTE (8)</div>
+<div class="section-title">PENDIENTE (7)</div>
 
 <div class="card pending"><div class="idx">1</div><div class="body">
   <h2>Seguridad — Ronda 4</h2>
@@ -103,11 +103,6 @@
   </ul>
 </div><span class="badge badge-pending">plan</span></div>
 
-<div class="card pending"><div class="idx">6</div><div class="body">
-  <h2>Issue #6: Zonas Fuera de Sportbar con botones independientes</h2>
-  <p>Migrar el segmento de Zonas Fuera de Sportbar del modelo actual (selects + botón Enviar global) a botones independientes video/audio con link toggle, igual que TVRACK. Requiere planificación con SDD.</p>
-</div><span class="badge badge-pending">planificar</span></div>
-
 <div class="card pending"><div class="idx">7</div><div class="body">
   <h2>AHM-32 Audio Matrix Integration</h2>
   <p>Integración del procesador de audio Allen & Heath AHM-32. Worktree feat/ahm-integration ya creado (:3102). SDD completo (proposal, spec, design, tasks). Falta implementación del frontend.</p>
@@ -119,7 +114,9 @@
 <!-- COMPLETADO — ordenado por fecha de finalización ascendente      -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <hr>
-<div class="section-title">COMPLETADO (27) — jul 2026</div>
+<div class="section-title">COMPLETADO (28) — jul 2026</div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Issue #6: Zonas Fuera con botones independientes</h2><p>10 zonas (VIP, +15, Escenarios, QMR/QMC) migradas de selects a mini-cards con botones video/audio + toggle link. zonzasFueraState en lowdb, 4 endpoints REST, polling multi-PC. 28 tareas, 98 tests, mergeado a v2.</p></div><span class="badge badge-done">v2 · jul 27</span></div>
 
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Modelo de Dispositivos</h2><p>Registry tipado 8 IPEX5001 con capacidades, colores, y helpers. Migracion localStorage v0→v1. 13 archivos, 4 PRs encadenados.</p></div><span class="badge badge-done">v1 · jul 13</span></div>
 
@@ -177,9 +174,9 @@
 
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado (27)</span>
+  <span><span class="dot dot-done"></span> Completado (28)</span>
   <span><span class="dot dot-wip"></span> En progreso (1)</span>
-  <span><span class="dot dot-pending"></span> Pendiente (8)</span>
+  <span><span class="dot dot-pending"></span> Pendiente (7)</span>
 </div>
 
 </body>

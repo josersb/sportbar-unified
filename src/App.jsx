@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import { DISPOSITIVOS, getDevice } from "./contexto/dispositivos";
+import {
+  fetchZonasFueraState,
+  setZonasFueraVideo,
+  setZonasFueraAudio,
+  setZonasFueraLink,
+} from "./api/arrangerApi";
 import Body from "./componentes/Body";
 import { ToastProvider } from "./componentes/Toast";
 import ThemeProvider from "./contexto/ThemeProvider";
@@ -46,6 +52,7 @@ const migrarEstado = (oldData) => {
 const App = () => {
   const [estado, setEstado] = useState(estadoInicial);
   const [tvrackState, setTvrackState] = useState({ video: "DTV1", audio: "DTV1", link: false });
+  const [zonasFueraState, setZonasFueraState] = useState({});
   const [estadoLoaded, setEstadoLoaded] = useState(false);
 
   // Load state: server first, localStorage fallback, then initial state
@@ -132,9 +139,36 @@ const App = () => {
     });
   }, [estado, estadoLoaded]);
 
-  // ── Polling: sync state from server every 5s (multi-PC support) ──
+  // Polling interval shared across all polling effects
   const POLL_INTERVAL_MS = 5000;
 
+  // ── Polling: sync zonas fuera state from server every 5s ──
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadZonasFuera() {
+      try {
+        const data = await fetchZonasFueraState();
+        if (!cancelled) {
+          setZonasFueraState((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
+            return data;
+          });
+        }
+      } catch {
+        // Server not available — silently retry next poll
+      }
+    }
+
+    loadZonasFuera();
+    const interval = setInterval(loadZonasFuera, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // ── Polling: sync state from server every 5s (multi-PC support) ──
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -243,18 +277,48 @@ const App = () => {
     setTvrackState(newTvrack);
   };
 
+  const handleZonasFueraChange = async (zoneId, type, deviceId) => {
+    const prev = zonasFueraState[zoneId] || {};
+    let response;
+
+    try {
+      if (type === "video") {
+        response = await setZonasFueraVideo(zoneId, deviceId);
+        // If link is true, also update audio on the server
+        if (prev.link) {
+          await setZonasFueraAudio(zoneId, deviceId);
+        }
+      } else if (type === "audio") {
+        response = await setZonasFueraAudio(zoneId, deviceId);
+      } else if (type === "link") {
+        response = await setZonasFueraLink(zoneId, deviceId);
+      }
+
+      if (response) {
+        setZonasFueraState((prevState) => ({
+          ...prevState,
+          [zoneId]: response,
+        }));
+      }
+    } catch {
+      // Server error — next poll will re-sync
+    }
+  };
+
   return (
     <ThemeProvider>
       <ProviderUser
         value={{
           estado,
           tvrackState,
+          zonasFueraState,
           handleChangeEstadoDecos,
           handleChangeEstadoAudio,
           handleChangeEstadoVideo,
           handleChangeEstadoPreset,
           handleUpdateDispositivo,
           handleChangeTvrack,
+          handleZonasFueraChange,
         }}
       >
         <ToastProvider>

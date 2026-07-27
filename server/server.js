@@ -10,27 +10,6 @@ const ARRANGER_HOST = process.env.ARRANGER_HOST || "192.168.2.254";
 const ARRANGER_PORT = process.env.ARRANGER_PORT || "80";
 const ARRANGER_BASE = `http://${ARRANGER_HOST}:${ARRANGER_PORT}`;
 
-// ── Zonas Fuera — 10 zonas externas con control independiente ──
-const ZONAS_FUERA_IDS = [
-  "aVip-Barra-Centro",
-  "aVip-Lobby-Batacazo",
-  "aVip-Bar-Boveda",
-  "RACK-VIP-PANTALLABATACA",
-  "aMas-15-Barra",
-  "a-Menos1-Escenario",
-  "a-Menos1-Escenario2",
-  "a-QMR75-Menos1-TV1",
-  "a-QMR75-Menos1-TV2",
-  "a-QMC65-Menos1-TV2",
-];
-
-const DEFAULT_ZONA_FUERA = Object.freeze({
-  video: "DTV1",
-  audio: "DTV1",
-  link: true,
-  lastUpdated: null,
-});
-
 // ── Security: Helmet (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, etc.) ──
 app.use(
   helmet({
@@ -89,9 +68,6 @@ let stateDb;
   stateDb = await JSONFilePreset(path.join(__dirname, "state.json"), {
     state: null,
     tvrack: { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
-    zonasFuera: Object.fromEntries(
-      ZONAS_FUERA_IDS.map((id) => [id, { ...DEFAULT_ZONA_FUERA }]),
-    ),
     presets: { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null },
   });
 

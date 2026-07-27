@@ -160,11 +160,13 @@ const App = () => {
       }
     }
 
-    loadZonasFuera();
+    // Delay first poll so Express has time to start (avoids ECONNREFUSED proxy noise)
+    const initialTimer = setTimeout(loadZonasFuera, 2000);
     const interval = setInterval(loadZonasFuera, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      clearTimeout(initialTimer);
     };
   }, []);
 

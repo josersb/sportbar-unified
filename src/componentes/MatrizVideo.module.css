@@ -73,33 +73,18 @@
   }
 }
 
-.zonasColumn {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.zonasFueraGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
-.zonasRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.zonasLabel {
-  min-width: 160px;
-  font-size: 0.95rem;
-  font-weight: bold;
-  color: var(--color-text-primary, #e0e0e0);
-}
-
-.zonasSelect {
-  padding: 0.25rem;
+.zonaCard {
   background: var(--color-surface, #0d1117);
-  color: var(--color-text-primary, #c9d1d9);
   border: 1px solid var(--color-border, #30363d);
-  border-radius: 4px;
+  border-radius: 8px;
+  padding: 0.75rem;
 }
 
 .submitContainer {

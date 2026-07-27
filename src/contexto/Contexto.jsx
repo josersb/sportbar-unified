@@ -92,17 +92,8 @@ export const estadoInicial = {
     TvsEscaleraNorte: "DTV1234",
     TvsEscaleraCentro: "DTV1234",
     TvsEscaleraSur: "DTV1234",
-    // Zonas adicionales — IPEX5002 decoders (Planta -1, +15, VIP)
-    "aVip-Barra-Centro": "DTV1",
-    "aVip-Lobby-Batacazo": "DTV1",
-    "a-Menos1-Escenario": "DTV1",
-    "a-QMR75-Menos1-TV1": "DTV1",
-    "aVip-Bar-Boveda": "DTV1",
-    "aMas-15-Barra": "DTV1",
-    "a-QMR75-Menos1-TV2": "DTV1",
-    "a-Menos1-Escenario2": "DTV1",
-    "a-QMC65-Menos1-TV2": "DTV1",
-    "RACK-VIP-PANTALLABATACA": "DTV1",
+    // Zonas adicionales removidas de tvs — ahora en zonasFueraState independiente
+    // Ver: zonas-fuera-botones-independientes SDD
   },
   audio: [
     {

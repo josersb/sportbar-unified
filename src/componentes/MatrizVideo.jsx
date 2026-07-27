@@ -10,8 +10,28 @@ import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
 import BrawlStarsButton from "./ui/BrawlStarsButton";
 
+const ZONE_LABELS = {
+  'aVip-Barra-Centro': 'VIP Barra Centro',
+  'aVip-Lobby-Batacazo': 'VIP Lobby Batacazo',
+  'aVip-Bar-Boveda': 'VIP Bar Bóveda',
+  'RACK-VIP-PANTALLABATACA': 'Rack VIP Bataca',
+  'aMas-15-Barra': '+15 Barra',
+  'a-Menos1-Escenario': 'Escenario -1',
+  'a-Menos1-Escenario2': 'Escenario -1 (2)',
+  'a-QMR75-Menos1-TV1': 'QMR75 -1 TV1',
+  'a-QMR75-Menos1-TV2': 'QMR75 -1 TV2',
+  'a-QMC65-Menos1-TV2': 'QMC65 -1 TV2',
+};
+
+const ZONAS_FUERA_IDS = [
+  'aVip-Barra-Centro', 'aVip-Lobby-Batacazo', 'aVip-Bar-Boveda',
+  'RACK-VIP-PANTALLABATACA', 'aMas-15-Barra', 'a-Menos1-Escenario',
+  'a-Menos1-Escenario2', 'a-QMR75-Menos1-TV1', 'a-QMR75-Menos1-TV2',
+  'a-QMC65-Menos1-TV2',
+];
+
 const MatrizVideo = () => {
-  const { estado, handleChangeEstadoVideo, tvrackState, handleChangeTvrack } = useContext(ContextoUser);
+  const { estado, handleChangeEstadoVideo, tvrackState, handleChangeTvrack, zonasFueraState, handleZonasFueraChange } = useContext(ContextoUser);
 
   const tvs = estado.tvs;
   const toast = useToast();
@@ -26,6 +46,9 @@ const MatrizVideo = () => {
       console.warn("No se pudo cargar estado de TVRACK del server:", err);
     });
   }, []);
+
+
+
 
   const handleTvrackBtn = (type, deviceId) => async () => {
     const isVideo = type === "video";
@@ -603,39 +626,41 @@ const MatrizVideo = () => {
                 <h3 className={styles.selectZonaTitulo}>
                   ZONAS FUERA DE SPORTBAR
                 </h3>
-                <div className={styles.zonasColumn}>
-                  {(() => {
-                    const labels = {
-                      'aVip-Barra-Centro': 'VIP Barra Centro',
-                      'aVip-Lobby-Batacazo': 'VIP Lobby Batacazo',
-                      'a-Menos1-Escenario': 'Escenario -1',
-                      'a-QMR75-Menos1-TV1': 'QMR75 -1 TV1',
-                      'aVip-Bar-Boveda': 'VIP Bar Bóveda',
-                      'aMas-15-Barra': '+15 Barra',
-                      'a-QMR75-Menos1-TV2': 'QMR75 -1 TV2',
-                      'a-Menos1-Escenario2': 'Escenario -1 (2)',
-                      'a-QMC65-Menos1-TV2': 'QMC65 -1 TV2',
-                      'RACK-VIP-PANTALLABATACA': 'Rack VIP Bataca',
-                    };
-                    return [
-                      'aVip-Barra-Centro','aVip-Lobby-Batacazo','aVip-Bar-Boveda',
-                      'RACK-VIP-PANTALLABATACA','aMas-15-Barra','a-Menos1-Escenario',
-                      'a-Menos1-Escenario2','a-QMR75-Menos1-TV1','a-QMR75-Menos1-TV2',
-                      'a-QMC65-Menos1-TV2'
-                    ].map(key => (
-                      <div key={key} className={styles.zonasRow}>
-                        <label className={styles.zonasLabel}>{labels[key]}</label>
-                      <select
-                        value={tvs[key] || 'DTV1'}
-                        onChange={e => handleChangeEstadoVideo({...tvs, [key]: e.target.value})}
-                        className={styles.zonasSelect}
-                      >
-                        {getByCapability('videoSource').map(d => (
-                          <option key={d.id} value={d.id}>{d.id}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ))})()}
+                <div className={styles.zonasFueraGrid}>
+                  {ZONAS_FUERA_IDS.map((zoneId) => {
+                    const zoneState = zonasFueraState[zoneId] || {};
+                    return (
+                      <div key={zoneId} className={styles.zonaCard}>
+                        <div className={styles.tvrackSubHeader}>
+                          <span>{ZONE_LABELS[zoneId]}</span>
+                          <span className={styles.tvrackActiveBadge}>
+                            {zoneState.video || '—'}
+                          </span>
+                        </div>
+                        <div className={styles.rackRow}>
+                          {getByCapability('videoSource').map((d) => (
+                            <BrawlStarsButton
+                              key={`zf-${zoneId}-${d.id}`}
+                              deviceId={d.id}
+                              isActive={d.id === zoneState.video}
+                              onClick={() => handleZonasFueraChange(zoneId, 'video', d.id)}
+                              dataTestId={`btn-zf-video-${zoneId}-${d.id}`}
+                            />
+                          ))}
+                        </div>
+                        <div className={styles.tvrackLinkRow}>
+                          <label className={styles.tvrackLinkLabel}>
+                            <input
+                              type="checkbox"
+                              checked={zoneState.link || false}
+                              onChange={(e) => handleZonasFueraChange(zoneId, 'link', e.target.checked)}
+                            />
+                            Vincular video + audio
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

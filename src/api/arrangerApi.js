@@ -289,6 +289,68 @@ export async function setTvrackLink(linked) {
   return response.json();
 }
 
+// ── Zonas Fuera State Store ──
+
+const ZONAS_FUERA_BASE_URL = "/api/zonas-fuera";
+
+/**
+ * Obtiene el estado completo de todas las zonas fuera.
+ * @returns {Promise<Object>} Mapa de zoneId → { video, audio, link, lastUpdated }
+ */
+export async function fetchZonasFueraState() {
+  const response = await fetch(`${ZONAS_FUERA_BASE_URL}/state`);
+  if (!response.ok) throw new Error(`Failed to fetch zonas fuera state: ${response.status}`);
+  return response.json();
+}
+
+/**
+ * Establece la fuente de video de una zona fuera.
+ * @param {string} zoneId - ID de la zona (ej: "aVip-Barra-Centro")
+ * @param {string} deviceId - Fuente de video (ej: "DTV3")
+ * @returns {Promise<Object>} Estado actualizado de la zona
+ */
+export async function setZonasFueraVideo(zoneId, deviceId) {
+  const response = await fetch(`${ZONAS_FUERA_BASE_URL}/${zoneId}/video`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deviceId }),
+  });
+  if (!response.ok) throw new Error(`Failed to set video for ${zoneId}: ${response.status}`);
+  return response.json();
+}
+
+/**
+ * Establece la fuente de audio de una zona fuera.
+ * @param {string} zoneId - ID de la zona (ej: "aVip-Barra-Centro")
+ * @param {string} deviceId - Fuente de audio (ej: "DTV3")
+ * @returns {Promise<Object>} Estado actualizado de la zona
+ */
+export async function setZonasFueraAudio(zoneId, deviceId) {
+  const response = await fetch(`${ZONAS_FUERA_BASE_URL}/${zoneId}/audio`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deviceId }),
+  });
+  if (!response.ok) throw new Error(`Failed to set audio for ${zoneId}: ${response.status}`);
+  return response.json();
+}
+
+/**
+ * Activa o desactiva el link video/audio de una zona fuera.
+ * @param {string} zoneId - ID de la zona (ej: "aVip-Barra-Centro")
+ * @param {boolean} linked - true para vincular video y audio
+ * @returns {Promise<Object>} Estado actualizado de la zona
+ */
+export async function setZonasFueraLink(zoneId, linked) {
+  const response = await fetch(`${ZONAS_FUERA_BASE_URL}/${zoneId}/link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ linked }),
+  });
+  if (!response.ok) throw new Error(`Failed to set link for ${zoneId}: ${response.status}`);
+  return response.json();
+}
+
 // Exportar la URL y el token por si se necesitan en otros módulos
 export const ARRANGER_API_CONFIG = {
   baseUrl: ARRANGER_BASE_URL,

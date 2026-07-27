@@ -76,7 +76,78 @@ let stateDb;
     stateDb.data.presets = { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null };
     await stateDb.write();
   }
+
+  // ── Migration v2: extraer zonas fuera de state.tvs → zonasFuera ──
+  await migrateZonasFueraV2();
 })();
+
+// ── Migration v2: zonas fuera ──
+async function migrateZonasFueraV2() {
+  const state = stateDb.data.state;
+  if (!state || (state._version || 0) >= 2) return;
+
+  const { writeFile } = await import("fs/promises");
+
+  // 1. Backup antes de migrar
+  const backupPath = path.join(__dirname, "state.backup.json");
+  await writeFile(backupPath, JSON.stringify(stateDb.data, null, 2));
+  console.log(`[Migration v2] Backup creado: ${backupPath}`);
+
+  // 2. Asegurar que zonasFuera existe
+  if (!stateDb.data.zonasFuera) {
+    stateDb.data.zonasFuera = {};
+  }
+
+  // 3. Extraer de state.tvs
+  const now = new Date().toISOString();
+  for (const zoneId of ZONAS_FUERA_IDS) {
+    if (state.tvs && zoneId in state.tvs) {
+      const deviceId = state.tvs[zoneId];
+      // Conservar valor legacy (string) o parsear si ya es objeto
+      const video = typeof deviceId === "string" ? deviceId : deviceId.video || "DTV1";
+      stateDb.data.zonasFuera[zoneId] = {
+        video,
+        audio: video,
+        link: true,
+        lastUpdated: now,
+      };
+      delete state.tvs[zoneId];
+      console.log(`[Migration v2] Extraído ${zoneId} → ${video} de state.tvs`);
+    } else if (!stateDb.data.zonasFuera[zoneId]) {
+      stateDb.data.zonasFuera[zoneId] = { ...DEFAULT_ZONA_FUERA, lastUpdated: now };
+    }
+  }
+
+  // 4. Migrar presets
+  const presetKeys = ["preset1", "preset2", "preset3", "preset4", "preset5"];
+  for (const pKey of presetKeys) {
+    const preset = stateDb.data.presets?.[pKey];
+    if (preset && preset.tvs) {
+      if (!preset.zonasFueraState) {
+        preset.zonasFueraState = {};
+      }
+      for (const zoneId of ZONAS_FUERA_IDS) {
+        if (zoneId in preset.tvs) {
+          const deviceId = preset.tvs[zoneId];
+          const video = typeof deviceId === "string" ? deviceId : deviceId.video || "DTV1";
+          preset.zonasFueraState[zoneId] = {
+            video,
+            audio: video,
+            link: true,
+            lastUpdated: now,
+          };
+          delete preset.tvs[zoneId];
+          console.log(`[Migration v2] Extraído ${zoneId} → ${video} de preset.${pKey}.tvs`);
+        }
+      }
+      preset._version = 2;
+    }
+  }
+
+  state._version = 2;
+  await stateDb.write();
+  console.log("[Migration v2] Completa: zonas fuera extraídas, _version → 2");
+}
 
 // ── Rate limiter para /api/state ──
 const stateLimiter = rateLimit({
@@ -155,6 +226,64 @@ app.post("/api/tvrack/link", stateLimiter, async (req, res) => {
   stateDb.data.tvrack.lastUpdated = new Date().toISOString();
   await stateDb.write();
   res.json(stateDb.data.tvrack);
+});
+
+// ── Zonas Fuera — 10 zonas externas con control independiente ──
+
+// Validación: zoneId debe estar en ZONAS_FUERA_IDS
+function validateZonaFueraId(req, res, next) {
+  const { id } = req.params;
+  if (!ZONAS_FUERA_IDS.includes(id)) {
+    return res.status(400).json({ error: `Invalid zone ID: ${id}. Must be one of ZONAS_FUERA_IDS.` });
+  }
+  next();
+}
+
+app.get("/api/zonas-fuera/state", (req, res) => {
+  if (!stateDb) return res.json({});
+  res.json(stateDb.data.zonasFuera || {});
+});
+
+app.post("/api/zonas-fuera/:id/video", stateLimiter, validateZonaFueraId, async (req, res) => {
+  const { deviceId } = req.body;
+  if (!deviceId) return res.status(400).json({ error: "deviceId required" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+
+  const { id } = req.params;
+  stateDb.data.zonasFuera[id].video = deviceId;
+  if (stateDb.data.zonasFuera[id].link) {
+    stateDb.data.zonasFuera[id].audio = deviceId;
+  }
+  stateDb.data.zonasFuera[id].lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json({ zoneId: id, ...stateDb.data.zonasFuera[id] });
+});
+
+app.post("/api/zonas-fuera/:id/audio", stateLimiter, validateZonaFueraId, async (req, res) => {
+  const { deviceId } = req.body;
+  if (!deviceId) return res.status(400).json({ error: "deviceId required" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+
+  const { id } = req.params;
+  stateDb.data.zonasFuera[id].audio = deviceId;
+  if (stateDb.data.zonasFuera[id].link) {
+    stateDb.data.zonasFuera[id].video = deviceId;
+  }
+  stateDb.data.zonasFuera[id].lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json({ zoneId: id, ...stateDb.data.zonasFuera[id] });
+});
+
+app.post("/api/zonas-fuera/:id/link", stateLimiter, validateZonaFueraId, async (req, res) => {
+  const { linked } = req.body;
+  if (typeof linked === "undefined") return res.status(400).json({ error: "linked required (boolean)" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+
+  const { id } = req.params;
+  stateDb.data.zonasFuera[id].link = !!linked;
+  stateDb.data.zonasFuera[id].lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json({ zoneId: id, ...stateDb.data.zonasFuera[id] });
 });
 
 // ── Presets Compartidos ──

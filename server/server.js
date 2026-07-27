@@ -61,6 +61,27 @@ app.use((req, res, next) => {
 // ── Body parser con límite de tamaño ──
 app.use(express.json({ limit: "1mb" }));
 
+// ── Zonas Fuera: 10 dispositivos IPEX5002 externos ──
+const ZONAS_FUERA_IDS = [
+  "aVip-Barra-Centro",
+  "aVip-Lobby-Batacazo",
+  "aVip-Bar-Boveda",
+  "RACK-VIP-PANTALLABATACA",
+  "aMas-15-Barra",
+  "a-Menos1-Escenario",
+  "a-Menos1-Escenario2",
+  "a-QMR75-Menos1-TV1",
+  "a-QMR75-Menos1-TV2",
+  "a-QMC65-Menos1-TV2",
+];
+
+const DEFAULT_ZONA_FUERA = {
+  video: "DTV1",
+  audio: "DTV1",
+  link: false,
+  lastUpdated: null,
+};
+
 // Load lowdb and initialize state database
 let stateDb;
 (async () => {
@@ -69,6 +90,18 @@ let stateDb;
     state: null,
     tvrack: { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
     presets: { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null },
+    zonasFuera: {
+      "aVip-Barra-Centro": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+      "aVip-Lobby-Batacazo": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+      "aVip-Bar-Boveda": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+      "RACK-VIP-PANTALLABATACA": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+      "aMas-15-Barra": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+      "a-Menos1-Escenario": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+      "a-Menos1-Escenario2": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+      "a-QMR75-Menos1-TV1": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+      "a-QMR75-Menos1-TV2": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+      "a-QMC65-Menos1-TV2": { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+    },
   });
 
   // Migration: ensure presets key exists (state.json from older versions may lack it)

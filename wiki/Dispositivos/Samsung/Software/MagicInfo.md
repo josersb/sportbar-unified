@@ -16,5 +16,5 @@ MagicInfo — aplicación web propietaria de Samsung para gestión remota de con
 
 ## Relaciones
 
-- [[../Docs/referencia-instalacion]] — IPs y MACs completos
-- [[../README]] — documentación general
+- [[../../../../Docs/referencia-instalacion]] — IPs y MACs completos
+- [[../../../../README]] — documentación general

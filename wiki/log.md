@@ -4,6 +4,21 @@ Registro cronológico de todas las operaciones de la wiki: ingestas, creación d
 
 ---
 
+## [2026-07-25] feat | Presets compartidos + UI MatrizPreset
+
+**Operación**: Fase 3 del plan multi-dispositivo. Endpoints REST para presets, UI rediseñada, sincronización servidor↔localStorage.
+
+**Cambios**:
+- Express: `GET/POST/DELETE /api/presets/:n` con lowdb en `state.json` (key `presets`)
+- `usePreset.save()` ahora async → persiste a servidor + localStorage
+- `usePreset.load()` → servidor primero, localStorage fallback
+- `MatrizPreset.jsx` rediseñado: 5 cards con estado usado/libre, botones Cargar/Guardar/Limpiar
+- Eliminada auto-inicialización de presets en `Contexto.jsx`
+- Agregada ruta `/presets` en Body.jsx + pestaña "Presets Guardados" en Nav.jsx
+- Vite proxy: `/api/presets` → Express :3101
+
+**Archivos**: server.js, MatrizPreset.jsx, MatrizPreset.module.css, MatrizPreset.test.jsx, usePreset.js, Contexto.jsx, Nav.jsx, Body.jsx, vite.config.js
+
 ## [2026-07-25] fix | Issue 7 — Performance y estado incremental
 
 **Operación**: Corrección del Issue 7 completo (TVRACK independiente + llamadas paralelas + Aside incremental + presets de matriz).
@@ -47,7 +62,7 @@ Registro cronológico de todas las operaciones de la wiki: ingestas, creación d
 - `Conceptos/SistemaPresets.md` — 5 keys de localStorage, flujo carga/grabación, `window.location.reload()`
 
 ### Configuración (2)
-- `Configuracion/ViteProxy.md` — proxy `/api` → `192.168.2.254`, chunks vendor/router/forms/ui, dev server
+- `Configuracion/ViteProxy.md` — proxy `/api` → ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`), chunks vendor/router/forms/ui, dev server
 - `Configuracion/PnpmSetup.md` — pnpm exclusivo, `.npmrc` (supply chain, exact versions), `.nvmrc` (Node 18.17.1), overrides del server
 
 **Archivos raíz creados (2)**:
@@ -96,7 +111,7 @@ Registro cronológico de todas las operaciones de la wiki: ingestas, creación d
 **Páginas creadas (4)**:
 - `Dispositivos/IPEX5001-Encoder.md` — especificaciones técnicas, 11 puertos documentados, IR/RS232/USB/CEC/PoE, solución de problemas, accesorios incluidos
 - `Dispositivos/IPEX5002-Decoder.md` — especificaciones, 8 puertos, comparativa con encoder, funciones de display (idle image, video mute, rotación), solución de problemas
-- `Dispositivos/Arranger-IPEXCB.md` — IP 192.168.2.254, token TOKEN_REMOVED, HTTP API + TCP puerto 6980, 30+ comandos documentados por categoría, reglas de nombrado, requisitos de switch
+- `Dispositivos/Arranger-IPEXCB.md` — IP ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`), token TOKEN_REMOVED, HTTP API + TCP puerto 6980, 30+ comandos documentados por categoría, reglas de nombrado, requisitos de switch
 - `Dispositivos/DirecTV-Decos.md` — DTV1–DTV6 con MAC del Arranger, colores CSS, canales por defecto, flujo de control IR completo, aclaración de que DTV7/E-OBS_CS y DTV8/F-STREAMING-CS NO son DirecTV
 
 **Páginas actualizadas (3)**:
@@ -232,3 +247,20 @@ Registro cronológico de todas las operaciones de la wiki: ingestas, creación d
 - La latencia del IPEX5002 (17-33ms) es de 1-2 frames a 60Hz — irrelevante para el caso de uso de sport bar (TVs mirando deportes), pero crítico para aplicaciones de gaming o video wall sincronizado.
 
 **Sin contradicciones detectadas**.
+
+---
+
+## [2026-07-27] migration | Jerarquía Fabricante → Categoría
+
+**Operación**: Migración de `wiki/Dispositivos/` de estructura plana a jerarquía Fabricante → Categoría.
+
+**Cambios**:
+- Creadas 10 carpetas (7 fabricantes)
+- Fusionados `Decodificadores.md` + `DirecTV-Decos.md` → `DirecTV/Decodificadores/Decodificadores.md`
+- Migrados 7 archivos a paths jerárquicos con wikilinks reescritos: IPEX5001-Encoder.md, IPEX5002-Decoder.md, Arranger-IPEXCB.md, AHM-32.md, SQ6.md, Shure-ANI.md, MagicInfo.md
+- Migrado `ZonasAudio.md` → `Conceptos/ZonasAudio.md` (cross-type)
+- Creados 3 placeholders: Samsung/Televisores/DBE-DME-DHE.md, dbx/Procesadores/ZonePRO-1260.md, Kramer/Distribucion/VM-8H.md
+- Actualizados `index.md`, `AGENTS.md`, y este archivo
+
+**Archivos**: scripts/migrate-dispositivos-hierarchy.js, wiki/ (11 dirs, 8 movidos, 3 placeholders, 2 eliminados)
+**Script**: `scripts/migrate-dispositivos-hierarchy.js`

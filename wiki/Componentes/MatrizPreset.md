@@ -17,7 +17,7 @@ Usa `useRef` para 5 inputs de texto (preset1–preset5).
 
 Llama directamente a la [[../API/ArrangerApi]] en `handleCargaMatriz()`, que envía 29 comandos `join av` secuenciales (VWN, VWC, VWS + TV01–TV26) para aplicar la configuración de un preset a la matriz física.
 
-URL base: `http://192.168.2.254/api/command/`  
+URL base: `http://ARRANGER_HOST/api/command/`  
 Token: `TOKEN_REMOVED`
 
 ## Flujo de Presets

@@ -1,6 +1,6 @@
 # Arranger IPEXCB
 
-Controlador central del sistema **Arranger Digi IP 5000 Series** de **Liberty AV Solutions** (antes DigitaLinx IP). Orquesta la comunicación entre encoders [[IPEX5001-Encoder]], decoders [[IPEX5002-Decoder]] y sistemas de control de terceros. Es el cerebro de la matriz audiovisual del SportBar.
+Controlador central del sistema **Arranger Digi IP 5000 Series** de **Liberty AV Solutions** (antes DigitaLinx IP). Orquesta la comunicación entre encoders [[../../../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]], decoders [[../../../../Dispositivos/Liberty/Distribucion/IPEX5002-Decoder]] y sistemas de control de terceros. Es el cerebro de la matriz audiovisual del SportBar.
 
 > **Fabricante**: [Liberty AV Solutions](https://secure.libertycable.com/) — fabricante principal de equipos Arranger, IPEX5000/5001/5002 y periféricos. Documentación oficial en `Docs/manuals arranger/`.
 
@@ -9,17 +9,17 @@ Controlador central del sistema **Arranger Digi IP 5000 Series** de **Liberty AV
 | Parámetro | Valor |
 |-----------|-------|
 | Modelo | IPEXCB (Arranger Controller) |
-| Dirección IP | `192.168.2.254` |
+| Dirección IP | ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`) |
 | API Token | `TOKEN_REMOVED` |
-| Interfaz web | `http://192.168.2.254` |
-| API HTTP | `http://192.168.2.254/api/command/[comando]/[token]` |
+| Interfaz web | `http://ARRANGER_HOST` |
+| API HTTP | `http://ARRANGER_HOST/api/command/[comando]/[token]` |
 | API TCP | Puerto `6980` (control de terceros) |
 
 ## API HTTP
 
 ### Formato de solicitud
 ```
-GET http://192.168.2.254/api/command/[comando_codificado]/[token]
+GET http://ARRANGER_HOST/api/command/[comando_codificado]/[token]
 ```
 
 El comando debe estar URL-encoded. El `[token]` de la instalación es `TOKEN_REMOVED`.
@@ -61,7 +61,7 @@ El controlador escucha en el puerto `6980` para conexiones TCP de sistemas de co
 - Importados desde la base de datos cloud de Global Cache (requiere internet)
 - Ingresados manualmente
 
-El parámetro `[dispositivo]` es el nombre del dispositivo en el Arranger, NO una IP. El IR sigue la ruta de video automáticamente entre [[IPEX5001-Encoder]] e [[IPEX5002-Decoder]].
+El parámetro `[dispositivo]` es el nombre del dispositivo en el Arranger, NO una IP. El IR sigue la ruta de video automáticamente entre [[../../../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] e [[../../../../Dispositivos/Liberty/Distribucion/IPEX5002-Decoder]].
 
 ### RS232 — Serial
 
@@ -148,21 +148,21 @@ Respuestas típicas de `get status`: `CONNECTED`, `STOPPED`, `TIMEOUT`, `DISCONN
 
 ## Flujo de control en SportBar
 
-1. La aplicación React envía comandos HTTP GET al Arranger en `192.168.2.254`
-2. En desarrollo, el proxy de [[../Configuracion/ViteProxy]] redirige `/api` al Arranger
+1. La aplicación React envía comandos HTTP GET al Arranger en ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`)
+2. En desarrollo, el proxy de [[../../../../Configuracion/ViteProxy]] redirige `/api` al Arranger
 3. El Arranger traduce cada comando en acciones sobre los encoders y decoders
 4. Para audio, los comandos `send serial` pasan por el puerto RS232 del encoder DTV1 hacia el procesador Tesira
 5. Para cambio de canales DirecTV, el comando IR viaja: Arranger → IPEX5001 IR OUT → receptor IR del decodificador
 
 ## Relaciones
 
-- [[../Dispositivos/IPEX5001-Encoder]] — encoders gestionados por el controlador
-- [[../Dispositivos/IPEX5002-Decoder]] — decoders gestionados por el controlador
-- [[../Dispositivos/DirecTV-Decos]] — fuentes controladas vía IR a través del controlador
-- [[../Dispositivos/Decodificadores]] — catálogo general de fuentes
-- [[../Dispositivos/ZonasAudio]] — audio controlado vía serial a través del controlador
-- [[../API/ArrangerApi]] — implementación del cliente HTTP en el proyecto
-- [[../Componentes/Arranger]] — interfaz web nativa del controlador
-- [[../Conceptos/SistemaPresets]] — presets que el controlador ejecuta
-- [[../README]] — documentación general
-- [[../AGENTS]] — schema de la wiki
+- [[../../../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] — encoders gestionados por el controlador
+- [[../../../../Dispositivos/Liberty/Distribucion/IPEX5002-Decoder]] — decoders gestionados por el controlador
+- [[../../../../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — fuentes controladas vía IR a través del controlador
+- [[../../../../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — catálogo general de fuentes
+- [[../../../../Conceptos/ZonasAudio]] — audio controlado vía serial a través del controlador
+- [[../../../../API/ArrangerApi]] — implementación del cliente HTTP en el proyecto
+- [[../../../../Componentes/Arranger]] — interfaz web nativa del controlador
+- [[../../../../Conceptos/SistemaPresets]] — presets que el controlador ejecuta
+- [[../../../../README]] — documentación general
+- [[../../../../AGENTS]] — schema de la wiki

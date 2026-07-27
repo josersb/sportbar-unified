@@ -2,18 +2,11 @@ import { useContext, useCallback } from "react";
 import ContextoUser from "../contexto/Contexto";
 import { joinMultipleTVs } from "../api/arrangerApi";
 
-/**
- * Generic preset hook — replaces 5x duplicated load/save handlers.
- *
- * @param {number} n - Preset number (1..5)
- * @returns {{ load: () => Promise<void>, save: (desc: string) => void, isLoaded: boolean }}
- */
 export function usePreset(n) {
   const { estado, handleChangeEstadoVideo, handleChangeEstadoPreset } =
     useContext(ContextoUser);
   const key = `estadoApp_Preset${n}`;
 
-  // Build the 29 TV → destination mappings for joinMultipleTVs
   const buildMappings = useCallback((tvs) => {
     return [
       { source: tvs.VWN, dest: "VW-Norte" },
@@ -48,33 +41,49 @@ export function usePreset(n) {
     ];
   }, []);
 
-  /**
-   * Load preset from localStorage, update state, and apply to matrix.
-   * Replaces window.location.reload() with pure state update.
-   */
   const load = useCallback(async () => {
-    const saved = localStorage.getItem(key);
-    if (!saved) return;
-    const data = JSON.parse(saved);
+    let data = null;
+
+    // 1. Intentar servidor (compartido entre PCs)
+    try {
+      const res = await fetch(`/api/presets/${n}`);
+      if (res.ok) {
+        const { preset } = await res.json();
+        if (preset && preset.tvs) data = preset;
+      }
+    } catch {}
+
+    // 2. Fallback a localStorage
+    if (!data) {
+      const saved = localStorage.getItem(key);
+      if (!saved) return;
+      try { data = JSON.parse(saved); } catch { return; }
+    }
+
     handleChangeEstadoVideo(data.tvs);
     const mappings = buildMappings(data.tvs);
     try {
       await joinMultipleTVs(mappings);
     } catch {
-      /* Error logged upstream or silently ignored */
+      /* Error logged upstream */
     }
-  }, [key, handleChangeEstadoVideo, buildMappings]);
+  }, [key, n, handleChangeEstadoVideo, buildMappings]);
 
-  /**
-   * Save current estado to localStorage with a description label.
-   */
   const save = useCallback(
-    (desc) => {
+    async (desc) => {
       const newDescripcion = estado.descripcionPreset.map((item, i) =>
         i === n - 1 ? { ...item, [`preset${n}`]: desc } : item
       );
       handleChangeEstadoPreset(newDescripcion);
       localStorage.setItem(key, JSON.stringify(estado));
+
+      try {
+        await fetch(`/api/presets/${n}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(estado),
+        });
+      } catch {}
     },
     [key, n, estado, handleChangeEstadoPreset]
   );

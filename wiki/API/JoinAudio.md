@@ -1,6 +1,6 @@
 # JoinAudio
 
-Comando `join audio` del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para enrutamiento de audio independiente. Permite separar la señal de audio de la de video, a diferencia de `join av` que enruta ambos simultáneamente.
+Comando `join audio` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para enrutamiento de audio independiente. Permite separar la señal de audio de la de video, a diferencia de `join av` que enruta ambos simultáneamente.
 
 ## Sintaxis
 
@@ -55,7 +55,7 @@ join audio key:abc123 Encoder1 Decoder1
 
 ## Relaciones
 
-- Definido por [[../Dispositivos/Arranger-IPEXCB]] — API HTTP del controlador
+- Definido por [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — API HTTP del controlador
 - Complemento de [[JoinVideo]] — enrutamiento de video independiente
 - Alternativa a `join av` — enrutamiento combinado (ver [[ArrangerApi]])
 - Usado en la UI de [[../Componentes/MatrizVideo]]

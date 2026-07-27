@@ -10,29 +10,45 @@ import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
 import BrawlStarsButton from "./ui/BrawlStarsButton";
 
+const ZONE_LABELS = {
+  'aVip-Barra-Centro': 'VIP Barra Centro',
+  'aVip-Lobby-Batacazo': 'VIP Lobby Batacazo',
+  'aVip-Bar-Boveda': 'VIP Bar Bóveda',
+  'RACK-VIP-PANTALLABATACA': 'Rack VIP Bataca',
+  'aMas-15-Barra': '+15 Barra',
+  'a-Menos1-Escenario': 'Escenario -1',
+  'a-Menos1-Escenario2': 'Escenario -1 (2)',
+  'a-QMR75-Menos1-TV1': 'QMR75 -1 TV1',
+  'a-QMR75-Menos1-TV2': 'QMR75 -1 TV2',
+  'a-QMC65-Menos1-TV2': 'QMC65 -1 TV2',
+};
+
+const ZONAS_FUERA_IDS = [
+  'aVip-Barra-Centro', 'aVip-Lobby-Batacazo', 'aVip-Bar-Boveda',
+  'RACK-VIP-PANTALLABATACA', 'aMas-15-Barra', 'a-Menos1-Escenario',
+  'a-Menos1-Escenario2', 'a-QMR75-Menos1-TV1', 'a-QMR75-Menos1-TV2',
+  'a-QMC65-Menos1-TV2',
+];
+
 const MatrizVideo = () => {
-  const { estado, handleChangeEstadoVideo } = useContext(ContextoUser);
+  const { estado, handleChangeEstadoVideo, tvrackState, handleChangeTvrack, zonasFueraState, handleZonasFueraChange } = useContext(ContextoUser);
 
   const tvs = estado.tvs;
   const toast = useToast();
 
-  const [tvrackVideo, setTvrackVideoState] = useState(tvs.TVRACK);
-  const [tvrackAudio, setTvrackAudioState] = useState(tvs.TVRACK);
-  const [linkAudioVideo, setLinkAudioVideoState] = useState(false);
   const [loadingVideoBtn, setLoadingVideoBtn] = useState(null);
   const [loadingAudioBtn, setLoadingAudioBtn] = useState(null);
 
   useEffect(() => {
     fetchTvrackState().then(state => {
-      setTvrackVideoState(state.video);
-      setTvrackAudioState(state.audio);
-      setLinkAudioVideoState(state.link);
+      handleChangeTvrack(state);
     }).catch(err => {
       console.warn("No se pudo cargar estado de TVRACK del server:", err);
-      setTvrackVideoState(tvs.TVRACK);
-      setTvrackAudioState(tvs.TVRACK);
     });
   }, []);
+
+
+
 
   const handleTvrackBtn = (type, deviceId) => async () => {
     const isVideo = type === "video";
@@ -40,24 +56,23 @@ const MatrizVideo = () => {
     else setLoadingAudioBtn(deviceId);
 
     try {
-      if (linkAudioVideo) {
+      if (tvrackState.link) {
         // Vinculado: join av manda video + audio en un solo comando al Arranger
         await assignSourceToDestination(deviceId, "TVRACK");
         const newState = isVideo
           ? await setTvrackVideo(deviceId)
           : await setTvrackAudio(deviceId);
-        setTvrackVideoState(newState.video);
-        setTvrackAudioState(newState.audio);
+        handleChangeTvrack(newState);
         toast.success(`${deviceId} → VIDEO + AUDIO TVRACK`);
       } else if (isVideo) {
         await assignVideoSource(deviceId, "TVRACK");
         const newState = await setTvrackVideo(deviceId);
-        setTvrackVideoState(newState.video);
+        handleChangeTvrack({ ...tvrackState, video: newState.video });
         toast.success(`${deviceId} → VIDEO TVRACK`);
       } else {
         await assignAudioSource(deviceId, "TVRACK");
         const newState = await setTvrackAudio(deviceId);
-        setTvrackAudioState(newState.audio);
+        handleChangeTvrack({ ...tvrackState, audio: newState.audio });
         toast.success(`${deviceId} → AUDIO TVRACK`);
       }
     } catch {
@@ -70,14 +85,12 @@ const MatrizVideo = () => {
 
   const handleLinkToggle = async (e) => {
     const linked = e.target.checked;
-    setLinkAudioVideoState(linked);
+    handleChangeTvrack({ ...tvrackState, link: linked });
     try {
       const newState = await setTvrackLink(linked);
-      setTvrackVideoState(newState.video);
-      setTvrackAudioState(newState.audio);
-      setLinkAudioVideoState(newState.link);
+      handleChangeTvrack(newState);
     } catch {
-      setLinkAudioVideoState(!linked);
+      handleChangeTvrack({ ...tvrackState, link: !linked });
     }
   };
 
@@ -554,12 +567,12 @@ const MatrizVideo = () => {
                     <span className={styles.tvrackIconVideo}>▶</span>
                     <span className={styles.tvrackLabelVideo}>Video</span>
                     <span className={styles.tvrackActiveBadge}>
-                      ● {tvrackVideo}
+                      ● {tvrackState.video}
                     </span>
                   </div>
                   <div className={styles.rackRow}>
                     {getByCapability("videoSource").map((d) => {
-                      const isActive = d.id === tvrackVideo;
+                      const isActive = d.id === tvrackState.video;
                       return (
                         <BrawlStarsButton
                           key={`video-${d.id}`}
@@ -578,7 +591,7 @@ const MatrizVideo = () => {
                   <label className={styles.tvrackLinkLabel}>
                     <input
                       type="checkbox"
-                      checked={linkAudioVideo}
+                      checked={tvrackState.link}
                       onChange={handleLinkToggle}
                     />
                     Vincular Audio y Video
@@ -589,12 +602,12 @@ const MatrizVideo = () => {
                     <span className={styles.tvrackIconAudio}>♪</span>
                     <span className={styles.tvrackLabelAudio}>Audio</span>
                     <span className={styles.tvrackActiveBadge}>
-                      ● {tvrackAudio}
+                      ● {tvrackState.audio}
                     </span>
                   </div>
                   <div className={styles.rackRow}>
                     {getByCapability("videoSource").map((d) => {
-                      const isActive = d.id === tvrackAudio;
+                      const isActive = d.id === tvrackState.audio;
                       return (
                         <BrawlStarsButton
                           key={`audio-${d.id}`}
@@ -613,39 +626,41 @@ const MatrizVideo = () => {
                 <h3 className={styles.selectZonaTitulo}>
                   ZONAS FUERA DE SPORTBAR
                 </h3>
-                <div className={styles.zonasColumn}>
-                  {(() => {
-                    const labels = {
-                      'aVip-Barra-Centro': 'VIP Barra Centro',
-                      'aVip-Lobby-Batacazo': 'VIP Lobby Batacazo',
-                      'a-Menos1-Escenario': 'Escenario -1',
-                      'a-QMR75-Menos1-TV1': 'QMR75 -1 TV1',
-                      'aVip-Bar-Boveda': 'VIP Bar Bóveda',
-                      'aMas-15-Barra': '+15 Barra',
-                      'a-QMR75-Menos1-TV2': 'QMR75 -1 TV2',
-                      'a-Menos1-Escenario2': 'Escenario -1 (2)',
-                      'a-QMC65-Menos1-TV2': 'QMC65 -1 TV2',
-                      'RACK-VIP-PANTALLABATACA': 'Rack VIP Bataca',
-                    };
-                    return [
-                      'aVip-Barra-Centro','aVip-Lobby-Batacazo','aVip-Bar-Boveda',
-                      'RACK-VIP-PANTALLABATACA','aMas-15-Barra','a-Menos1-Escenario',
-                      'a-Menos1-Escenario2','a-QMR75-Menos1-TV1','a-QMR75-Menos1-TV2',
-                      'a-QMC65-Menos1-TV2'
-                    ].map(key => (
-                      <div key={key} className={styles.zonasRow}>
-                        <label className={styles.zonasLabel}>{labels[key]}</label>
-                      <select
-                        value={tvs[key] || 'DTV1'}
-                        onChange={e => handleChangeEstadoVideo({...tvs, [key]: e.target.value})}
-                        className={styles.zonasSelect}
-                      >
-                        {getByCapability('videoSource').map(d => (
-                          <option key={d.id} value={d.id}>{d.id}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ))})()}
+                <div className={styles.zonasFueraGrid}>
+                  {ZONAS_FUERA_IDS.map((zoneId) => {
+                    const zoneState = zonasFueraState[zoneId] || {};
+                    return (
+                      <div key={zoneId} className={styles.zonaCard}>
+                        <div className={styles.tvrackSubHeader}>
+                          <span>{ZONE_LABELS[zoneId]}</span>
+                          <span className={styles.tvrackActiveBadge}>
+                            {zoneState.video || '—'}
+                          </span>
+                        </div>
+                        <div className={styles.rackRow}>
+                          {getByCapability('videoSource').map((d) => (
+                            <BrawlStarsButton
+                              key={`zf-${zoneId}-${d.id}`}
+                              deviceId={d.id}
+                              isActive={d.id === zoneState.video}
+                              onClick={() => handleZonasFueraChange(zoneId, 'video', d.id)}
+                              dataTestId={`btn-zf-video-${zoneId}-${d.id}`}
+                            />
+                          ))}
+                        </div>
+                        <div className={styles.tvrackLinkRow}>
+                          <label className={styles.tvrackLinkLabel}>
+                            <input
+                              type="checkbox"
+                              checked={zoneState.link || false}
+                              onChange={(e) => handleZonasFueraChange(zoneId, 'link', e.target.checked)}
+                            />
+                            Vincular video + audio
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

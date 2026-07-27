@@ -42,45 +42,12 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">55+ commits · 83 tests · v2 · Último: Issue 7 — Performance y estado incremental (25 jul 2026)</p>
+<p class="sub">71 commits · 98 tests · v2 · Issue #6: Zonas Fuera botones independientes (27 jul 2026)</p>
 
-<div class="section-title">SDD CHANGES</div>
-
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Modelo de Dispositivos</h2><p>Registry tipado 8 IPEX5001 con capacidades, colores, y helpers. Migracion localStorage v0→v1. 13 archivos, 4 PRs encadenados.</p></div><span class="badge badge-done">v1</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>send ir dinamico</h2><p>Cambio de canal IR digito por digito (300ms delay). 10 codigos hex. Elimina dependencia de presets Arranger.</p></div><span class="badge badge-done">v1</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Centralize Arranger API</h2><p>83 fetchs eliminados. Funciones: sendArrangerCommand, joinMultipleTVs, sendSerialCommand, sendChannelDigits. -290 lineas.</p></div><span class="badge badge-done">v1</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Zonas Adicionales</h2><p>10 decoders IPEX5002 como destinos en estado.tvs (VIP, Planta -1, +15). 47 destinos totales. Seccion dedicada en MatrizVideo.</p></div><span class="badge badge-done">v1</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>UI MatrizVideo</h2><p>Labels humanos en Zonas Adicionales. Tokens --DTV1..--DTV8 en Aside.css. TVRACK con colores, tooltip, estado activo. Layout fluido 100% + flex-wrap.</p></div><span class="badge badge-done">v1</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>UI/UX Redesign</h2><p>CSS Modules + design tokens (60+ variables). Dark mode con toggle. Responsive 3 breakpoints. Accesibilidad. usePreset hook. Canales data-driven. 78 tests.</p></div><span class="badge badge-done">v2</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>TVRACK Video/Audio Split</h2><p>Separacion independiente de video (join video) y audio (join audio). Toggle de vinculacion. State store Express /api/tvrack/* para persistencia entre clientes. BrawlStarsButton: componente cartoon 3D con capibara SVG y glow neon.</p></div><span class="badge badge-done">v2</span></div>
-
-<div class="section-title">INFRA & QUALITY</div>
-
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Testing Setup</h2><p>Vitest 3.2.6 + Testing Library. 35 tests (12 API + 23 componentes). 0 errores ESLint. Cobertura de comandos Arranger, IR, canales, presets.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Linting & Formatting</h2><p>ESLint 9.x flat config + Prettier. 43 issues + 22 immutability warnings corregidos. 0 errores en todo el proyecto.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>State Persistence</h2><p>lowdb 7.0.1 en Express. GET/POST /api/state. Persistencia dual: servidor → localStorage. Estado compartido entre equipos en red local.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>LLM Wiki</h2><p>Vault Obsidian con 28 paginas y ~85 wikilinks. Schema de entidades en AGENTS.md. Skill global llm-wiki configurada.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Documentacion</h2><p>Auditoria completa wiki vs codigo. Paginas criticas actualizadas, nuevas paginas creadas. README actualizado con nuevas features.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Repo privado en github.com/josersb/sportbar-unified. Branching model definido (feature → v2 → master). 5 PRs mergeados.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 1+2</h2><p>Token removido de codigo + historial git. Helmet con CSP. CORS restrictivo. Rate limiting /api/state. Body limit 1mb. Tabnabbing fix.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 3</h2><p>Vitest 2.1.9 → 3.2.6 (CRITICAL CVE). Shell-quote via concurrently 7.6.0 → 9.2.4 (CRITICAL CVE). 0 breaking changes. Audit: 0 CRITICAL.</p></div><span class="badge badge-done">done</span></div>
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Robustez</h2><p>Toast de error/success (5s dismiss). Timeout fetch 10s con AbortController. Retry con backoff 1s/2s/4s en proxy Express. Feedback visual en 4 componentes.</p></div><span class="badge badge-done">done</span></div>
-
-<div class="section-title">BUGFIXES (21 jul 2026)</div>
-
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Comunicacion Arranger</h2><p>3 bugs corregidos: (1) TVRK cambiaba de color aunque Arranger fallara, (2) fetch directo a 192.168.2.254 → proxy Express, (3) Invalid Security Key no detectado por no-cors.</p></div><span class="badge badge-done">PR #3</span></div>
-
-<div class="section-title">BUGFIXES (25 jul 2026)</div>
-
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Fix TVRACK Link: join av</h2><p>Checkbox de vinculacion video/audio ahora usa assignSourceToDestination (join av) en vez de join video/join audio por separado. Arranger recibe ambos comandos en una sola llamada atomica. Mock de state store arreglado en tests.</p></div><span class="badge badge-done">PR #4</span></div>
-
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Fix UI: Fondos y Contraste</h2><p>body ahora tiene background (elimina lineas blancas del grid). Aside ya no es transparente. Labels y selects de Zonas Fuera de Sportbar migrados a CSS modules con design tokens. --color-text-secondary corregido en dark mode.</p></div><span class="badge badge-done">PR #5</span></div>
-
-<div class="section-title">BUGFIXES (25 jul 2026 — Issue 7)</div>
-
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Fix #7: Performance y Estado Incremental</h2><p>TVRACK excluido del Formik (ya no lo pisa "Enviar"). Llamadas paralelizadas en lotes de 8 con Promise.allSettled (~8x mas rapido que secuencial). Aside se actualiza incrementalmente despues de cada lote. Nueva funcion loadMatrixPreset() para presets completos.</p></div><span class="badge badge-done">PR #6</span></div>
-
-<div class="section-title">PENDING</div>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PENDING — tareas por hacer, ordenadas por fecha de creación     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-title">PENDIENTE (7)</div>
 
 <div class="card pending"><div class="idx">1</div><div class="body">
   <h2>Seguridad — Ronda 4</h2>
@@ -112,28 +79,21 @@
   </ul>
 </div><span class="badge badge-pending">todo</span></div>
 
-<div class="card pending"><div class="idx">4</div><div class="body"><h2>tecnopulsar accept</h2><p>Invitacion como collaborator pendiente de aceptacion.</p></div><span class="badge badge-pending">wait</span></div>
-
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Zonas Fuera de Sportbar</h2><p>Renombrado desde "Zonas Adicionales". Reordenado por categoria: VIPs → +15 → Escenarios → QMR/QMC. Labels humanos.</p></div><span class="badge badge-done">v2</span></div>
-
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Branching Strategy</h2><p>feature → v2 → master documentado. 8 reglas deterministicas en AGENTS.md. Worktrees con puertos dedicados. feat/ahm-integration en :3102.</p></div><span class="badge badge-done">v2</span></div>
-
-<div class="card pending"><div class="idx">5</div><div class="body"><h2>Externalizar IP del Arranger</h2><p>192.168.2.254 hardcodeada en 5+ archivos. Variables de entorno en .env sin usar. SDD arranger-api-centralized quedo incompleto.</p></div><span class="badge badge-pending">todo</span></div>
-
-<div class="card pending"><div class="idx">6</div><div class="body">
+<div class="card wip"><div class="idx">4</div><div class="body">
   <h2>Documentar y testear API Arranger desde PDFs</h2>
-  <p>Extraer, destilar y documentar comandos de la API del Arranger desde los manuales PDF en Docs/manuals/. Preparar tests de integracion para endpoints documentados.</p>
+  <p>Extraer, destilar y documentar comandos de la API del Arranger desde los manuales PDF. Cross-reference con arrangerApi.js.</p>
   <ul class="tasks">
-    <li>🔲 Leer y destilar PDFs: API Guide, User Manual, Getting Started</li>
-    <li>🔲 Documentar comandos API descubiertos en wiki/API/</li>
-    <li>🔲 Preparar tests para comandos relacionados con la API HTTP</li>
-    <li>🔲 Cross-reference con arrangerApi.js actual (comandos ya implementados vs no implementados)</li>
+    <li>✅ Convertir PDFs a markdown con pdf-inspector (6 de 11)</li>
+    <li>✅ Destilar comandos API y cross-reference (67 comandos, 12 implementados)</li>
+    <li>✅ Documentar en wiki/API/ (12 páginas nuevas)</li>
+    <li>✅ Preparar tests (5 funciones nuevas, 8 tests)</li>
+    <li>🔲 Convertir PDFs restantes (instalación, firmware, getting started — baja prioridad)</li>
   </ul>
-</div><span class="badge badge-pending">todo</span></div>
+</div><span class="badge badge-wip">en progreso</span></div>
 
-<div class="card pending"><div class="idx">7</div><div class="body">
+<div class="card pending"><div class="idx">5</div><div class="body">
   <h2>Optimizar lógica de llamadas al Arranger</h2>
-  <p>Auditar y optimizar todas las rutas de código que llaman al Arranger: unificar batching, paralelizar Audio.js, medir límites de concurrencia del hardware, evaluar TCP persistente.</p>
+  <p>Auditar y optimizar todas las rutas de código que llaman al Arranger: unificar batching, paralelizar Audio.js, medir límites de concurrencia, evaluar TCP persistente.</p>
   <ul class="tasks">
     <li>🔲 Fase 1: Medir límites de concurrencia del Arranger en el bar</li>
     <li>🔲 Fase 2.1: Unificar lógica de batching (código duplicado)</li>
@@ -143,9 +103,79 @@
   </ul>
 </div><span class="badge badge-pending">plan</span></div>
 
+<div class="card pending"><div class="idx">7</div><div class="body">
+  <h2>AHM-32 Audio Matrix Integration</h2>
+  <p>Integración del procesador de audio Allen & Heath AHM-32. Worktree feat/ahm-integration ya creado (:3102). SDD completo (proposal, spec, design, tasks). Falta implementación del frontend.</p>
+</div><span class="badge badge-pending">planificado</span></div>
+
+<div class="card pending"><div class="idx">8</div><div class="body"><h2>Fase 4: Tema compartido (muy baja prioridad)</h2><p>Tema dark/light actualmente solo en localStorage. Evaluar si vale la pena sincronizarlo entre PCs vía servidor. Impacto mínimo, opcional.</p></div><span class="badge badge-pending">opcional</span></div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- COMPLETADO — ordenado por fecha de finalización ascendente      -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<hr>
+<div class="section-title">COMPLETADO (28) — jul 2026</div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Issue #6: Zonas Fuera con botones independientes</h2><p>10 zonas (VIP, +15, Escenarios, QMR/QMC) migradas de selects a mini-cards con botones video/audio + toggle link. zonzasFueraState en lowdb, 4 endpoints REST, polling multi-PC. 28 tareas, 98 tests, mergeado a v2.</p></div><span class="badge badge-done">v2 · jul 27</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Modelo de Dispositivos</h2><p>Registry tipado 8 IPEX5001 con capacidades, colores, y helpers. Migracion localStorage v0→v1. 13 archivos, 4 PRs encadenados.</p></div><span class="badge badge-done">v1 · jul 13</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>send ir dinamico</h2><p>Cambio de canal IR digito por digito (300ms delay). 10 codigos hex. Elimina dependencia de presets Arranger.</p></div><span class="badge badge-done">v1 · jul 13</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Centralize Arranger API</h2><p>83 fetchs eliminados. Funciones: sendArrangerCommand, joinMultipleTVs, sendSerialCommand, sendChannelDigits. -290 lineas.</p></div><span class="badge badge-done">v1 · jul 14</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Testing Setup</h2><p>Vitest 3.2.6 + Testing Library. Cobertura de comandos Arranger, IR, canales, presets.</p></div><span class="badge badge-done">jul 14</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Zonas Adicionales</h2><p>10 decoders IPEX5002 como destinos en estado.tvs (VIP, Planta -1, +15). 47 destinos totales.</p></div><span class="badge badge-done">v1 · jul 15</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>UI MatrizVideo</h2><p>Labels humanos en Zonas Adicionales. Tokens --DTV1..--DTV8. TVRACK con colores, tooltip.</p></div><span class="badge badge-done">v1 · jul 15</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Linting & Formatting</h2><p>ESLint 9.x flat config + Prettier. 43 issues + 22 warnings corregidos. 0 errores.</p></div><span class="badge badge-done">jul 16</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>State Persistence</h2><p>lowdb 7.0.1 en Express. GET/POST /api/state. Persistencia dual: servidor → localStorage.</p></div><span class="badge badge-done">jul 16</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>LLM Wiki</h2><p>Vault Obsidian con 30+ paginas y ~100 wikilinks. Schema de entidades en AGENTS.md.</p></div><span class="badge badge-done">jul 17</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Documentacion</h2><p>Auditoria completa wiki vs codigo. README actualizado con nuevas features.</p></div><span class="badge badge-done">jul 17</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>tecnopulsar collaborator</h2><p>tecnopulsar aceptó la invitación como collaborator del repo privado en GitHub.</p></div><span class="badge badge-done">jul 2026</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 1+2</h2><p>Token removido. Helmet con CSP. CORS restrictivo. Rate limiting. Body limit 1mb.</p></div><span class="badge badge-done">jul 18</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Seguridad — Ronda 3</h2><p>Vitest 2.1.9 → 3.2.6 (CRITICAL). Shell-quote → 9.2.4 (CRITICAL). Audit: 0 CRITICAL.</p></div><span class="badge badge-done">jul 18</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Robustez</h2><p>Toast error/success. Timeout fetch 10s con AbortController. Retry backoff 1s/2s/4s.</p></div><span class="badge badge-done">jul 19</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>UI/UX Redesign</h2><p>CSS Modules + design tokens (60+ variables). Dark mode con toggle. Responsive 3 breakpoints.</p></div><span class="badge badge-done">v2 · jul 20</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Zonas Fuera de Sportbar</h2><p>Renombrado desde "Zonas Adicionales". Reordenado: VIPs → +15 → Escenarios → QMR/QMC.</p></div><span class="badge badge-done">v2 · jul 20</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Comunicacion Arranger (bugfix)</h2><p>3 bugs: TVRK color, fetch directo → proxy, Invalid Security Key no detectado.</p></div><span class="badge badge-done">PR #3 · jul 21</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Git & GitHub</h2><p>Branching model (feature → v2 → master). Worktrees con puertos dedicados. 10 PRs mergeados.</p></div><span class="badge badge-done">jul 22</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Branching Strategy</h2><p>8 reglas deterministicas en AGENTS.md. feat/ahm-integration en :3102.</p></div><span class="badge badge-done">v2 · jul 22</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>TVRACK Video/Audio Split</h2><p>Separacion independiente video/audio. Toggle vinculacion. State store Express. BrawlStarsButton.</p></div><span class="badge badge-done">v2 · jul 22</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Fix TVRACK Link: join av</h2><p>Checkbox vinculacion ahora usa assignSourceToDestination (join av). Un solo comando atomico.</p></div><span class="badge badge-done">PR #4 · jul 25</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Fix UI: Fondos y Contraste</h2><p>body background. Aside no transparente. Labels/selects Zonas Fuera a CSS modules. Token text-secondary.</p></div><span class="badge badge-done">PR #5 · jul 25</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Fix #7: Performance y Estado Incremental</h2><p>TVRACK excluido del Formik. Lotes de 8 en paralelo. Aside incremental. loadMatrixPreset().</p></div><span class="badge badge-done">PR #6 · jul 25</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Docs API Arranger + Reorg Manuals</h2><p>6 PDFs → markdown. 16 páginas wiki. Manuals reorganizados. README con catálogo completo.</p></div><span class="badge badge-done">PR #7 · jul 25</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Externalizar IP del Arranger</h2><p>192.168.2.254 → variables de entorno. 17 archivos. Un solo .env para cambiar IP.</p></div><span class="badge badge-done">PR #9 · jul 25</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>lowdb tvrackState + Fase 1+2 Multi-PC</h2><p>tvrackState → lowdb (sobrevive reinicios). Polling 5s sincroniza estado entre PCs. TVRACK unificado en contexto global.</p></div><span class="badge badge-done">PR #10 · jul 25</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Fase 3: Presets compartidos + UI MatrizPreset</h2><p>GET/POST/DELETE /api/presets/:n en Express + lowdb. UI con 5 cards, estado usado/libre, Cargar/Guardar/Limpiar. Sincro multi-PC.</p></div><span class="badge badge-done">jul 25</span></div>
+
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado (23)</span>
+  <span><span class="dot dot-done"></span> Completado (28)</span>
+  <span><span class="dot dot-wip"></span> En progreso (1)</span>
   <span><span class="dot dot-pending"></span> Pendiente (7)</span>
 </div>
 

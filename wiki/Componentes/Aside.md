@@ -36,6 +36,6 @@ Mapa visual en miniatura de todas las TVs agrupadas por ubicación física:
 
 - Depende de [[../Conceptos/StateManagement]] para leer el estado global
 - Refleja datos de [[../Componentes/MatrizVideo]], [[../Componentes/Audio]] y [[../Componentes/Canales]]
-- Muestra estado de [[../Dispositivos/Decodificadores]] y [[../Dispositivos/ZonasAudio]]
+- Muestra estado de [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] y [[../Conceptos/ZonasAudio]]
 - [[../README]] — documentación general
 - [[../AGENTS]] — schema de la wiki

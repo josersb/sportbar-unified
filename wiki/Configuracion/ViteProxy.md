@@ -1,6 +1,6 @@
 # ViteProxy
 
-Configuración del proxy de desarrollo de Vite que redirige llamadas a Express (estado compartido y comandos) y al Arranger en `192.168.2.254`, evitando problemas de CORS durante el desarrollo local. También define la estrategia de chunks para el build de producción.
+Configuración del proxy de desarrollo de Vite que redirige llamadas a Express (estado compartido y comandos) y al Arranger en ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`), evitando problemas de CORS durante el desarrollo local. También define la estrategia de chunks para el build de producción.
 
 Ubicación: `vite.config.js`
 
@@ -11,13 +11,13 @@ proxy: {
   "/api/device/": { target: "http://localhost:3101" },
   "/api/state":   { target: "http://localhost:3101" },
   "/api/tvrack":  { target: "http://localhost:3101" },
-  "/api":         { target: "http://192.168.2.254" },
+  "/api":         { target: "http://ARRANGER_HOST" },
 }
 ```
 
 ### Comportamiento
 - `/api/device/*`, `/api/state`, `/api/tvrack/*` → Express en `localhost:3101` (state store + comandos)
-- `/api/command/*` y resto → Arranger en `192.168.2.254`
+- `/api/command/*` y resto → Arranger en ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`)
 - Las rutas específicas (`/api/tvrack`) van **primero** para que matcheen antes que el genérico `/api`
 - `changeOrigin: true` modifica el header `Origin` para que coincida con el target
 - Handlers de `error` y `proxyReq` para logging en consola

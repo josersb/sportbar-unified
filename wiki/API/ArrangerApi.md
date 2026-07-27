@@ -1,6 +1,6 @@
 # ArrangerApi
 
-API cliente para la comunicación con el controlador [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] en `192.168.2.254`. Centraliza la construcción y envío de comandos HTTP GET en modo `no-cors` para controlar la matriz audiovisual, decodificadores, procesador de audio Tesira y periféricos IR/seriales.
+API cliente para la comunicación con el controlador [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] en ARRANGER_HOST (configurable en `.env`, default `192.168.2.254`). Centraliza la construcción y envío de comandos HTTP GET en modo `no-cors` para controlar la matriz audiovisual, decodificadores, procesador de audio Tesira y periféricos IR/seriales.
 
 Ubicación: `src/api/arrangerApi.js`
 
@@ -8,16 +8,16 @@ Ubicación: `src/api/arrangerApi.js`
 
 | Parámetro | Valor por defecto | Variable de entorno |
 |-----------|-------------------|---------------------|
-| Base URL | `http://192.168.2.254/api/command` | `VITE_ARRANGER_API_BASE` |
+| Base URL | `http://ARRANGER_HOST/api/command` (default `192.168.2.254`) | `VITE_ARRANGER_API_BASE` |
 | Token | `TOKEN_REMOVED` | `VITE_ARRANGER_TOKEN` |
 
 ## Interfaces del controlador
 
-El [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] expone dos interfaces de control:
+El [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] expone dos interfaces de control:
 
 | Interfaz | Dirección | Uso en SportBar |
 |----------|-----------|-----------------|
-| HTTP API | `http://192.168.2.254/api/command/[cmd]/[token]` | Principal — todas las operaciones de la app |
+| HTTP API | `http://ARRANGER_HOST/api/command/[cmd]/[token]` | Principal — todas las operaciones de la app |
 | TCP API | Puerto `6980` | No usado directamente — disponible para sistemas de control de terceros |
 
 ## Funciones exportadas
@@ -143,7 +143,7 @@ Ejemplo: `send serial DTV1 "Mute1 set mute 1 true\x0A"`
 - Se aprenden de controles remotos físicos con iTach IP2IR
 - Se pueden importar de la base de datos cloud de Global Cache
 - Se pueden ingresar manualmente
-- El IR sigue la ruta de video entre [[../Dispositivos/IPEX5001-Encoder|encoder]] y [[../Dispositivos/IPEX5002-Decoder|decoder]]
+- El IR sigue la ruta de video entre [[../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder|encoder]] y [[../Dispositivos/Liberty/Distribucion/IPEX5002-Decoder|decoder]]
 
 ### Comandos CEC
 
@@ -191,9 +191,9 @@ Todas las llamadas usan `mode: "no-cors"`. Esto implica que:
 - Usado por [[../Componentes/MatrizPreset]] — comandos `join av` en carga de presets
 - Usado por [[../Componentes/Canales]] — comandos `preset load`
 - Usado por [[../Componentes/Audio]] — comandos `send serial` para Tesira
-- Controla [[../Dispositivos/Decodificadores]] y [[../Dispositivos/ZonasAudio]]
-- Se comunica con el [[../Dispositivos/Arranger-IPEXCB]] — controlador físico
-- Opera sobre los encoders [[../Dispositivos/IPEX5001-Encoder]] y decoders [[../Dispositivos/IPEX5002-Decoder]]
+- Controla [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] y [[../Conceptos/ZonasAudio]]
+- Se comunica con el [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador físico
+- Opera sobre los encoders [[../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] y decoders [[../Dispositivos/Liberty/Distribucion/IPEX5002-Decoder]]
 - [[../Configuracion/ViteProxy]] — en desarrollo, las llamadas pasan por el proxy de Vite (:3101)
 - [[../README]] — documentación general
 - [[../AGENTS]] — schema de la wiki

@@ -1,6 +1,6 @@
 # ArrangerEventFlow
 
-Sistema de notificaciones push del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] que permite monitoreo en tiempo real del estado del hardware sin polling constante. Utiliza el puerto TCP 6980 para enviar mensajes de eventos del sistema a clientes suscritos.
+Sistema de notificaciones push del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] que permite monitoreo en tiempo real del estado del hardware sin polling constante. Utiliza el puerto TCP 6980 para enviar mensajes de eventos del sistema a clientes suscritos.
 
 ## Arquitectura de notificaciones
 
@@ -140,7 +140,7 @@ Con `notify source` + `notify serial`:
 ## Relaciones
 
 - [[../API/ArrangerApi]] — API HTTP complementaria a las notificaciones TCP
-- [[../Dispositivos/Arranger-IPEXCB]] — controlador que emite los eventos en puerto 6980
+- [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador que emite los eventos en puerto 6980
 - [[../Componentes/Aside]] — componente que más se beneficiaría de notificaciones en tiempo real
 - [[../Componentes/MatrizVideo]] — consumidor de `notify source` para estado de enrutamiento
 - [[../Componentes/Audio]] — consumidor de `notify serial` para confirmación de comandos Tesira

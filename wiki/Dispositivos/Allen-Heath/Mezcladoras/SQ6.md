@@ -19,6 +19,6 @@ La SQ6 se usa para mezcla de audio en eventos en vivo. El audio se envía al sis
 ## Relaciones
 
 - Conectada a la red Dante vía MuxLab
-- [[../Dispositivos/ZonasAudio]] — sistema de audio del sportbar
-- [[../Docs/referencia-instalacion]] — referencia completa
-- [[../README]] — documentación general
+- [[../../../Conceptos/ZonasAudio]] — sistema de audio del sportbar
+- [[../../../../Docs/referencia-instalacion]] — referencia completa
+- [[../../../../README]] — documentación general

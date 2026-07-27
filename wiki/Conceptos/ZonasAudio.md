@@ -1,6 +1,6 @@
 # ZonasAudio
 
-Tres zonas de audio independientes que cubren el SportBar: Norte, Centro y Sur. Controladas mediante el procesador de audio **Tesira** a través de comandos seriales enviados por la [[../API/ArrangerApi]].
+Tres zonas de audio independientes que cubren el SportBar: Norte, Centro y Sur. Controladas mediante el procesador de audio **Tesira** a través de comandos seriales enviados por la [[../../API/ArrangerApi]].
 
 ## Zonas
 
@@ -12,7 +12,7 @@ Tres zonas de audio independientes que cubren el SportBar: Norte, Centro y Sur. 
 
 ## Conexión física con el Tesira DSP
 
-El procesador de audio Tesira se conecta al sistema a través del puerto **RS232** del encoder [[IPEX5001-Encoder]] asignado a **DTV1** (gateway serial). La cadena de conexión es:
+El procesador de audio Tesira se conecta al sistema a través del puerto **RS232** del encoder [[../../../Liberty/Distribucion/IPEX5001-Encoder]] asignado a **DTV1** (gateway serial). La cadena de conexión es:
 
 ```
 Tesira DSP (RS232) ← cable serial → IPEX5001 DTV1 (RS232, 3-pin terminal block)
@@ -57,7 +57,7 @@ El valor se extrae del nombre del deco: `DTV1` → `1`, `DTV2` → `2`, etc.
 
 ## Flujo de control
 
-1. El usuario ajusta fuente, volumen y/o mute en el componente [[../Componentes/Audio]]
+1. El usuario ajusta fuente, volumen y/o mute en el componente [[../../Componentes/Audio]]
 2. El formulario Formik hace submit con los 9 valores (3 zonas × 3 controles)
 3. Se envían 9 comandos `send serial` secuenciales al Arranger
 4. El Arranger reenvía los comandos al IPEX5001 de DTV1 por red IP
@@ -66,7 +66,7 @@ El valor se extrae del nombre del deco: `DTV1` → `1`, `DTV2` → `2`, etc.
 
 ## Monitoreo
 
-El componente [[../Componentes/Aside]] muestra en tiempo real:
+El componente [[../../Componentes/Aside]] muestra en tiempo real:
 - Zona (Sur, Centro, Norte)
 - Fuente de audio (deco asignado)
 - Nivel de volumen en dB
@@ -74,13 +74,13 @@ El componente [[../Componentes/Aside]] muestra en tiempo real:
 
 ## Relaciones
 
-- [[../API/ArrangerApi]] — comandos `send serial`
-- [[../Dispositivos/IPEX5001-Encoder]] — encoder DTV1 es el gateway serial hacia el Tesira
-- [[../Dispositivos/Arranger-IPEXCB]] — controlador que enruta los comandos seriales
-- [[../Componentes/Audio]] — interfaz de control
-- [[../Componentes/Aside]] — panel de monitoreo
-- [[../Dispositivos/Decodificadores]] — fuentes de audio
-- [[../Dispositivos/DirecTV-Decos]] — detalle de los DirecTV como fuentes
-- [[../Conceptos/StateManagement]] — persistencia del estado
-- [[../README]] — documentación general
-- [[../AGENTS]] — schema de la wiki
+- [[../../API/ArrangerApi]] — comandos `send serial`
+- [[../../Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] — encoder DTV1 es el gateway serial hacia el Tesira
+- [[../../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador que enruta los comandos seriales
+- [[../../Componentes/Audio]] — interfaz de control
+- [[../../Componentes/Aside]] — panel de monitoreo
+- [[../../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — fuentes de audio
+- [[../../Dispositivos/DirecTV/Decodificadores/Decodificadores]] — detalle de los DirecTV como fuentes
+- [[../../Conceptos/StateManagement]] — persistencia del estado
+- [[../../README]] — documentación general
+- [[../../AGENTS]] — schema de la wiki

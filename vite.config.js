@@ -1,6 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const ARRANGER_HOST = process.env.ARRANGER_HOST || "192.168.2.254";
+const ARRANGER_PORT = process.env.ARRANGER_PORT || "80";
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -27,9 +30,14 @@ export default defineConfig({
         target: "http://localhost:3101",
         changeOrigin: true,
       },
+      // Presets compartidos → Express (must come before the generic /api rule)
+      "/api/presets": {
+        target: "http://localhost:3101",
+        changeOrigin: true,
+      },
       // Proxy API calls to avoid CORS issues during development
       "/api": {
-        target: "http://192.168.2.254",
+        target: `http://${ARRANGER_HOST}:${ARRANGER_PORT}`,
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {
@@ -78,7 +86,7 @@ export default defineConfig({
   // Define global constants
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
-    __ARRANGER_API__: JSON.stringify("http://192.168.2.254/api/command"),
+    __ARRANGER_API__: JSON.stringify(`http://${ARRANGER_HOST}:${ARRANGER_PORT}/api/command`),
   },
 
   // CSS configuration

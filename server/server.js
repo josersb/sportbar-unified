@@ -6,6 +6,10 @@ const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const ARRANGER_HOST = process.env.ARRANGER_HOST || "192.168.2.254";
+const ARRANGER_PORT = process.env.ARRANGER_PORT || "80";
+const ARRANGER_BASE = `http://${ARRANGER_HOST}:${ARRANGER_PORT}`;
+
 // ── Security: Helmet (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, etc.) ──
 app.use(
   helmet({
@@ -19,11 +23,11 @@ app.use(
           "'self'",
           "http://localhost:5173",          // Vite dev server
           "http://localhost:3101",          // Express self (v2)
-          "http://192.168.2.254",           // Arranger matrix
+          ARRANGER_BASE,           // Arranger matrix
         ],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
-        frameSrc: ["'self'", "http://192.168.2.254"],
+        frameSrc: ["'self'", ARRANGER_BASE],
       },
     },
     crossOriginEmbedderPolicy: false,       // Allow Arranger iframe embeds
@@ -63,8 +67,87 @@ let stateDb;
   const { JSONFilePreset } = await import("lowdb/node");
   stateDb = await JSONFilePreset(path.join(__dirname, "state.json"), {
     state: null,
+    tvrack: { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null },
+    presets: { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null },
   });
+
+  // Migration: ensure presets key exists (state.json from older versions may lack it)
+  if (!stateDb.data.presets) {
+    stateDb.data.presets = { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null };
+    await stateDb.write();
+  }
+
+  // ── Migration v2: extraer zonas fuera de state.tvs → zonasFuera ──
+  await migrateZonasFueraV2();
 })();
+
+// ── Migration v2: zonas fuera ──
+async function migrateZonasFueraV2() {
+  const state = stateDb.data.state;
+  if (!state || (state._version || 0) >= 2) return;
+
+  const { writeFile } = await import("fs/promises");
+
+  // 1. Backup antes de migrar
+  const backupPath = path.join(__dirname, "state.backup.json");
+  await writeFile(backupPath, JSON.stringify(stateDb.data, null, 2));
+  console.log(`[Migration v2] Backup creado: ${backupPath}`);
+
+  // 2. Asegurar que zonasFuera existe
+  if (!stateDb.data.zonasFuera) {
+    stateDb.data.zonasFuera = {};
+  }
+
+  // 3. Extraer de state.tvs
+  const now = new Date().toISOString();
+  for (const zoneId of ZONAS_FUERA_IDS) {
+    if (state.tvs && zoneId in state.tvs) {
+      const deviceId = state.tvs[zoneId];
+      // Conservar valor legacy (string) o parsear si ya es objeto
+      const video = typeof deviceId === "string" ? deviceId : deviceId.video || "DTV1";
+      stateDb.data.zonasFuera[zoneId] = {
+        video,
+        audio: video,
+        link: true,
+        lastUpdated: now,
+      };
+      delete state.tvs[zoneId];
+      console.log(`[Migration v2] Extraído ${zoneId} → ${video} de state.tvs`);
+    } else if (!stateDb.data.zonasFuera[zoneId]) {
+      stateDb.data.zonasFuera[zoneId] = { ...DEFAULT_ZONA_FUERA, lastUpdated: now };
+    }
+  }
+
+  // 4. Migrar presets
+  const presetKeys = ["preset1", "preset2", "preset3", "preset4", "preset5"];
+  for (const pKey of presetKeys) {
+    const preset = stateDb.data.presets?.[pKey];
+    if (preset && preset.tvs) {
+      if (!preset.zonasFueraState) {
+        preset.zonasFueraState = {};
+      }
+      for (const zoneId of ZONAS_FUERA_IDS) {
+        if (zoneId in preset.tvs) {
+          const deviceId = preset.tvs[zoneId];
+          const video = typeof deviceId === "string" ? deviceId : deviceId.video || "DTV1";
+          preset.zonasFueraState[zoneId] = {
+            video,
+            audio: video,
+            link: true,
+            lastUpdated: now,
+          };
+          delete preset.tvs[zoneId];
+          console.log(`[Migration v2] Extraído ${zoneId} → ${video} de preset.${pKey}.tvs`);
+        }
+      }
+      preset._version = 2;
+    }
+  }
+
+  state._version = 2;
+  await stateDb.write();
+  console.log("[Migration v2] Completa: zonas fuera extraídas, _version → 2");
+}
 
 // ── Rate limiter para /api/state ──
 const stateLimiter = rateLimit({
@@ -107,41 +190,127 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── TVRACK Shared State ──
-const tvrackState = {
-  video: "DTV1",
-  audio: "DTV1",
-  link: false,
-  lastUpdated: null,
-};
+// ── TVRACK Shared State (persisted via lowdb) ──
 
 app.get("/api/tvrack/state", (req, res) => {
-  res.json(tvrackState);
+  if (!stateDb) return res.json({ video: "DTV1", audio: "DTV1", link: false });
+  res.json(stateDb.data.tvrack);
 });
 
-app.post("/api/tvrack/video", (req, res) => {
+app.post("/api/tvrack/video", stateLimiter, async (req, res) => {
   const { deviceId } = req.body;
   if (!deviceId) return res.status(400).json({ error: "deviceId required" });
-  tvrackState.video = deviceId;
-  if (tvrackState.link) tvrackState.audio = deviceId;
-  tvrackState.lastUpdated = new Date().toISOString();
-  res.json(tvrackState);
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.tvrack.video = deviceId;
+  if (stateDb.data.tvrack.link) stateDb.data.tvrack.audio = deviceId;
+  stateDb.data.tvrack.lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json(stateDb.data.tvrack);
 });
 
-app.post("/api/tvrack/audio", (req, res) => {
+app.post("/api/tvrack/audio", stateLimiter, async (req, res) => {
   const { deviceId } = req.body;
   if (!deviceId) return res.status(400).json({ error: "deviceId required" });
-  tvrackState.audio = deviceId;
-  if (tvrackState.link) tvrackState.video = deviceId;
-  tvrackState.lastUpdated = new Date().toISOString();
-  res.json(tvrackState);
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.tvrack.audio = deviceId;
+  if (stateDb.data.tvrack.link) stateDb.data.tvrack.video = deviceId;
+  stateDb.data.tvrack.lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json(stateDb.data.tvrack);
 });
 
-app.post("/api/tvrack/link", (req, res) => {
+app.post("/api/tvrack/link", stateLimiter, async (req, res) => {
   const { linked } = req.body;
-  tvrackState.link = !!linked;
-  tvrackState.lastUpdated = new Date().toISOString();
-  res.json(tvrackState);
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.tvrack.link = !!linked;
+  stateDb.data.tvrack.lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json(stateDb.data.tvrack);
+});
+
+// ── Zonas Fuera — 10 zonas externas con control independiente ──
+
+// Validación: zoneId debe estar en ZONAS_FUERA_IDS
+function validateZonaFueraId(req, res, next) {
+  const { id } = req.params;
+  if (!ZONAS_FUERA_IDS.includes(id)) {
+    return res.status(400).json({ error: `Invalid zone ID: ${id}. Must be one of ZONAS_FUERA_IDS.` });
+  }
+  next();
+}
+
+app.get("/api/zonas-fuera/state", (req, res) => {
+  if (!stateDb) return res.json({});
+  res.json(stateDb.data.zonasFuera || {});
+});
+
+app.post("/api/zonas-fuera/:id/video", stateLimiter, validateZonaFueraId, async (req, res) => {
+  const { deviceId } = req.body;
+  if (!deviceId) return res.status(400).json({ error: "deviceId required" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+
+  const { id } = req.params;
+  stateDb.data.zonasFuera[id].video = deviceId;
+  if (stateDb.data.zonasFuera[id].link) {
+    stateDb.data.zonasFuera[id].audio = deviceId;
+  }
+  stateDb.data.zonasFuera[id].lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json({ zoneId: id, ...stateDb.data.zonasFuera[id] });
+});
+
+app.post("/api/zonas-fuera/:id/audio", stateLimiter, validateZonaFueraId, async (req, res) => {
+  const { deviceId } = req.body;
+  if (!deviceId) return res.status(400).json({ error: "deviceId required" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+
+  const { id } = req.params;
+  stateDb.data.zonasFuera[id].audio = deviceId;
+  if (stateDb.data.zonasFuera[id].link) {
+    stateDb.data.zonasFuera[id].video = deviceId;
+  }
+  stateDb.data.zonasFuera[id].lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json({ zoneId: id, ...stateDb.data.zonasFuera[id] });
+});
+
+app.post("/api/zonas-fuera/:id/link", stateLimiter, validateZonaFueraId, async (req, res) => {
+  const { linked } = req.body;
+  if (typeof linked === "undefined") return res.status(400).json({ error: "linked required (boolean)" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+
+  const { id } = req.params;
+  stateDb.data.zonasFuera[id].link = !!linked;
+  stateDb.data.zonasFuera[id].lastUpdated = new Date().toISOString();
+  await stateDb.write();
+  res.json({ zoneId: id, ...stateDb.data.zonasFuera[id] });
+});
+
+// ── Presets Compartidos ──
+
+app.get("/api/presets/:n", (req, res) => {
+  const n = parseInt(req.params.n, 10);
+  if (n < 1 || n > 5) return res.status(400).json({ error: "Invalid preset number" });
+  if (!stateDb) return res.json({ preset: null });
+  res.json({ preset: stateDb.data.presets[`preset${n}`] });
+});
+
+app.post("/api/presets/:n", stateLimiter, async (req, res) => {
+  const n = parseInt(req.params.n, 10);
+  if (n < 1 || n > 5) return res.status(400).json({ error: "Invalid preset number" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.presets[`preset${n}`] = req.body;
+  await stateDb.write();
+  res.json({ ok: true });
+});
+
+app.delete("/api/presets/:n", stateLimiter, async (req, res) => {
+  const n = parseInt(req.params.n, 10);
+  if (n < 1 || n > 5) return res.status(400).json({ error: "Invalid preset number" });
+  if (!stateDb) return res.status(503).json({ error: "Database not ready" });
+  stateDb.data.presets[`preset${n}`] = null;
+  await stateDb.write();
+  res.json({ ok: true });
 });
 
 // Middleware para servir archivos estáticos desde dist (build de producción)
@@ -172,7 +341,7 @@ app.get("/api/device/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
     const token = process.env.ARRANGER_TOKEN || "TOKEN_REMOVED";
-    const url = `http://192.168.2.254/api/command/get status ${id}/${token}`;
+    const url = `${ARRANGER_BASE}/api/command/get status ${id}/${token}`;
     const response = await fetchWithRetry(url);
     const text = await response.text();
 
@@ -203,7 +372,7 @@ app.get("/api/device/:id/status", async (req, res) => {
 app.get("/api/command/:command/:token", async (req, res) => {
   try {
     const { command, token } = req.params;
-    const url = `http://192.168.2.254/api/command/${encodeURIComponent(command)}/${token}`;
+    const url = `${ARRANGER_BASE}/api/command/${encodeURIComponent(command)}/${token}`;
     const response = await fetchWithRetry(url);
     const text = await response.text();
     res.status(response.status).send(text);

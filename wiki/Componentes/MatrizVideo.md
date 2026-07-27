@@ -30,7 +30,7 @@ Estado local (TVRACK):
 - `POST /api/tvrack/audio` — persiste selección de audio
 - `POST /api/tvrack/link` — persiste estado del toggle
 
-URL base Arranger: `http://192.168.2.254/api/command/`  
+URL base Arranger: `http://ARRANGER_HOST/api/command/`  
 Token: `TOKEN_REMOVED`
 
 ## Componentes UI usados
@@ -40,10 +40,10 @@ Token: `TOKEN_REMOVED`
 
 ## Dispositivos con los que interactúa
 
-- 8 [[../Dispositivos/Decodificadores]] (DTV1–DTV8)
+- 8 [[../Dispositivos/DirecTV/Decodificadores/Decodificadores]] (DTV1–DTV8)
 - 3 Video Walls (VWN, VWC, VWS)
 - 26 TVs principales (TV01–TV26)
-- 1 TV de rack ([[../Dispositivos/Decodificadores#TVRACK|TVRACK]])
+- 1 TV de rack ([[../Dispositivos/DirecTV/Decodificadores/Decodificadores#TVRACK|TVRACK]])
 
 ## Lógica de agrupación por zona
 

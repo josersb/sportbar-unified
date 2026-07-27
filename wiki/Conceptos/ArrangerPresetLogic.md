@@ -1,6 +1,6 @@
 # ArrangerPresetLogic
 
-Lógica de programación embebida del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para presets y condiciones. Los presets del Arranger soportan operadores condicionales, variables dinámicas y patrones de respuesta serial/tcp que permiten flujos de automatización sin depender del software cliente.
+Lógica de programación embebida del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para presets y condiciones. Los presets del Arranger soportan operadores condicionales, variables dinámicas y patrones de respuesta serial/tcp que permiten flujos de automatización sin depender del software cliente.
 
 > **Nota**: Esta lógica opera DENTRO del controlador Arranger y es independiente del sistema [[SistemaPresets]] de SportBar (que usa localStorage + `join av`). Sin embargo, los presets del Arranger pueden ser invocados desde la app con `preset load`.
 
@@ -144,6 +144,6 @@ preset add "cycle_source" if (get var source_num == 1) join video Encoder1 <<but
 - [[SistemaPresets]] — sistema de presets de la app SportBar (localStorage + estado React)
 - [[../Componentes/MatrizPreset]] — UI de gestión de presets en la app
 - [[../Componentes/MatrizVideo]] — componente que se beneficia de presets de routing condicional
-- [[../Dispositivos/Arranger-IPEXCB]] — controlador donde residen estos presets
+- [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador donde residen estos presets
 - [[../API/SendSerial]] — comandos seriales referenciados en patrones de respuesta
 - [[../API/GetMatrix]] — comando útil como condición en presets de validación

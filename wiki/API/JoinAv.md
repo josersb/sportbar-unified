@@ -1,6 +1,6 @@
 # JoinAv
 
-Comando `join av` del [[../Dispositivos/Arranger-IPEXCB|Arranger IPEXCB]] para enrutamiento combinado de video y audio. Conecta simultáneamente ambas señales desde un encoder fuente hacia un decoder destino, grupo de decoders o todos los decoders.
+Comando `join av` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para enrutamiento combinado de video y audio. Conecta simultáneamente ambas señales desde un encoder fuente hacia un decoder destino, grupo de decoders o todos los decoders.
 
 ## Sintaxis
 

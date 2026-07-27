@@ -17,7 +17,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 - [[Componentes/Nav]] — barra de navegación con NavLink
 - [[Componentes/Aside]] — panel lateral con estado en tiempo real
 - [[Componentes/MatrizVideo]] — control de matriz de video (47 destinos, Zonas Adicionales, TVRACK)
-- [[Componentes/MatrizPreset]] — gestión de 5 presets de configuración
+- [[Componentes/MatrizPreset]] — gestión de 5 presets con estado usado/libre, Cargar/Guardar/Limpiar, sincronización servidor
 - [[Componentes/Canales]] — gestión de canales deportivos y favoritos
 - [[Componentes/Audio]] — control de audio por zonas (Norte, Centro, Sur)
 - [[Componentes/Arranger]] — links directos a la interfaz web del Arranger
@@ -26,7 +26,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## APIs y Endpoints
 
-- [[API/ArrangerApi]] — cliente HTTP centralizado: `join av`, `join video`, `join audio`, `send ir`, `send serial`, `get matrix`, `get joins`, `get status`, `get devices`, `sendChannelDigits`
+- [[API/ArrangerApi]] — cliente HTTP centralizado: 12 comandos implementados, 67 documentados. Incluye endpoints de presets (`GET/POST/DELETE /api/presets/:n`) y TVRACK
 - [[API/IrCodes]] — tabla de códigos IR hexadecimales para cambio de canal dígito a dígito
 - [[API/JoinVideo]] — comando `join video` del Arranger: enrutamiento de video independiente
 - [[API/JoinAudio]] — comando `join audio` del Arranger: enrutamiento de audio independiente
@@ -42,16 +42,36 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## Dispositivos Hardware
 
-- [[Dispositivos/Decodificadores]] — catálogo de 8 fuentes de video: 6 DirecTV + 2 encoders IPEX5001
-- [[Dispositivos/DirecTV-Decos]] — 6 decodificadores DirecTV físicos (DTV1–DTV6), control IR
-- [[Dispositivos/IPEX5001-Encoder]] — transmisor HDMI sobre IP, JPEG2000, PoE
-- [[Dispositivos/IPEX5002-Decoder]] — receptor HDMI sobre IP, video wall 16×16
-- [[Dispositivos/Arranger-IPEXCB]] — controlador central IPEXCB, API HTTP + TCP
-- [[Dispositivos/ZonasAudio]] — 3 zonas de audio (Norte, Centro, Sur) con Tesira DSP
-- [[Dispositivos/AHM-32]] — matriz de audio Allen & Heath 32×32 (TCP, sin integrar)
-- [[Dispositivos/SQ6]] — consola de mezcla Allen & Heath para eventos en vivo
-- [[Dispositivos/Shure-ANI]] — interfaces de audio en red (ANI22/ANI4OUT)
-- [[Dispositivos/MagicInfo]] — cartelería digital Samsung (25+ TVs, sin integrar)
+### DirecTV
+
+- [[Dispositivos/DirecTV/Decodificadores/Decodificadores]] — catálogo de 8 fuentes de video: 6 DirecTV + 2 encoders IPEX5001
+
+### Liberty
+
+- [[Dispositivos/Liberty/Distribucion/IPEX5001-Encoder]] — transmisor HDMI sobre IP, JPEG2000, PoE
+- [[Dispositivos/Liberty/Distribucion/IPEX5002-Decoder]] — receptor HDMI sobre IP, video wall 16×16
+- [[Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — controlador central IPEXCB, API HTTP + TCP
+
+### Allen-Heath
+
+- [[Dispositivos/Allen-Heath/Procesadores/AHM-32]] — matriz de audio Allen & Heath 32×32 (TCP, sin integrar)
+- [[Dispositivos/Allen-Heath/Mezcladoras/SQ6]] — consola de mezcla Allen & Heath para eventos en vivo
+
+### Shure
+
+- [[Dispositivos/Shure/Audio/ANI]] — interfaces de audio en red (ANI22/ANI4OUT)
+
+### Samsung
+
+- [[Dispositivos/Samsung/Software/MagicInfo]] — cartelería digital Samsung (25+ TVs, sin integrar)
+
+### dbx
+
+- [[Dispositivos/dbx/Procesadores/ZonePRO-1260]] — procesador de audio (documentación pendiente)
+
+### Kramer
+
+- [[Dispositivos/Kramer/Distribucion/VM-8H]] — distribuidor de video (documentación pendiente)
 
 ## Conceptos
 
@@ -63,7 +83,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## Configuración
 
-- [[Configuracion/ViteProxy]] — proxy de desarrollo `/api` → `192.168.2.254`, chunks de build, dev server
+- [[Configuracion/ViteProxy]] — proxy de desarrollo `/api` → ARRANGER_HOST, chunks de build, dev server
 - [[Configuracion/PnpmSetup]] — pnpm como gestor exclusivo, `.npmrc`, `.nvmrc`, Node 18.17.1
 - [[Configuracion/Seguridad]] — helmet, CORS restrictivo, rate limiting, CSP, token cleanup
 - [[Configuracion/BranchingStrategy]] — flujo de ramas, worktrees, puertos por entorno
@@ -79,7 +99,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 ## Referencias de API
 
 - [[API/ArrangerApi]] — implementación del cliente API y referencia completa de comandos del Arranger
-- [[Dispositivos/Arranger-IPEXCB]] — documentación del controlador físico, IP, token, puertos
+- [[Dispositivos/Liberty/Controladores/Arranger-IPEXCB]] — documentación del controlador físico, IP, token, puertos
 
 ## Sources
 

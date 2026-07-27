@@ -20,6 +20,6 @@ Aplicación web Shure para configuración y monitoreo.
 
 ## Relaciones
 
-- [[ZonasAudio]] — el Tesira es el procesador principal
-- [[../Docs/referencia-instalacion]] — referencia completa
-- [[../README]] — documentación general
+- [[../../../../Conceptos/ZonasAudio]] — el Tesira es el procesador principal
+- [[../../../../Docs/referencia-instalacion]] — referencia completa
+- [[../../../../README]] — documentación general

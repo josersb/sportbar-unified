@@ -8,6 +8,7 @@ import {
   setZonasFueraLink,
   assignVideoSource,
   assignAudioSource,
+  assignSourceToDestination,
 } from "./api/arrangerApi";
 import Body from "./componentes/Body";
 import { ToastProvider } from "./componentes/Toast";
@@ -288,18 +289,25 @@ const App = () => {
     let response;
 
     try {
-      if (type === "video") {
-        response = await setZonasFueraVideo(zoneId, deviceId);
-        await assignVideoSource(deviceId, zoneId);
+      if (type === "video" || type === "audio") {
         if (prev.link) {
-          await setZonasFueraAudio(zoneId, deviceId);
-          await assignAudioSource(deviceId, zoneId);
+          // Vinculado: join av en un solo comando, mismo patrón que TVRACK
+          await assignSourceToDestination(deviceId, zoneId);
+          response = type === "video"
+            ? await setZonasFueraVideo(zoneId, deviceId)
+            : await setZonasFueraAudio(zoneId, deviceId);
+          toast.success(`${deviceId} → VIDEO + AUDIO ${zoneId}`);
+        } else {
+          // Desvinculado: comandos separados
+          if (type === "video") {
+            await assignVideoSource(deviceId, zoneId);
+            response = await setZonasFueraVideo(zoneId, deviceId);
+          } else {
+            await assignAudioSource(deviceId, zoneId);
+            response = await setZonasFueraAudio(zoneId, deviceId);
+          }
+          toast.success(`${deviceId} → ${type.toUpperCase()} ${zoneId}`);
         }
-        toast.success(`${deviceId} → VIDEO ${zoneId}`);
-      } else if (type === "audio") {
-        response = await setZonasFueraAudio(zoneId, deviceId);
-        await assignAudioSource(deviceId, zoneId);
-        toast.success(`${deviceId} → AUDIO ${zoneId}`);
       } else if (type === "link") {
         response = await setZonasFueraLink(zoneId, deviceId);
       }

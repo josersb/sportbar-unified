@@ -1,9 +1,12 @@
-# destinos-adicionales Specification
+# Delta for destinos-adicionales
 
-## Purpose
-Registro de 10 decoders IPEX5002 como destinos de video enrutable en `estado.tvs`, con nombres Arranger para comandos `join av` e integración en MatrizVideo.
+## REMOVED Requirements
 
-## Requirements
+### Requirement: Additional Destinations in Model
+(Reason: 10 IPEX5002 zones removed from `estado.tvs` and `<select>` rendering. Replaced by `zonas-fuera-state` full spec with independent mini-cards.)
+(Migration: Delete 10 zone keys from `estado.tvs` in `Contexto.jsx`. Remove `<select>` rendering from MatrizVideo Zonas Adicionales section. Zones now loaded from lowdb via `zonasFueraState`.)
+
+## MODIFIED Requirements
 
 ### Requirement: Build and Tests
 Build MUST pass with zones removed from `estado.tvs` and mini-cards rendering independently. All 36-TV matrix behavior MUST remain intact.

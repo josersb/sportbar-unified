@@ -42,7 +42,7 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">71 commits · 98 tests · v2 · Issue #6: Zonas Fuera botones independientes (27 jul 2026)</p>
+<p class="sub">99 commits · 98 tests · v2 → master desplegado · 10 hotfixes (27 jul 2026)</p>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- PENDING — tareas por hacer, ordenadas por fecha de creación     -->
@@ -63,6 +63,7 @@
   <p>Reemplazar la app vieja en :3000 por sportbar-unified. Ya testeada en :3101 contra Arranger real.</p>
   <ul class="tasks">
     <li>✅ Validar funcionalidades en :3101 contra Arranger</li>
+    <li>✅ v2 mergeado a master (27 jul) — 99 commits, 28 features</li>
     <li>🔲 Migrar estado actual de localStorage al backend lowdb</li>
     <li>🔲 Swap de puertos: nueva app → :3000</li>
     <li>🔲 Rollback plan si algo falla</li>
@@ -116,7 +117,7 @@
 <hr>
 <div class="section-title">COMPLETADO (28) — jul 2026</div>
 
-<div class="card done"><div class="idx">✅</div><div class="body"><h2>Issue #6: Zonas Fuera con botones independientes</h2><p>10 zonas (VIP, +15, Escenarios, QMR/QMC) migradas de selects a mini-cards con botones video/audio + toggle link. zonzasFueraState en lowdb, 4 endpoints REST, polling multi-PC. 28 tareas, 98 tests, mergeado a v2.</p></div><span class="badge badge-done">v2 · jul 27</span></div>
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Issue #6: Zonas Fuera con botones independientes</h2><p>10 zonas migradas a mini-cards con botones DTV1–DTV8 + toggle link. zonasFueraState en lowdb, 4 endpoints REST, polling multi-PC. 10 bugs fixeados en testing (rate limit, proxy, ZONAS_FUERA_IDS, Arranger commands, toast, layout). SDD completo (7 fases). Probado contra Arranger real.</p></div><span class="badge badge-done">v2 · jul 27</span></div>
 
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Modelo de Dispositivos</h2><p>Registry tipado 8 IPEX5001 con capacidades, colores, y helpers. Migracion localStorage v0→v1. 13 archivos, 4 PRs encadenados.</p></div><span class="badge badge-done">v1 · jul 13</span></div>
 

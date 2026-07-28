@@ -2,27 +2,52 @@
    Nav — CSS Module
    ============================================================ */
 
-.container {
-  box-sizing: content-box;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+.nav {
+  box-sizing: border-box;
   width: auto;
-  height: var(--nav-height, 25px);
-  padding: 10px var(--space-lg, 20px);
+  height: auto;
+  min-height: var(--touch-target-min, 44px);
+  padding: var(--space-sm, 8px) var(--space-lg, 20px);
   background-color: var(--color-brand-secondary, #807781);
 }
 
-.ulContainer {
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+.list {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 8px clamp(16px, 3vw, 36px);
+  gap: var(--gap-xs, 4px) clamp(8px, 2vw, 32px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  align-items: center;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-target-min, 44px);
+}
+
+.listItem + .listItem {
+  margin-left: 0;
+}
+
+/* ── Separator before Soporte ── */
+.separator {
+  margin-left: auto;
+  padding-left: var(--space-lg, 20px);
+  border-left: var(--border-width-thin, 1px) solid rgba(255, 255, 255, 0.3);
 }
 
 .linkItem {
   white-space: nowrap;
-  margin-top: 5px;
+  margin-top: var(--space-xs, 4px);
   text-align: center;
   list-style: none;
   font-family: var(--font-family-primary, "Roboto", sans-serif);
@@ -31,11 +56,14 @@
   color: var(--color-text-secondary, #f5f6f9);
   text-shadow: var(--shadow-sm, 1px 1px 0 #ff3900);
   text-decoration: none;
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-target-min, 44px);
 }
 
 .linkItem:hover {
   cursor: pointer;
-  color: var(--color-text-inverse, #ffffff);
+  color: var(--color-hover, red);
   text-shadow: var(--shadow-md, 2px 3px 0 red);
 }
 
@@ -46,13 +74,13 @@
 }
 
 .linkItem:focus-visible {
-  outline: 3px solid var(--color-brand-primary, #ff3900);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width, 3px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 /* Active NavLink — React Router adds this class automatically
    when the route matches. */
 .active {
-  color: #000000;
+  color: var(--color-text-inverse, #ffffff);
   text-shadow: 2px 3px red;
 }

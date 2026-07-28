@@ -11,7 +11,6 @@ import {
   assignSourceToDestination,
 } from "./api/arrangerApi";
 import Body from "./componentes/Body";
-import { ToastProvider } from "./componentes/Toast";
 import { useToast } from "./componentes/Toast";
 import ThemeProvider from "./contexto/ThemeProvider";
 import "./componentes/Toast.css";
@@ -340,9 +339,7 @@ const App = () => {
           handleZonasFueraChange,
         }}
       >
-        <ToastProvider>
-          <Body />
-        </ToastProvider>
+        <Body />
       </ProviderUser>
     </ThemeProvider>
   );

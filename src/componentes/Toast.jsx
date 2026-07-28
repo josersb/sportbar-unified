@@ -17,7 +17,7 @@ export function ToastProvider({ children }) {
     (message, type = "error") => {
       const id = ++toastIdCounter;
       setToasts((prev) => [...prev, { id, message, type }]);
-      timersRef.current[id] = setTimeout(() => removeToast(id), 5000);
+      timersRef.current[id] = setTimeout(() => removeToast(id), 8000);
       return id;
     },
     [removeToast],

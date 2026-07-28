@@ -387,6 +387,17 @@ describe("getPresets", () => {
 
     await expect(getPresets()).rejects.toThrow("Timeout");
   });
+
+  it("returns the presets text body", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      text: () => Promise.resolve("preset1, preset2, preset3"),
+    }));
+
+    const response = await getPresets();
+    const text = await response.text();
+
+    expect(text).toBe("preset1, preset2, preset3");
+  });
 });
 
 describe("Zonas Fuera State Functions", () => {

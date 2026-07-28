@@ -246,8 +246,8 @@ Listado completo de comandos documentados del Arranger IPEX5000, agrupados por c
 |---------|-------------|--------|--------|
 | [[GetStatus\|get status]] | Estado de dispositivo o stream | ✅ `getStatus(device, stream?)` | [[GetStatus]] |
 | [[GetDevices\|get devices]] | Lista de dispositivos (nombre + MAC) | ✅ `getDevices(target?)` | [[GetDevices]] |
-| [[GetMatrix\|get matrix]] | Estado completo de la matriz por stream | ⚠️ No compatible con firmware 2.1.5 — requiere actualización | [[GetMatrix]] |
-| [[GetJoins\|get joins]] | Joins activos de un decoder (video, audio, serial, ir, usb) | ⚠️ No compatible con firmware 2.1.5 — requiere actualización | [[GetJoins]] |
+| [[GetMatrix\|get matrix]] | Estado completo de la matriz por stream | ⚠️ Requiere firmware controlador ≥1.4.0.0 (actual: 1.3.4) | [[GetMatrix]] |
+| [[GetJoins\|get joins]] | Joins activos de un decoder (video, audio, serial, ir, usb) | ⚠️ Requiere firmware controlador ≥1.4.0.0 (actual: 1.3.4) | [[GetJoins]] |
 | `get video_status` | Estado de todos los streams de video | 🔲 pendiente | — |
 | `get ver` | Versión de firmware de dispositivo | 🔲 pendiente | — |
 | `get display_status` | Estado de display conectado | 🔲 pendiente | — |

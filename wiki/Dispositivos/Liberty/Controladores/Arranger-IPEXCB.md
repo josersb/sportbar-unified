@@ -14,7 +14,7 @@ Controlador central del sistema **Arranger Digi IP 5000 Series** de **Liberty AV
 | Interfaz web | `http://ARRANGER_HOST` |
 | API HTTP | `http://ARRANGER_HOST/api/command/[comando]/[token]` |
 | API TCP | Puerto `6980` (control de terceros) |
-| Versión de firmware | `2.1.5` (verificado 2026-07-28 con `get ver`) |
+| Versión de firmware | `1.3.4` (controlador) / `2.1.5` (encoders/decoders IPEX5000, verificado 2026-07-28 con `get ver`) |
 
 ## API HTTP
 
@@ -27,6 +27,27 @@ El comando debe estar URL-encoded. El `[token]` de la instalación es `TOKEN_REM
 
 ### Método de envío
 Todas las llamadas desde la aplicación SportBar usan `mode: "no-cors"`. Esto implica que el navegador envía la solicitud pero no puede leer la respuesta. Para verificar estado se requiere usar la API TCP o la interfaz web directamente.
+
+## Limitaciones del firmware actual (v1.3.4)
+
+El controlador Arranger IPEXCB ejecuta firmware **v1.3.4**. La documentación de la API en esta wiki está basada en **API V1.4.0.0**, que es una versión posterior. Los siguientes comandos documentados NO están disponibles en v1.3.4:
+
+| Comando | Disponible en | Estado en v1.3.4 |
+|---------|--------------|-------------------|
+| `get matrix <stream>` | API ≥1.4.0.0 | ❌ `invalid property` |
+| `get joins <device> <subscription>` | API ≥1.4.0.0 | ❌ `invalid property` |
+| `get presets` | API ≥1.4.0.0 | ❌ (no verificado, probablemente igual) |
+
+**Comandos SÍ disponibles en v1.3.4:**
+- `get status <device> [stream]` ✅
+- `get devices <target>` ✅
+- `get ver <device>` ✅
+- `join av / video / audio` ✅
+- `send ir / serial` ✅
+- `preset load` ✅
+
+### Actualización pendiente
+Para habilitar los comandos de API V1.4.0.0, el controlador Arranger IPEXCB debe actualizarse a firmware ≥1.4.0.0. El firmware se obtiene del portal de dealers de Liberty AV Solutions (libav.com) y se carga vía la interfaz web del Arranger: *Settings > Import Updates*.
 
 ## API TCP
 

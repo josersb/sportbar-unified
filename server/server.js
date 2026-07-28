@@ -21,8 +21,8 @@ app.use(
         imgSrc: ["'self'", "data:", "blob:"],
         connectSrc: [
           "'self'",
-          "http://localhost:5173",          // Vite dev server
-          "http://localhost:3101",          // Express self (v2)
+          "http://localhost:5175",          // Vite dev server (frontend-redesign)
+          "http://localhost:3103",          // Express self (frontend-redesign)
           ARRANGER_BASE,           // Arranger matrix
         ],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
@@ -36,11 +36,11 @@ app.use(
 
 // ── CORS: restringido a orígenes conocidos (antes era *) ──
 const allowedOrigins = [
-  "http://localhost:5173",                  // Vite dev
-  "http://localhost:3101",                  // Express v2
+  "http://localhost:5175",                  // Vite dev (frontend-redesign)
+  "http://localhost:3103",                  // Express (frontend-redesign)
   "http://localhost:3000",                  // Express v1 (legacy)
-  "http://127.0.0.1:5173",
-  "http://127.0.0.1:3101",
+  "http://127.0.0.1:5175",
+  "http://127.0.0.1:3103",
   "http://127.0.0.1:3000",
   /^http:\/\/192\.168\.2\.\d{1,3}(:\d+)?$/, // Red local Arranger
 ];

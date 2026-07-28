@@ -10,34 +10,34 @@ export default defineConfig({
 
   // Development server configuration
   server: {
-    port: 5173,
+    port: 5175,
     host: true, // Allow external connections
     open: true, // Auto-open browser
     cors: true,
     proxy: {
       // Device status endpoint → Express (must come before the generic /api rule)
       "/api/device/": {
-        target: "http://localhost:3101",
+        target: "http://localhost:3103",
         changeOrigin: true,
       },
       // State persistence endpoint → Express (must come before the generic /api rule)
       "/api/state": {
-        target: "http://localhost:3101",
+        target: "http://localhost:3103",
         changeOrigin: true,
       },
       // TVRACK shared state → Express (must come before the generic /api rule)
       "/api/tvrack": {
-        target: "http://localhost:3101",
+        target: "http://localhost:3103",
         changeOrigin: true,
       },
       // Presets compartidos → Express (must come before the generic /api rule)
       "/api/presets": {
-        target: "http://localhost:3101",
+        target: "http://localhost:3103",
         changeOrigin: true,
       },
       // Zonas Fuera → Express (must come before the generic /api rule)
       "/api/zonas-fuera": {
-        target: "http://localhost:3101",
+        target: "http://localhost:3103",
         changeOrigin: true,
       },
       // Proxy API calls to avoid CORS issues during development

@@ -1,0 +1,60 @@
+/* ============================================================
+   AudioStatus — CSS Module
+   Shows 3 audio zones in a table
+   ============================================================ */
+
+.section {
+  margin: var(--space-xs, 4px);
+  padding: var(--space-xs, 4px);
+  border: var(--border-width-thin, 1px) solid var(--color-border-aside, rgb(247, 217, 182));
+  border-radius: var(--radius-sm, 4px);
+}
+
+.heading {
+  margin: var(--space-sm, 8px);
+  border-bottom: 1px solid grey;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.table {
+  margin: var(--space-sm, 8px);
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-normal, 400);
+}
+
+.headerRow th {
+  padding: var(--space-xs, 4px);
+  text-align: center;
+  border-bottom: 1px solid lightgrey;
+  font-weight: var(--font-weight-bold, 700);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.cell {
+  padding: var(--space-xs, 4px);
+  text-align: center;
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-normal, 400);
+}
+
+.rowSur {
+  background-color: var(--ASur, transparent);
+}
+
+.rowCentro {
+  background-color: var(--ACentro, transparent);
+}
+
+.rowNorte {
+  background-color: var(--ANorte, transparent);
+}
+
+.empty {
+  margin: var(--space-lg, 16px);
+  text-align: center;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-primary, #000);
+}

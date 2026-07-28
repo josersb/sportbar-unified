@@ -14,6 +14,7 @@ Controlador central del sistema **Arranger Digi IP 5000 Series** de **Liberty AV
 | Interfaz web | `http://ARRANGER_HOST` |
 | API HTTP | `http://ARRANGER_HOST/api/command/[comando]/[token]` |
 | API TCP | Puerto `6980` (control de terceros) |
+| Versión de firmware | `2.1.5` (verificado 2026-07-28 con `get ver`) |
 
 ## API HTTP
 

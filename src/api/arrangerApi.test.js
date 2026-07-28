@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getStatus, getMatrix, getJoins, leaveAv, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
+import { addPreset, deletePreset, getPresets, joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getStatus, getMatrix, getJoins, leaveAv, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
 
 // Mock IR_CODES so the dynamic import inside sendChannelDigits resolves synchronously
 // and doesn't interfere with vi.useFakeTimers
@@ -311,6 +311,81 @@ describe("leaveAv", () => {
     await leaveAv("TVRACK");
     const calledUrl = fetch.mock.calls[0][0];
     expect(calledUrl).toContain("leave%20av%20TVRACK");
+  });
+});
+
+describe("addPreset", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends preset add command with encoded name and command", async () => {
+    await addPreset("test", "join av DTV1 TV01");
+
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("preset%20add%20test%20join%20av%20DTV1%20TV01");
+  });
+
+  it("throws when Arranger rejects with error message", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("Error: preset already exists"),
+    }));
+
+    await expect(addPreset("test", "futbol")).rejects.toThrow("Arranger rechazó el comando");
+  });
+});
+
+describe("deletePreset", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends preset delete command with encoded name", async () => {
+    await deletePreset("futbol-domingo");
+
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("preset%20delete%20futbol-domingo");
+  });
+
+  it("throws when preset is not found", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("not found"),
+    }));
+
+    await expect(deletePreset("inexistente")).rejects.toThrow("Arranger rechazó el comando");
+  });
+});
+
+describe("getPresets", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends get presets command", async () => {
+    await getPresets();
+
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20presets");
+  });
+
+  it("throws on timeout", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("The operation was aborted", "AbortError")));
+
+    await expect(getPresets()).rejects.toThrow("Timeout");
   });
 });
 

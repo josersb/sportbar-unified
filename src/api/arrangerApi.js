@@ -174,6 +174,33 @@ export async function loadMatrixPreset(presetName) {
 }
 
 /**
+ * Crea un nuevo preset en el Arranger.
+ * @param {string} name - Nombre del preset
+ * @param {string} command - Comando(s) del preset (puede contener condicionales)
+ * @returns {Promise<Response>}
+ */
+export async function addPreset(name, command) {
+  return sendArrangerCommand(`preset add ${name} ${command}`);
+}
+
+/**
+ * Elimina un preset del Arranger.
+ * @param {string} name - Nombre del preset a eliminar
+ * @returns {Promise<Response>}
+ */
+export async function deletePreset(name) {
+  return sendArrangerCommand(`preset delete ${name}`);
+}
+
+/**
+ * Obtiene la lista de presets guardados en el Arranger.
+ * @returns {Promise<Response>}
+ */
+export async function getPresets() {
+  return sendArrangerCommand("get presets");
+}
+
+/**
  * Envía un comando IR a un dispositivo vía el Arranger.
  * @param {string} deviceId - ID del dispositivo (ej: "DTV1")
  * @param {string} hexCode - Código IR en formato Pronto hex

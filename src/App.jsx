@@ -327,12 +327,13 @@ const App = () => {
   return (
     <Router>
       <ThemeProvider>
-        <ProviderUser
-          value={{
-            estado,
-            tvrackState,
-            zonasFueraState,
-            handleChangeEstadoDecos,
+          <ProviderUser
+            value={{
+              estado,
+              estadoLoaded,
+              tvrackState,
+              zonasFueraState,
+              handleChangeEstadoDecos,
             handleChangeEstadoAudio,
             handleChangeEstadoVideo,
             handleChangeEstadoPreset,

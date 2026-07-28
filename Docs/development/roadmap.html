@@ -42,12 +42,12 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">99 commits · 98 tests · v2 → master desplegado · 10 hotfixes (27 jul 2026)</p>
+<p class="sub">~110 commits · 109 tests · 13 comandos Arranger · v2 → master · feat/frontend-redesign iniciado (28 jul 2026)</p>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- PENDING — tareas por hacer, ordenadas por fecha de creación     -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="section-title">PENDIENTE (7)</div>
+<div class="section-title">PENDIENTE (8)</div>
 
 <div class="card pending"><div class="idx">1</div><div class="body">
   <h2>Seguridad — Ronda 4</h2>
@@ -85,7 +85,7 @@
   <p>Extraer, destilar y documentar comandos de la API del Arranger desde los manuales PDF. Cross-reference con arrangerApi.js.</p>
   <ul class="tasks">
     <li>✅ Convertir PDFs a markdown con pdf-inspector (6 de 11)</li>
-    <li>✅ Destilar comandos API y cross-reference (67 comandos, 12 implementados)</li>
+    <li>✅ Destilar comandos API y cross-reference (67 comandos, 13 implementados)</li>
     <li>✅ Documentar en wiki/API/ (12 páginas nuevas)</li>
     <li>✅ Preparar tests (5 funciones nuevas, 8 tests)</li>
     <li>🔲 Convertir PDFs restantes (instalación, firmware, getting started — baja prioridad)</li>
@@ -111,11 +111,24 @@
 
 <div class="card pending"><div class="idx">8</div><div class="body"><h2>Fase 4: Tema compartido (muy baja prioridad)</h2><p>Tema dark/light actualmente solo en localStorage. Evaluar si vale la pena sincronizarlo entre PCs vía servidor. Impacto mínimo, opcional.</p></div><span class="badge badge-pending">opcional</span></div>
 
+<div class="card pending"><div class="idx">9</div><div class="body">
+  <h2>Frontend Redesign — Impeccable Design</h2>
+  <p>Rediseño radical del frontend usando la skill <code>impeccable-design</code> como base. Design tokens, Component Forge, Layout Architect, y auditoría WCAG 2.2 AA. Worktree <code>feat/frontend-redesign</code> en :5175/:3103.</p>
+  <ul class="tasks">
+    <li>🔲 SDD: proposal + spec + design + tasks</li>
+    <li>🔲 Design Tokens (colores, tipografía, espaciado, bordes)</li>
+    <li>🔲 Component Forge (specs formales, variantes, estados, a11y)</li>
+    <li>🔲 Layout Architect (CSS Grid, Container Queries, tipografía fluida)</li>
+    <li>🔲 Auditoría Visual + WCAG 2.2 AA</li>
+    <li>🔲 Implementación por fases con PRs encadenados</li>
+  </ul>
+</div><span class="badge badge-pending">planificado</span></div>
+
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- COMPLETADO — ordenado por fecha de finalización ascendente      -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <hr>
-<div class="section-title">COMPLETADO (28) — jul 2026</div>
+<div class="section-title">COMPLETADO (33) — jul 2026</div>
 
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Issue #6: Zonas Fuera con botones independientes</h2><p>10 zonas migradas a mini-cards con botones DTV1–DTV8 + toggle link. zonasFueraState en lowdb, 4 endpoints REST, polling multi-PC. 10 bugs fixeados en testing (rate limit, proxy, ZONAS_FUERA_IDS, Arranger commands, toast, layout). SDD completo (7 fases). Probado contra Arranger real.</p></div><span class="badge badge-done">v2 · jul 27</span></div>
 
@@ -173,9 +186,19 @@
 
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Fase 3: Presets compartidos + UI MatrizPreset</h2><p>GET/POST/DELETE /api/presets/:n en Express + lowdb. UI con 5 cards, estado usado/libre, Cargar/Guardar/Limpiar. Sincro multi-PC.</p></div><span class="badge badge-done">jul 25</span></div>
 
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Wiki: Jerarquía Fabricante → Categoría</h2><p>Reorganización de wiki/Dispositivos/ de estructura plana (10 archivos) a jerarquía Fabricante → Categoría → Dispositivo (7 fabricantes, 10 categorías). Script Node.js de migración idempotente. 28 archivos con wikilinks corregidos. SDD completo.</p></div><span class="badge badge-done">v2 · jul 28</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Samsung DBE-DME-DHE — Documentación completa</h2><p>Manuales PDF extraídos con pdf-inspector (Python). Página wiki con protocolos RS-232C (11 comandos), Ethernet/MDC, MagicInfo, y 23 códigos IR en formato Pronto HEX. Skill pdf-to-markdown creada.</p></div><span class="badge badge-done">v2 · jul 28</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Samsung IR — Pruebas in situ (19/22)</h2><p>23 códigos IR probados contra TV Samsung real vía IPEX5002-TVRACK + Arranger send ir. 19 funcionan (power toggle, volume, mute, HDMI 1-2, canales, navegación). 3 fallos con causa conocida (Power On requiere toggle, HDMI 3-4 no existen en el TV, Main Menu sin respuesta).</p></div><span class="badge badge-done">v2 · jul 28</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Preset Management API</h2><p>3 nuevas funciones en arrangerApi.js: addPreset(name, command), deletePreset(name), getPresets(). 7 tests. SDD completo (arranger-preset-management). Total: 13 comandos Arranger implementados.</p></div><span class="badge badge-done">v2 · jul 28</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>getJoins con subscription parameter</h2><p>Extendido getJoins(decoder, subscription?) para consultar joins IR, serial, USB, audio además de video. 4 tests nuevos (109 total). Wiki API actualizada.</p></div><span class="badge badge-done">v2 · jul 28</span></div>
+
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado (28)</span>
+  <span><span class="dot dot-done"></span> Completado (33)</span>
   <span><span class="dot dot-wip"></span> En progreso (1)</span>
   <span><span class="dot dot-pending"></span> Pendiente (7)</span>
 </div>

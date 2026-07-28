@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BrowserRouter as Router } from "react-router-dom";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import { DISPOSITIVOS, getDevice } from "./contexto/dispositivos";
 import {
@@ -324,24 +325,26 @@ const App = () => {
   };
 
   return (
-    <ThemeProvider>
-      <ProviderUser
-        value={{
-          estado,
-          tvrackState,
-          zonasFueraState,
-          handleChangeEstadoDecos,
-          handleChangeEstadoAudio,
-          handleChangeEstadoVideo,
-          handleChangeEstadoPreset,
-          handleUpdateDispositivo,
-          handleChangeTvrack,
-          handleZonasFueraChange,
-        }}
-      >
-        <Body />
-      </ProviderUser>
-    </ThemeProvider>
+    <Router>
+      <ThemeProvider>
+        <ProviderUser
+          value={{
+            estado,
+            tvrackState,
+            zonasFueraState,
+            handleChangeEstadoDecos,
+            handleChangeEstadoAudio,
+            handleChangeEstadoVideo,
+            handleChangeEstadoPreset,
+            handleUpdateDispositivo,
+            handleChangeTvrack,
+            handleZonasFueraChange,
+          }}
+        >
+          <Body />
+        </ProviderUser>
+      </ThemeProvider>
+    </Router>
   );
 };
 

@@ -69,6 +69,53 @@
   --header-height: 70px;
   --nav-height: 25px;
   --aside-min-height: 550px;
+
+  /* ---- Border Radius ---- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* ---- Border Width ---- */
+  --border-width-thin: 1px;
+  --border-width-thick: 2px;
+
+  /* ---- Line Height ---- */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* ---- Focus Ring ---- */
+  --focus-ring-color: #2563eb;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  /* ---- Touch Target ---- */
+  --touch-target-min: 44px;
+
+  /* ---- Gap Scale ---- */
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+  --gap-xl: 32px;
+
+  /* ---- Typography Additions ---- */
+  --font-weight-normal: 400;
+  --font-size-xs: 0.75rem;
+
+  /* ---- Breakpoints ---- */
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+
+  /* ---- Content Sizing ---- */
+  --content-max-width: 75ch;
+  --aside-min-width: 280px;
+
+  /* ---- Motion ---- */
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 300ms;
+  --motion-easing-default: ease;
 }
 
 /* ============================================================
@@ -96,4 +143,23 @@
   /* ---- Shadows ---- */
   --shadow-sm: 1px 1px 0px #ff6b35;
   --shadow-md: 2px 3px 0px #ff6b35;
+
+  /* ---- Focus Ring (light background in dark mode) ---- */
+  --focus-ring-color: #60a5fa;
+
+  /* ---- Motion (reduced by default in dark mode) ---- */
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 300ms;
+}
+
+/* ============================================================
+   Reduced Motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

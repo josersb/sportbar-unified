@@ -323,6 +323,122 @@ Los comandos podrían enviarse desde React usando la [[../../API/ArrangerApi]] a
 - Markdowns extraídos: `Docs/manuals/extracted/pdf-inspector/Samsung_DBE_DME_DHE_WebManual_ES.md` (ES) y `_EN.md` (EN)
 - Samsung Electronics, © 2015
 
+## Plan de pruebas IR — IPEX5002-TVRACK
+
+### Objetivo
+
+Validar los 23 códigos IR contra el TV Samsung real a través del IPEX5002-TVRACK, y explorar la viabilidad del flujo loopback IR (control remoto → IR IN → red IP → IR OUT → TV).
+
+### Preparación
+
+| Requisito | Estado |
+|---|---|
+| Cable jack 3.5mm estéreo IPEX IR OUT → Samsung IR/AMBIENT SENSOR IN | ✅ Conectado |
+| Arranger accesible desde la red del bar | ✅ |
+| Códigos Pronto HEX disponibles (23) | ✅ `Docs/equipaments/Tvs Samsung/Codigo pronto IR - samsung v1.txt` |
+| Volume Up verificado | ✅ 2026-07-28 |
+
+---
+
+### Fase 1 — Validación de los 22 códigos restantes
+
+Para cada comando, enviar desde la consola del Arranger:
+
+```
+send ir TVRACK <pronto_hex>
+```
+
+**Importante**: `send ir` emite directamente desde el puerto IR OUT del decoder especificado. No requiere `join ir` previo — la señal se emite en el extremo local del decoder sin atravesar la red.
+
+| # | Comando | Prioridad | Resultado | Fecha |
+|---|---|---|---|---|
+| 1 | Power On | 🔴 Alta | 🔲 | — |
+| 2 | Power Off | 🔴 Alta | 🔲 | — |
+| 3 | Power Toggle | 🔴 Alta | 🔲 | — |
+| 4 | Volume Up | 🟢 Verificado | ✅ | 2026-07-28 |
+| 5 | Volume Down | 🔴 Alta | 🔲 | — |
+| 6 | Mute Toggle | 🟡 Media | 🔲 | — |
+| 7 | Input HDMI 1 | 🔴 Alta | 🔲 | — |
+| 8 | Input HDMI 2 | 🟡 Media | 🔲 | — |
+| 9 | Input HDMI 3 | 🟡 Media | 🔲 | — |
+| 10 | Input HDMI 4 | 🟡 Media | 🔲 | — |
+| 11 | Channel Up | 🟢 Baja | 🔲 | — |
+| 12 | Channel Down | 🟢 Baja | 🔲 | — |
+| 13 | Previous Channel | 🟢 Baja | 🔲 | — |
+| 14 | Cursor Up | 🟢 Baja | 🔲 | — |
+| 15 | Cursor Down | 🟢 Baja | 🔲 | — |
+| 16 | Cursor Left | 🟢 Baja | 🔲 | — |
+| 17 | Cursor Right | 🟢 Baja | 🔲 | — |
+| 18 | Cursor Enter | 🟢 Baja | 🔲 | — |
+| 19 | Home | 🟢 Baja | 🔲 | — |
+| 20 | Exit | 🟢 Baja | 🔲 | — |
+| 21 | Return | 🟢 Baja | 🔲 | — |
+| 22 | Main Menu | 🟢 Baja | 🔲 | — |
+| 23 | Volume Up (duplicado) | — | ✅ | 2026-07-28 |
+
+---
+
+### Fase 2 — Loopback IR: control remoto → red IP → TV
+
+**Hipótesis**: ¿El Arranger puede transportar señales IR recibidas por el IR IN de un IPEX a través de la red IP hacia el IR OUT de otro IPEX?
+
+**Fundamento**: El Arranger tiene comandos `join ir` y `join all` para enrutar señales IR independientemente del audio/video. El `join av` solo enruta audio y video — los puertos IR, serial y USB requieren sus propios joins.
+
+**Comandos relevantes** (todos 🔲 pendientes de implementar en SportBar, disponibles en el Arranger):
+
+| Comando | Función |
+|---------|---------|
+| `join ir <encoder> <decoder>` | Enrutar solo IR entre encoder y decoder |
+| `join all <encoder> <decoder>` | Enrutar todas las señales (video + audio + IR + serial + USB) |
+| `leave ir <decoder>` | Desconectar ruta IR |
+| `leave all <decoder>` | Desconectar todas las rutas |
+
+#### Sub-fase 2A: Loopback con `join ir`
+
+```
+Paso 1: join ir <encoder_rack> TVRACK
+Paso 2: Apuntar control remoto Samsung al IR IN del IPEX5002-TVRACK
+Paso 3: Presionar Volume Up en el control remoto
+Paso 4: Verificar si el TV Samsung recibe la señal (IR OUT → TV)
+```
+
+#### Sub-fase 2B: Loopback con `join all`
+
+```
+Paso 1: join all <encoder_rack> TVRACK
+Paso 2: Repetir el procedimiento de 2A
+```
+
+#### Sub-fase 2C: ¿`join av` también enruta IR?
+
+```
+Paso 1: join av <encoder_rack> TVRACK (sin join ir explícito)
+Paso 2: Repetir el procedimiento de 2A
+Paso 3: Documentar si el IR viaja por la ruta de video o no
+```
+
+---
+
+### Fase 3 — Flujo inverso: rack → bar
+
+**Hipótesis**: Enviar comandos IR desde el rack hacia un decoder en el bar.
+
+```
+Paso 1: join ir <encoder_rack> <decoder_bar>
+Paso 2: send ir <decoder_bar> <pronto_hex_power_on>
+Paso 3: Verificar si el TV del bar recibe la señal
+```
+
+---
+
+### Notas
+
+- `send ir` NO requiere `join ir` — emite directamente del IR OUT del decoder especificado
+- `join ir` solo es necesario para transportar señales IR A TRAVÉS de la red IP entre encoder y decoder
+- El control remoto físico → IR IN del decoder → red IP → IR OUT del encoder es el flujo documentado para control de fuentes (ej: DirecTV)
+- El flujo inverso (encoder IR IN → red IP → decoder IR OUT) es la hipótesis a validar en Fase 3
+- Los comandos `join ir`, `join all`, `leave ir` no están wrappeados en `arrangerApi.js` — se envían como comandos crudos vía `sendArrangerCommand()`
+
 ## Relaciones
 
 - [[../Software/MagicInfo]] — software de digital signage Samsung (instalación en Palermo)

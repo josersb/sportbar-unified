@@ -2,14 +2,18 @@
    Header — CSS Module
    ============================================================ */
 
+.header {
+  height: var(--header-height, 70px);
+}
+
 .container {
   width: auto;
-  height: var(--header-height, 70px);
+  height: 100%;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 5px var(--space-lg, 20px);
+  padding: var(--space-xs, 4px) var(--space-lg, 20px);
   background-color: var(--color-brand-primary, #ff3900);
   font-family: var(--font-family-primary, "Roboto", sans-serif);
   font-weight: var(--font-weight-bold, 700);
@@ -17,17 +21,36 @@
 }
 
 .title {
-  margin-right: 150px;
+  flex: 1;
+  text-align: center;
   color: var(--color-text-inverse, #ffffff);
+  font-size: clamp(1.25rem, 3vw, var(--font-size-xl, 32px));
 }
 
 .title span {
   color: var(--color-text-primary, #000000);
-  margin-left: 20px;
+  margin-left: var(--space-lg, 20px);
 }
 
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--gap-sm, 8px);
+}
+
+.headerRight button:focus-visible {
+  outline: var(--focus-ring-width, 3px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+.logo {
+  height: auto;
+  max-height: var(--header-height, 70px);
+  width: auto;
+}
+
+.palermoLogo {
+  height: auto;
+  max-height: var(--header-height, 70px);
+  width: auto;
 }

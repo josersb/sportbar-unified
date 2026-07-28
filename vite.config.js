@@ -35,6 +35,11 @@ export default defineConfig({
         target: "http://localhost:3101",
         changeOrigin: true,
       },
+      // Zonas Fuera → Express (must come before the generic /api rule)
+      "/api/zonas-fuera": {
+        target: "http://localhost:3101",
+        changeOrigin: true,
+      },
       // Proxy API calls to avoid CORS issues during development
       "/api": {
         target: `http://${ARRANGER_HOST}:${ARRANGER_PORT}`,

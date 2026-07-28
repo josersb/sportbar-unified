@@ -6,9 +6,12 @@ import {
   setZonasFueraVideo,
   setZonasFueraAudio,
   setZonasFueraLink,
+  assignVideoSource,
+  assignAudioSource,
+  assignSourceToDestination,
 } from "./api/arrangerApi";
 import Body from "./componentes/Body";
-import { ToastProvider } from "./componentes/Toast";
+import { useToast } from "./componentes/Toast";
 import ThemeProvider from "./contexto/ThemeProvider";
 import "./componentes/Toast.css";
 
@@ -53,6 +56,7 @@ const App = () => {
   const [estado, setEstado] = useState(estadoInicial);
   const [tvrackState, setTvrackState] = useState({ video: "DTV1", audio: "DTV1", link: false });
   const [zonasFueraState, setZonasFueraState] = useState({});
+  const toast = useToast();
   const [estadoLoaded, setEstadoLoaded] = useState(false);
 
   // Load state: server first, localStorage fallback, then initial state
@@ -160,11 +164,13 @@ const App = () => {
       }
     }
 
-    loadZonasFuera();
+    // Delay first poll so Express has time to start (avoids ECONNREFUSED proxy noise)
+    const initialTimer = setTimeout(loadZonasFuera, 2000);
     const interval = setInterval(loadZonasFuera, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      clearTimeout(initialTimer);
     };
   }, []);
 
@@ -282,14 +288,25 @@ const App = () => {
     let response;
 
     try {
-      if (type === "video") {
-        response = await setZonasFueraVideo(zoneId, deviceId);
-        // If link is true, also update audio on the server
+      if (type === "video" || type === "audio") {
         if (prev.link) {
-          await setZonasFueraAudio(zoneId, deviceId);
+          // Vinculado: join av en un solo comando, mismo patrón que TVRACK
+          await assignSourceToDestination(deviceId, zoneId);
+          response = type === "video"
+            ? await setZonasFueraVideo(zoneId, deviceId)
+            : await setZonasFueraAudio(zoneId, deviceId);
+          toast.success(`${deviceId} → VIDEO + AUDIO ${zoneId}`);
+        } else {
+          // Desvinculado: comandos separados
+          if (type === "video") {
+            await assignVideoSource(deviceId, zoneId);
+            response = await setZonasFueraVideo(zoneId, deviceId);
+          } else {
+            await assignAudioSource(deviceId, zoneId);
+            response = await setZonasFueraAudio(zoneId, deviceId);
+          }
+          toast.success(`${deviceId} → ${type.toUpperCase()} ${zoneId}`);
         }
-      } else if (type === "audio") {
-        response = await setZonasFueraAudio(zoneId, deviceId);
       } else if (type === "link") {
         response = await setZonasFueraLink(zoneId, deviceId);
       }
@@ -300,8 +317,9 @@ const App = () => {
           [zoneId]: response,
         }));
       }
-    } catch {
-      // Server error — next poll will re-sync
+    } catch (err) {
+      console.error(`[zonas-fuera] Error en ${type} para ${zoneId}:`, err);
+      toast.error(`Error al cambiar ${type} en ${zoneId}`);
     }
   };
 
@@ -321,9 +339,7 @@ const App = () => {
           handleZonasFueraChange,
         }}
       >
-        <ToastProvider>
-          <Body />
-        </ToastProvider>
+        <Body />
       </ProviderUser>
     </ThemeProvider>
   );

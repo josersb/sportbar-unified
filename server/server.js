@@ -185,7 +185,7 @@ async function migrateZonasFueraV2() {
 // ── Rate limiter para /api/state ──
 const stateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100,
+  max: 500, // 100 era insuficiente: solo el state polling hace 180/15min
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, try again later" },

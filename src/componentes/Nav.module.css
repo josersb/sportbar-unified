@@ -14,14 +14,14 @@
 }
 
 .ulContainer {
-  max-width: 70%;
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px clamp(16px, 3vw, 36px);
 }
 
 .linkItem {
-  width: 150px;
+  white-space: nowrap;
   margin-top: 5px;
   text-align: center;
   list-style: none;

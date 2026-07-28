@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { addPreset, deletePreset, getPresets, joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getStatus, getMatrix, getJoins, leaveAv, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
+import { addPreset, deletePreset, getPresets, joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getStatus, getMatrix, getJoins, leaveAv, joinIr, joinSerial, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
 
 // Mock IR_CODES so the dynamic import inside sendChannelDigits resolves synchronously
 // and doesn't interfere with vi.useFakeTimers
@@ -551,5 +551,37 @@ describe("Zonas Fuera State Functions", () => {
 
       await expect(setZonasFueraLink("INVALID", true)).rejects.toThrow("Failed to set link for INVALID: 400");
     });
+  });
+});
+
+describe("joinIr", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends join ir with encoder and decoder", async () => {
+    await joinIr("DTV1", "TVRACK");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("join%20ir%20DTV1%20TVRACK");
+  });
+});
+
+describe("joinSerial", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends join serial with encoder and decoder", async () => {
+    await joinSerial("DTV1", "TVRACK");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("join%20serial%20DTV1%20TVRACK");
   });
 });

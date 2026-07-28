@@ -87,6 +87,16 @@ export async function assignAudioSource(source, destination) {
   return sendArrangerCommand(command);
 }
 
+export async function joinIr(encoder, decoder) {
+  const command = buildArrangerCommand("join ir", encoder, decoder);
+  return sendArrangerCommand(command);
+}
+
+export async function joinSerial(encoder, decoder) {
+  const command = buildArrangerCommand("join serial", encoder, decoder);
+  return sendArrangerCommand(command);
+}
+
 export async function getDevices(target = "all") {
   return sendArrangerCommand(buildArrangerCommand("get devices", target));
 }

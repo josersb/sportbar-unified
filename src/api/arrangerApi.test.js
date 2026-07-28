@@ -296,6 +296,30 @@ describe("getJoins", () => {
     const calledUrl = fetch.mock.calls[0][0];
     expect(calledUrl).toContain("get%20joins");
   });
+
+  it("sends get joins with decoder only (no subscription)", async () => {
+    await getJoins("TVRACK");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20joins%20TVRACK");
+  });
+
+  it("sends get joins with decoder and ir subscription", async () => {
+    await getJoins("TVRACK", "ir");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20joins%20TVRACK%20ir");
+  });
+
+  it("sends get joins with decoder and serial subscription", async () => {
+    await getJoins("DTV1", "serial");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20joins%20DTV1%20serial");
+  });
+
+  it("sends get joins with decoder and video subscription", async () => {
+    await getJoins("Decoder1", "video");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20joins%20Decoder1%20video");
+  });
 });
 
 describe("leaveAv", () => {

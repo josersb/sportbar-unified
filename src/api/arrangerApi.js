@@ -100,8 +100,8 @@ export async function getMatrix(stream) {
   return sendArrangerCommand(buildArrangerCommand("get matrix", stream));
 }
 
-export async function getJoins(decoder = "") {
-  const args = decoder || "";
+export async function getJoins(decoder = "", subscription = "") {
+  const args = subscription ? `${decoder} ${subscription}` : (decoder || "");
   return sendArrangerCommand(buildArrangerCommand("get joins", args));
 }
 

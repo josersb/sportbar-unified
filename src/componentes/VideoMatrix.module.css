@@ -1,0 +1,119 @@
+/* ============================================================
+   VideoMatrix — CSS Module
+   TV grid with container query reflow
+   ============================================================ */
+
+.section {
+  margin: var(--space-xs, 4px);
+  padding: var(--space-sm, 8px);
+  border: var(--border-width-thin, 1px) solid var(--color-border-aside, rgb(247, 217, 182));
+  border-radius: var(--radius-sm, 4px);
+  container-type: inline-size;
+}
+
+.heading {
+  margin: var(--space-sm, 8px);
+  border-bottom: 1px solid grey;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.grid {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+/* ── VW row (3 panoramic TVs) ── */
+.vwRow {
+  display: grid;
+  gap: var(--gap-xs, 4px);
+  padding: var(--space-xs, 4px);
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+}
+
+/* ── Escalera + Barra layout ── */
+.escaleraBarra {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: var(--gap-xs, 4px);
+}
+
+/* ── Escalera columns ── */
+.escalera {
+  display: grid;
+  gap: var(--gap-xs, 4px);
+  padding: var(--space-xs, 4px);
+  grid-template-columns: auto;
+  grid-template-rows: repeat(4, auto);
+}
+
+/* ── Barra grid (14 TVs + TVRACK in 5-column grid) ── */
+.barraGrid {
+  display: grid;
+  gap: var(--gap-xs, 4px);
+  padding: var(--space-xs, 4px);
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  grid-template-areas:
+    ".     tv03  tv02  tv01  ."
+    "tv04  .     .     .     tv14"
+    "tv05  .     tvrk  .     tv13"
+    "tv06  .     .     .     tv12"
+    "tv07  .     .     .     tv11"
+    ".     tv08  tv09  tv10  .";
+}
+
+/* ── TV item base ── */
+.tvItem,
+.barraItem {
+  padding: var(--space-xs, 4px);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-normal, 400);
+  text-align: center;
+  display: block;
+}
+
+.barraItem {
+  font-size: calc(var(--font-size-xs, 0.75rem) - 1px);
+}
+
+/* ── Container query: reflow when aside is narrow ── */
+@container (max-width: 260px) {
+  .escaleraBarra {
+    flex-direction: column;
+  }
+
+  .escalera {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: auto;
+    width: 100%;
+  }
+
+  .barraGrid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas:
+      "tv01  tv02  tv03"
+      "tv04  tv05  tv06"
+      "tv07  tv08  tv09"
+      "tv10  tv11  tv12"
+      "tv13  tv14  tvrk";
+    width: 100%;
+  }
+}
+
+/* ── Empty state ── */
+.empty {
+  margin: var(--space-lg, 16px);
+  text-align: center;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-primary, #000);
+}

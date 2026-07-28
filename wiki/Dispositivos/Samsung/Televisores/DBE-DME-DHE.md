@@ -282,7 +282,10 @@ Las Samsung DBE/DME/DHE pueden controlarse remotamente desde SportBar por dos v�
 ### Control IR (infrarrojo) — Menor fricción
 - **Cableado**: jack 3.5mm estéreo del IPEX5002 IR OUT al IR/AMBIENT SENSOR IN de la TV
 - **Comando Arranger**: `send ir <device> <pronto_hex>`
-- **Verificado**: Volume Up ✅ (2026-07-28)
+- **Verificado**: 19/22 comandos ✅ (2026-07-28)
+- **Encendido**: Power Toggle ✅ (Power On ❌ no funciona — usar Power Toggle como alternativa)
+- **Esenciales funcionales**: power (toggle/off), volume up/down, mute, input HDMI 1/2 ✅
+- **Fallos**: Power On ❌, Main Menu ❌, HDMI 3/4 ❌ (TV sin puertos físicos 3 y 4)
 - **Ventaja**: sin configuración de baud rate, cable estándar
 - **Limitación**: unidireccional (sin feedback), requiere aprender códigos
 
@@ -350,31 +353,30 @@ send ir TVRACK <pronto_hex>
 
 **Importante**: `send ir` emite directamente desde el puerto IR OUT del decoder especificado. No requiere `join ir` previo — la señal se emite en el extremo local del decoder sin atravesar la red.
 
-| # | Comando | Prioridad | Resultado | Fecha |
-|---|---|---|---|---|
-| 1 | Power On | 🔴 Alta | 🔲 | — |
-| 2 | Power Off | 🔴 Alta | 🔲 | — |
-| 3 | Power Toggle | 🔴 Alta | 🔲 | — |
-| 4 | Volume Up | 🟢 Verificado | ✅ | 2026-07-28 |
-| 5 | Volume Down | 🔴 Alta | 🔲 | — |
-| 6 | Mute Toggle | 🟡 Media | 🔲 | — |
-| 7 | Input HDMI 1 | 🔴 Alta | 🔲 | — |
-| 8 | Input HDMI 2 | 🟡 Media | 🔲 | — |
-| 9 | Input HDMI 3 | 🟡 Media | 🔲 | — |
-| 10 | Input HDMI 4 | 🟡 Media | 🔲 | — |
-| 11 | Channel Up | 🟢 Baja | 🔲 | — |
-| 12 | Channel Down | 🟢 Baja | 🔲 | — |
-| 13 | Previous Channel | 🟢 Baja | 🔲 | — |
-| 14 | Cursor Up | 🟢 Baja | 🔲 | — |
-| 15 | Cursor Down | 🟢 Baja | 🔲 | — |
-| 16 | Cursor Left | 🟢 Baja | 🔲 | — |
-| 17 | Cursor Right | 🟢 Baja | 🔲 | — |
-| 18 | Cursor Enter | 🟢 Baja | 🔲 | — |
-| 19 | Home | 🟢 Baja | 🔲 | — |
-| 20 | Exit | 🟢 Baja | 🔲 | — |
-| 21 | Return | 🟢 Baja | 🔲 | — |
-| 22 | Main Menu | 🟢 Baja | 🔲 | — |
-| 23 | Volume Up (duplicado) | — | ✅ | 2026-07-28 |
+| # | Comando | Prioridad | Resultado | Fecha | Nota |
+|---|---|---|---|---|---|
+| 1 | Power On | 🔴 Alta | ❌ | 2026-07-28 | No enciende el TV. Usar Power Toggle como alternativa. |
+| 2 | Power Off | 🔴 Alta | ✅ | 2026-07-28 | — |
+| 3 | Power Toggle | 🔴 Alta | ✅ | 2026-07-28 | Funciona para encender Y apagar. Recomendado sobre Power On. |
+| 4 | Volume Up | 🟢 Verificado | ✅ | 2026-07-28 | — |
+| 5 | Volume Down | 🔴 Alta | ✅ | 2026-07-28 | — |
+| 6 | Mute Toggle | 🟡 Media | ✅ | 2026-07-28 | — |
+| 7 | Input HDMI 1 | 🔴 Alta | ✅ | 2026-07-28 | — |
+| 8 | Input HDMI 2 | 🟡 Media | ✅ | 2026-07-28 | — |
+| 9 | Input HDMI 3 | 🟡 Media | ❌ | 2026-07-28 | El TV no tiene puerto HDMI 3. Código IR probablemente válido. |
+| 10 | Input HDMI 4 | 🟡 Media | ❌ | 2026-07-28 | El TV no tiene puerto HDMI 4. Código IR probablemente válido. |
+| 11 | Channel Up | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 12 | Channel Down | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 13 | Previous Channel | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 14 | Cursor Up | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 15 | Cursor Down | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 16 | Cursor Left | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 17 | Cursor Right | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 18 | Cursor Enter | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 19 | Home | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 20 | Exit | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 21 | Return | 🟢 Baja | ✅ | 2026-07-28 | — |
+| 22 | Main Menu | 🟢 Baja | ❌ | 2026-07-28 | Sin respuesta del TV. Posible código incorrecto o no soportado. |
 
 ---
 

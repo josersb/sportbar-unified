@@ -22,6 +22,7 @@
 
   /* ---- Border Colors ---- */
   --color-border: #000000;
+  --color-border-aside: rgb(247, 217, 182);
 
   /* ---- Status Colors ---- */
   --color-hover: red;
@@ -135,6 +136,7 @@
 
   /* ---- Border Colors ---- */
   --color-border: #333333;
+  --color-border-aside: rgb(60, 50, 40);
 
   /* ---- Status Colors ---- */
   --color-hover: #ff6b35;

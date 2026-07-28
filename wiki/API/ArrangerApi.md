@@ -244,10 +244,10 @@ Listado completo de comandos documentados del Arranger IPEX5000, agrupados por c
 
 | Comando | Descripción | Estado | Página |
 |---------|-------------|--------|--------|
-| [[GetStatus\|get status]] | Estado de dispositivo o stream | 🔲 pendiente | [[GetStatus]] |
-| [[GetDevices\|get devices]] | Lista de dispositivos (nombre + MAC) | 🔲 pendiente | [[GetDevices]] |
-| [[GetMatrix\|get matrix]] | Estado completo de la matriz por stream | ✅ `getMatrix()` | [[GetMatrix]] |
-| [[GetJoins\|get joins]] | Joins activos de un decoder | ✅ `getJoins()` | [[GetJoins]] |
+| [[GetStatus\|get status]] | Estado de dispositivo o stream | ✅ `getStatus(device, stream?)` | [[GetStatus]] |
+| [[GetDevices\|get devices]] | Lista de dispositivos (nombre + MAC) | ✅ `getDevices(target?)` | [[GetDevices]] |
+| [[GetMatrix\|get matrix]] | Estado completo de la matriz por stream | ✅ `getMatrix(stream)` | [[GetMatrix]] |
+| [[GetJoins\|get joins]] | Joins activos de un decoder (video, audio, serial, ir, usb) | ✅ `getJoins(decoder, subscription?)` | [[GetJoins]] |
 | `get video_status` | Estado de todos los streams de video | 🔲 pendiente | — |
 | `get ver` | Versión de firmware de dispositivo | 🔲 pendiente | — |
 | `get display_status` | Estado de display conectado | 🔲 pendiente | — |
@@ -263,15 +263,15 @@ Listado completo de comandos documentados del Arranger IPEX5000, agrupados por c
 | `get volume` | Volumen de decoder | 🔲 pendiente | — |
 | `get events` | Eventos del sistema | 🔲 pendiente | — |
 | `get var` | Valor de variable definida | 🔲 pendiente | — |
-| `get presets` | Lista de presets guardados | 🔲 pendiente | — |
+| `get presets` | Lista de presets guardados | ✅ `getPresets()` | — |
 
 ### Preset
 
 | Comando | Descripción | Estado | Página |
 |---------|-------------|--------|--------|
 | `preset load` | Cargar preset guardado | ✅ `loadChannelPreset()` + `loadMatrixPreset()` | — |
-| `preset add` | Crear preset nuevo | 🔲 pendiente | — |
-| `preset delete` | Eliminar preset | 🔲 pendiente | — |
+| `preset add` | Crear preset nuevo | ✅ `addPreset(name, command)` | — |
+| `preset delete` | Eliminar preset | ✅ `deletePreset(name)` | — |
 | `preset delay` | Agregar delay en preset | 🔲 pendiente | — |
 
 ### Set (comandos de configuración)
@@ -319,4 +319,4 @@ Listado completo de comandos documentados del Arranger IPEX5000, agrupados por c
 | `notify display` | Notificación de display | 🔲 pendiente |
 | `notify source` | Notificación de fuente | 🔲 pendiente |
 
-**Total de comandos documentados**: 67 | **Implementados**: 10 (`join av`, `join video`, `join audio`, `send ir`, `send serial`, `get devices`, `get status`, `get matrix`, `get joins`, `preset load`) — `preset load` con dos wrappers: `loadChannelPreset()` y `loadMatrixPreset()`
+**Total de comandos documentados**: 67 | **Implementados**: 13 comandos Arranger con 18 wrappers JS (`join av`, `join video`, `join audio`, `send ir`, `send serial`, `get devices`, `get status`, `get matrix`, `get joins`, `get presets`, `preset load`, `preset add`, `preset delete`) — `preset load` con dos wrappers: `loadChannelPreset()` y `loadMatrixPreset()`

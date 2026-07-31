@@ -4,7 +4,7 @@ import { getAllDevices } from "../contexto/dispositivos";
 import styles from "./DecosStatus.module.css";
 
 const DecosStatus = () => {
-  const { estado, estadoLoaded } = useContext(ContextoUser);
+  const { estado, estadoLoaded, errorDecos, reintentarDecos } = useContext(ContextoUser);
   const dispositivos = estado.dispositivos;
   const decos = getAllDevices();
 
@@ -16,6 +16,28 @@ const DecosStatus = () => {
         <p className={styles.loading} aria-busy="true">
           Cargando estado de decodificadores…
         </p>
+      </section>
+    );
+  }
+
+  // ── Error state ──
+  if (errorDecos) {
+    return (
+      <section className={styles.section} aria-label="Estado de canales">
+        <h2 className={styles.heading}>Estado de canales</h2>
+        <p className={styles.error} role="alert">
+          Error al cargar estado de decodificadores
+        </p>
+        <div className={styles.errorActions}>
+          <button
+            type="button"
+            className={styles.retryBtn}
+            onClick={reintentarDecos}
+            aria-label="Reintentar cargar estado"
+          >
+            Reintentar
+          </button>
+        </div>
       </section>
     );
   }

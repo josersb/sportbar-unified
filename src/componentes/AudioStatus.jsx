@@ -20,34 +20,35 @@ const AudioStatus = () => {
     <section className={styles.section} aria-label="Estado del audio">
       <h2 className={styles.heading}>Estado del audio</h2>
 
-      <table className={styles.table}>
-        <thead>
-          <tr className={styles.headerRow}>
-            <th scope="col">Zona</th>
-            <th scope="col">Deco</th>
-            <th scope="col">Vol</th>
-            <th scope="col">Mute</th>
-          </tr>
-        </thead>
-        <tbody>
-          {audio.map((zona, i) => {
-            const zoneClass =
-              i === 0
-                ? styles.rowSur
-                : i === 1
-                  ? styles.rowCentro
-                  : styles.rowNorte;
-            return (
-              <tr key={zona.nombreZona} className={zoneClass}>
-                <td className={styles.cell}>{zona.nombreZona}</td>
-                <td className={styles.cell}>{zona.fuenteAudio}</td>
-                <td className={styles.cell}>{zona.volumen}</td>
-                <td className={styles.cell}>{zona.mute ? "ON" : "OFF"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <ul className={styles.list} role="list">
+        <li className={styles.headerRow}>
+          <span>Zona</span>
+          <span>Deco</span>
+          <span>Vol</span>
+          <span>Mute</span>
+          <span className={styles.emojiCol}></span>
+        </li>
+        {audio.map((zona) => (
+          <li key={zona.nombreZona} className={styles.row}>
+            <span className={styles.cell}>{zona.nombreZona}</span>
+            <span
+              className={styles.signal}
+              style={{ backgroundColor: `var(--${zona.fuenteAudio || "DTV1"})` }}
+            >
+              {zona.fuenteAudio}
+            </span>
+            <span className={styles.signal}>{zona.volumen}</span>
+            <span
+              className={`${styles.signal} ${zona.mute ? styles.muteOn : styles.muteOff}`}
+            >
+              {zona.mute ? "OFF" : "ON"}
+            </span>
+            <span className={styles.emojiCol}>
+              {zona.mute ? "🔇" : "🔊"}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 };

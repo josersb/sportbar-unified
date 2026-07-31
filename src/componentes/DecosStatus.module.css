@@ -82,3 +82,38 @@
   font-size: var(--font-size-xs, 0.75rem);
   color: var(--color-text-secondary, #666);
 }
+
+.error {
+  margin: var(--space-lg, 16px);
+  text-align: center;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-error, #dc2626);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.errorActions {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-sm, 8px);
+}
+
+.retryBtn {
+  background: none;
+  border: var(--border-width-thin, 1px) solid var(--color-error, #dc2626);
+  border-radius: var(--radius-sm, 4px);
+  padding: var(--space-xs, 4px) var(--space-md, 12px);
+  cursor: pointer;
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--color-error, #dc2626);
+}
+
+.retryBtn:focus-visible {
+  outline: var(--focus-ring-width, 3px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+.retryBtn:hover {
+  background-color: var(--color-error, #dc2626);
+  color: white;
+}

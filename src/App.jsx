@@ -59,6 +59,7 @@ const App = () => {
   const [zonasFueraState, setZonasFueraState] = useState({});
   const toast = useToast();
   const [estadoLoaded, setEstadoLoaded] = useState(false);
+  const [errorDecos, setErrorDecos] = useState(false);
 
   // Load state: server first, localStorage fallback, then initial state
   useEffect(() => {
@@ -78,6 +79,7 @@ const App = () => {
         }
       } catch {
         // Server not available, fall through to localStorage
+        if (!cancelled) setErrorDecos(true);
       }
 
       // 2. Fallback to localStorage
@@ -118,6 +120,8 @@ const App = () => {
       if (!cancelled) {
         setEstado(estadoInicial);
         setEstadoLoaded(true);
+        // If we reached here, both server and localStorage failed
+        setErrorDecos(true);
       }
     }
 
@@ -284,6 +288,44 @@ const App = () => {
     setTvrackState(newTvrack);
   };
 
+  const reintentarDecos = async () => {
+    setErrorDecos(false);
+    try {
+      const res = await fetch("/api/state");
+      if (res.ok) {
+        const { state } = await res.json();
+        if (state) {
+          setEstado(state);
+          setEstadoLoaded(true);
+          return;
+        }
+      }
+    } catch {
+      // Server still not available
+      setErrorDecos(true);
+    }
+
+    // Fallback to localStorage
+    const saved = localStorage.getItem("estadoApp");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const data = !parsed._version || parsed._version < 1
+          ? migrarEstado(parsed)
+          : parsed;
+        setEstado(data);
+        setEstadoLoaded(true);
+        return;
+      } catch {
+        // corrupted
+      }
+    }
+
+    // Ultimate fallback
+    setEstado(estadoInicial);
+    setEstadoLoaded(true);
+  };
+
   const handleZonasFueraChange = async (zoneId, type, deviceId) => {
     const prev = zonasFueraState[zoneId] || {};
     let response;
@@ -331,6 +373,7 @@ const App = () => {
             value={{
               estado,
               estadoLoaded,
+              errorDecos,
               tvrackState,
               zonasFueraState,
               handleChangeEstadoDecos,
@@ -340,6 +383,7 @@ const App = () => {
             handleUpdateDispositivo,
             handleChangeTvrack,
             handleZonasFueraChange,
+            reintentarDecos,
           }}
         >
           <Body />

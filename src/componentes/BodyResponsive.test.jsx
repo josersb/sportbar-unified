@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { ProviderUser } from "../contexto/Contexto";
 import Body from "./Body";
 import styles from "./Body.module.css";
+import skipStyles from "./SkipToContent.module.css";
 
 // Minimal state so Aside doesn't crash on context access
 const baseState = {
@@ -49,11 +50,29 @@ describe("Body — component structure", () => {
   });
 
   it("renders skip-to-content link as first focusable element", () => {
-    renderBody();
+    const { container } = renderBody();
 
     const skipLink = screen.getByText("Saltar al contenido principal");
     expect(skipLink).toBeInTheDocument();
     expect(skipLink).toHaveAttribute("href", "#main-content");
+
+    // Verify it is the first element rendered inside the React root container
+    expect(container.firstElementChild).toBe(skipLink);
+  });
+
+  it("skip-to-content uses CSS Module sr-only pattern (visible only on :focus-visible)", () => {
+    renderBody();
+
+    const skipLink = screen.getByText("Saltar al contenido principal");
+
+    // Check it has the CSS Module class
+    expect(skipLink.className).toContain(skipStyles.skipLink.replace(/^.*-/, ""));
+
+    // The CSS rules make it sr-only by default:
+    //   transform: translateX(-100%); opacity: 0; pointer-events: none;
+    // And visible on :focus-visible via:
+    //   .skipLink:focus-visible { transform: translateX(0); opacity: 1; pointer-events: auto; }
+    expect(skipLink).toHaveClass(skipStyles.skipLink);
   });
 
   it("renders a <main> element with id='main-content' for skip link target", () => {

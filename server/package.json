@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "express": "4.19.2",
-    "express-rate-limit": "^8.6.0",
-    "helmet": "^8.3.0",
+    "express-rate-limit": "8.6.0",
+    "helmet": "8.3.0",
     "lowdb": "7.0.1",
     "path-to-regexp": "0.1.13"
   },

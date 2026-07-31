@@ -107,6 +107,72 @@ PC[RS232C] → Display1[RS232C IN] → Display1[RS232C OUT] → Display2[RS232C 
 | ACK | `0xAA 0xFF [ID] 3 'A' [Command] [Value] [Checksum]` |
 | NAK | `0xAA 0xFF [ID] 3 'N' [Command] "ERR" [Checksum]` |
 
+### RS-232 Consumer (modelos Q70+, 8000, Q60)
+
+> ⚠️ **Protocolo diferente al de las DBE/DME/DHE comerciales.** Si las TVs del SportBar son modelos Samsung consumer (no LFD comerciales), este es el protocolo que debe usarse.
+
+#### Métodos de conexión
+
+| Método | Modelos | Conector |
+|--------|---------|----------|
+| **ExLink nativo** | Q70 y superiores | Jack 3.5mm (Tip=Rx, Ring=Tx, Sleeve=GND) — plug & play |
+| **USB dongle** | 8000, Q60 | USB + dongle propietario Samsung. Requiere activación en Service Menu |
+
+#### Activación del USB dongle (solo modelos que lo requieren)
+
+1. Con el TV apagado, presionar en el control remoto: **Mute → 1 → 8 → 2 → Power**
+2. En el Service Menu: Control → Sub Option
+3. Activar: **EXT Link Support = ON**, **USB Serial = ON**
+4. Apagar y encender el TV para aplicar
+
+#### Formato de comando
+
+```
+08 22 XX XX XX XX CS
+│  │  └── Comando (4 bytes) ──┘  └── Checksum
+│  └── Fixed
+└── Fixed
+```
+
+**Checksum**: sumar todos los bytes (08+22+XX+XX+XX+XX), restar el total de 256 (0x100). El resultado en hex es el checksum.
+
+#### Ejemplos
+
+| Función | Comando | Checksum |
+|---------|---------|----------|
+| Power OFF | `08 22 00 00 00 01` | `D5` |
+| Power ON | `08 22 00 00 00 02` | `D4` |
+| Volume 0-100 | `08 22 01 00 XX` | variable |
+| Input HDMI1 | `08 22 0A 00 02 00` | variable |
+
+#### Comandos disponibles (lista parcial)
+
+| Categoría | Comandos |
+|-----------|----------|
+| **Power** | On, Off |
+| **Volume** | Directo (0-100), Up, Down, Mute |
+| **Input Source** | TV, AV, S-Video, Component, PC, HDMI (1-4), DVI |
+| **Picture** | Mode (Dynamic/Standard/Movie/Natural), Brightness, Contrast, Sharpness, Color, Tint |
+| **Sound** | Mode, Equalizer (7 bandas), Balance, Virtual Surround, Dialog Clarity |
+| **Advanced** | White Balance, Color Space, Gamma, HDMI UHD Color, Local Dimming, HDR+ |
+| **Key Map** | ~50 teclas del control remoto (SOURCE, POWER, VOL+, CH+, números, MENU, EXIT, HOME, etc.) |
+
+La lista completa de comandos con sus bytes está en el documento fuente: `Docs/equipaments/Tvs Samsung/Samsung_RS232_Control.md`.
+
+#### Relevancia para SportBar
+
+Si las TVs del bar son modelos consumer, el control RS-232 usaría este protocolo (no el de DBE/DME/DHE). La conexión física sería:
+
+```
+IPEX5002-TVRACK (RS232 terminal 3 pines) → Jack 3.5mm ExLink TV Samsung
+                                            (Tip=Tx→Rx, Ring=Rx→Tx, Sleeve=GND)
+```
+
+O si el modelo requiere dongle USB:
+```
+IPEX5002 → USB dongle Samsung → TV Samsung
+```
+
 ### Ethernet / LAN (RJ45)
 
 - Control vía software **MDC Unified** (Multiple Display Control) de Samsung sobre TCP/IP.
@@ -276,6 +342,8 @@ Sistema de cartelería digital (digital signage) propietario de Samsung. La apli
 Véase [[../Software/MagicInfo]] para la instalación específica del Hipódromo de Palermo.
 
 ## Relevancia para SportBar
+
+> ⚠️ **Atención**: Existen DOS protocolos RS-232 diferentes para Samsung. El protocolo a usar depende del modelo específico de TV instalado en el bar. Verificar el modelo antes de implementar. Las DBE/DME/DHE son pantallas comerciales (LFD). Los modelos Q70, 8000, Q60 son TVs consumer.
 
 Las Samsung DBE/DME/DHE pueden controlarse remotamente desde SportBar por dos vías:
 

@@ -351,6 +351,9 @@ Las Samsung DBE/DME/DHE pueden controlarse remotamente desde SportBar por dos v�
 - **Cableado**: jack 3.5mm estéreo del IPEX5002 IR OUT al IR/AMBIENT SENSOR IN de la TV
 - **Comando Arranger**: `send ir <device> <pronto_hex>`
 - **Verificado**: 19/22 comandos ✅ (2026-07-28)
+
+Además, se confirmó que el control remoto físico apuntado al IR IN del encoder DTV1 transmite la señal IR a través de la red IP hacia el IR OUT del decoder TVRACK, que la entrega al TV Samsung (2026-07-28). Esto habilita el control del TV desde cualquier punto donde haya un IPEX con IR IN, sin necesidad de cableado IR adicional.
+
 - **Encendido**: Power Toggle ✅ (Power On ❌ no funciona — usar Power Toggle como alternativa)
 - **Esenciales funcionales**: power (toggle/off), volume up/down, mute, input HDMI 1/2 ✅
 - **Fallos**: Power On ❌, Main Menu ❌, HDMI 3/4 ❌ (TV sin puertos físicos 3 y 4)
@@ -448,44 +451,27 @@ send ir TVRACK <pronto_hex>
 
 ---
 
-### Fase 2 — Loopback IR: control remoto → red IP → TV
+### Fase 2 — Loopback IR: control remoto → red IP → TV ✅ CONFIRMADO
 
-**Hipótesis**: ¿El Arranger puede transportar señales IR recibidas por el IR IN de un IPEX a través de la red IP hacia el IR OUT de otro IPEX?
-
-**Fundamento**: El Arranger tiene comandos `join ir` y `join all` para enrutar señales IR independientemente del audio/video. El `join av` solo enruta audio y video — los puertos IR, serial y USB requieren sus propios joins.
-
-**Comandos relevantes** (todos 🔲 pendientes de implementar en SportBar, disponibles en el Arranger):
-
-| Comando | Función |
-|---------|---------|
-| `join ir <encoder> <decoder>` | Enrutar solo IR entre encoder y decoder |
-| `join all <encoder> <decoder>` | Enrutar todas las señales (video + audio + IR + serial + USB) |
-| `leave ir <decoder>` | Desconectar ruta IR |
-| `leave all <decoder>` | Desconectar todas las rutas |
-
-#### Sub-fase 2A: Loopback con `join ir`
+**Resultado (2026-07-28):** El flujo IR funciona correctamente.
 
 ```
-Paso 1: join ir <encoder_rack> TVRACK
-Paso 2: Apuntar control remoto Samsung al IR IN del IPEX5002-TVRACK
-Paso 3: Presionar Volume Up en el control remoto
-Paso 4: Verificar si el TV Samsung recibe la señal (IR OUT → TV)
+Control remoto Samsung → IR IN (DTV1/IPEX5001) → red IP → IR OUT (TVRACK/IPEX5002) → TV Samsung ✅
 ```
 
-#### Sub-fase 2B: Loopback con `join all`
+**Hallazgos:**
+- El `join av` entre DTV1 y TVRACK aparentemente incluye enrutamiento IR (no se requirió `join ir` explícito)
+- El IR viaja por la red IP entre encoder (DTV1) y decoder (TVRACK) de forma transparente
+- La señal llega correctamente al TV Samsung conectado al IR OUT del TVRACK
+- `get status TVRACK ir` y `get status DTV1 ir` confirman `streaming` en ambos extremos
+- El flujo es bidireccional: también funciona en sentido decoder→encoder (documentado originalmente para control de DirecTV)
 
-```
-Paso 1: join all <encoder_rack> TVRACK
-Paso 2: Repetir el procedimiento de 2A
-```
-
-#### Sub-fase 2C: ¿`join av` también enruta IR?
-
-```
-Paso 1: join av <encoder_rack> TVRACK (sin join ir explícito)
-Paso 2: Repetir el procedimiento de 2A
-Paso 3: Documentar si el IR viaja por la ruta de video o no
-```
+**Sub-fases completadas:**
+| Sub-fase | Descripción | Resultado |
+|----------|-------------|-----------|
+| 2A | Loopback con `join ir` explícito | No necesario — el `join av` ya incluye IR |
+| 2B | Loopback con `join all` | No necesario |
+| 2C | ¿`join av` también enruta IR? | ✅ Confirmado — el IR viaja con el `join av` |
 
 ---
 

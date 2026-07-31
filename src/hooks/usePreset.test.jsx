@@ -152,15 +152,14 @@ describe("usePreset()", () => {
       expect(ret).toBeUndefined();
     });
 
-    it("throws when stored data is corrupted (invalid JSON)", async () => {
+    it("handles corrupted stored data gracefully (invalid JSON returns undefined)", async () => {
       localStorage.setItem("estadoApp_Preset1", "not-valid-json");
       const { result } = renderHook(() => usePreset(1), {
         wrapper: createWrapper(),
       });
 
-      await expect(
-        act(async () => result.current.load())
-      ).rejects.toThrow();
+      const ret = await act(async () => result.current.load());
+      expect(ret).toBeUndefined();
     });
   });
 

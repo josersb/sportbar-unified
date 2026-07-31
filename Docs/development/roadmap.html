@@ -42,12 +42,12 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">~110 commits · 109 tests · 13 comandos Arranger · v2 → master · feat/frontend-redesign iniciado (28 jul 2026)</p>
+<p class="sub">~110 commits · 150 tests · 13 comandos Arranger · v2 → master · feat/frontend-redesign: shell completo (28 jul 2026)</p>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- PENDING — tareas por hacer, ordenadas por fecha de creación     -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="section-title">PENDIENTE (8)</div>
+<div class="section-title">PENDIENTE (9)</div>
 
 <div class="card pending"><div class="idx">1</div><div class="body">
   <h2>Seguridad — Ronda 4</h2>
@@ -111,18 +111,29 @@
 
 <div class="card pending"><div class="idx">8</div><div class="body"><h2>Fase 4: Tema compartido (muy baja prioridad)</h2><p>Tema dark/light actualmente solo en localStorage. Evaluar si vale la pena sincronizarlo entre PCs vía servidor. Impacto mínimo, opcional.</p></div><span class="badge badge-pending">opcional</span></div>
 
-<div class="card pending"><div class="idx">9</div><div class="body">
-  <h2>Frontend Redesign — Impeccable Design</h2>
-  <p>Rediseño radical del frontend usando la skill <code>impeccable-design</code> como base. Design tokens, Component Forge, Layout Architect, y auditoría WCAG 2.2 AA. Worktree <code>feat/frontend-redesign</code> en :5175/:3103.</p>
+<div class="card pending"><div class="idx">10</div><div class="body">
+  <h2>Buttons Redesign</h2>
+  <p>Rediseño de botones (BrawlStarsButton y variantes). Worktree <code>feat/buttons-redesign</code> en :5176/:3104, basado en <code>feat/frontend-redesign</code>. Cadena: buttons-redesign → frontend-redesign → v2 → master.</p>
   <ul class="tasks">
-    <li>🔲 SDD: proposal + spec + design + tasks</li>
-    <li>🔲 Design Tokens (colores, tipografía, espaciado, bordes)</li>
-    <li>🔲 Component Forge (specs formales, variantes, estados, a11y)</li>
-    <li>🔲 Layout Architect (CSS Grid, Container Queries, tipografía fluida)</li>
-    <li>🔲 Auditoría Visual + WCAG 2.2 AA</li>
-    <li>🔲 Implementación por fases con PRs encadenados</li>
+    <li>🔲 Explorar diseño actual de botones y sus variantes</li>
+    <li>🔲 Definir nuevo diseño con impeccable-design</li>
+    <li>🔲 Implementar reemplazo de BrawlStarsButton</li>
+    <li>🔲 Aplicar a todas las páginas que usan botones</li>
   </ul>
 </div><span class="badge badge-pending">planificado</span></div>
+
+<div class="card wip"><div class="idx">9</div><div class="body">
+  <h2>Frontend Redesign — Impeccable Design</h2>
+  <p>Rediseño radical del frontend usando la skill <code>impeccable-design</code>. Worktree <code>feat/frontend-redesign</code> en :5175/:3103. 3 PRs encadenados en <code>feat/frontend-redesign</code>.</p>
+  <ul class="tasks">
+    <li>✅ Shell: SDD completo (proposal → spec → design → tasks → apply → verify → archive)</li>
+    <li>✅ Design Tokens: +24 tokens (radius, line-height, focus-ring, touch-target, gaps, breakpoints, motion)</li>
+    <li>✅ Layout: mobile-first, CSS Grid con class selectors, minmax(), 1fr, SkipToContent</li>
+    <li>✅ Componentes: Header/Nav normalizados, Aside → DecosStatus + AudioStatus + VideoMatrix</li>
+    <li>✅ WCAG 2.2 AA: 0 BLOCKERS, 0 CRITICALS, 150 tests</li>
+    <li>🔲 Próximo: rediseño de páginas individuales (MatrizVideo, Canales, Audio, Arranger, Soporte, Portada)</li>
+  </ul>
+</div><span class="badge badge-wip">shell completo · jul 28</span></div>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- COMPLETADO — ordenado por fecha de finalización ascendente      -->

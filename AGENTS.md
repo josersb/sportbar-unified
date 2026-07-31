@@ -22,13 +22,17 @@ Este proyecto usa múltiples ramas y worktrees. El orquestador debe seguir estas
 |------|----------|------|---------|--------|
 | `v2` | `sportbar-unified` (principal) | 5173 | 3101 | `pnpm run sportbar:dev` |
 | `feat/ahm-integration` | `sportbar-unified-worktrees/ahm-integration` | 5174 | 3102 | `pnpm run sportbar:dev` |
+| `feat/frontend-redesign` | `sportbar-unified-worktrees/frontend-redesign` | 5175 | 3103 | `pnpm run sportbar:dev` |
+| `feat/buttons-redesign` | `sportbar-unified-worktrees/buttons-redesign` | 5176 | 3104 | `pnpm run sportbar:dev` |
 | `master` | — | — | 3000 | producción (solo deploy) |
 
 ### Flujo de trabajo
 
 ```
 feat/ahm-integration ──→ v2 ──→ master
-     (worktree aislado)   (staging)  (producción)
+feat/frontend-redesign ─┘  (staging)  (producción)
+feat/buttons-redesign ────→ feat/frontend-redesign
+     (worktrees aislados)
 ```
 
 ### Reglas obligatorias para el orquestador
@@ -48,6 +52,8 @@ feat/ahm-integration ──→ v2 ──→ master
 |----------|------|------|---------|
 | `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified` | `v2` | 5173 | 3101 |
 | `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified-worktrees\ahm-integration` | `feat/ahm-integration` | 5174 | 3102 |
+| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified-worktrees\frontend-redesign` | `feat/frontend-redesign` | 5175 | 3103 |
+| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified-worktrees\buttons-redesign` | `feat/buttons-redesign` | 5176 | 3104 |
 
 Para crear un nuevo worktree:
 ```bash

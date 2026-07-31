@@ -352,7 +352,7 @@ Las Samsung DBE/DME/DHE pueden controlarse remotamente desde SportBar por dos v�
 - **Comando Arranger**: `send ir <device> <pronto_hex>`
 - **Verificado**: 19/22 comandos ✅ (2026-07-28)
 
-Además, se confirmó que el control remoto físico apuntado al IR IN del encoder DTV1 transmite la señal IR a través de la red IP hacia el IR OUT del decoder TVRACK, que la entrega al TV Samsung (2026-07-28). Esto habilita el control del TV desde cualquier punto donde haya un IPEX con IR IN, sin necesidad de cableado IR adicional.
+Se confirmó que el control remoto físico viaja por la red IP entre IPEX (2026-07-28). Queda pendiente determinar mediante prueba controlada qué tipo de join (av, ir, all) habilita este enrutamiento.
 
 - **Encendido**: Power Toggle ✅ (Power On ❌ no funciona — usar Power Toggle como alternativa)
 - **Esenciales funcionales**: power (toggle/off), volume up/down, mute, input HDMI 1/2 ✅
@@ -451,27 +451,30 @@ send ir TVRACK <pronto_hex>
 
 ---
 
-### Fase 2 — Loopback IR: control remoto → red IP → TV ✅ CONFIRMADO
+### Fase 2 — Loopback IR: control remoto → red IP → TV ✅ CONFIRMADO (parcial)
 
-**Resultado (2026-07-28):** El flujo IR funciona correctamente.
+**Resultado (2026-07-28):** El flujo IR funciona correctamente con el join actualmente activo.
 
 ```
 Control remoto Samsung → IR IN (DTV1/IPEX5001) → red IP → IR OUT (TVRACK/IPEX5002) → TV Samsung ✅
 ```
 
 **Hallazgos:**
-- El `join av` entre DTV1 y TVRACK aparentemente incluye enrutamiento IR (no se requirió `join ir` explícito)
-- El IR viaja por la red IP entre encoder (DTV1) y decoder (TVRACK) de forma transparente
-- La señal llega correctamente al TV Samsung conectado al IR OUT del TVRACK
+- El control remoto físico apuntado al IR IN del encoder DTV1 transmite la señal IR a través de la red IP hacia el IR OUT del decoder TVRACK, que la entrega al TV Samsung
 - `get status TVRACK ir` y `get status DTV1 ir` confirman `streaming` en ambos extremos
-- El flujo es bidireccional: también funciona en sentido decoder→encoder (documentado originalmente para control de DirecTV)
 
-**Sub-fases completadas:**
+**Pendiente de verificación controlada:**
+- ❓ ¿Qué join específico habilita el IR? ¿`join av`, `join ir`, o `join all`?
+- ❓ La prueba se realizó con el join que estuviera activo en ese momento (no se ejecutó un join explícito antes de la prueba)
+- ❓ Se requiere una prueba controlada: desconectar todos los joins → probar sin join → establecer `join av` solo → probar → agregar `join ir` → probar → comparar
+
+**Sub-fases pendientes (requieren prueba controlada):**
 | Sub-fase | Descripción | Resultado |
 |----------|-------------|-----------|
-| 2A | Loopback con `join ir` explícito | No necesario — el `join av` ya incluye IR |
-| 2B | Loopback con `join all` | No necesario |
-| 2C | ¿`join av` también enruta IR? | ✅ Confirmado — el IR viaja con el `join av` |
+| 2A | Desconectar joins → probar IR sin ruta | 🔲 |
+| 2B | `join av` solo → probar IR | 🔲 |
+| 2C | `join ir` solo → probar IR | 🔲 |
+| 2D | `join all` → probar IR | 🔲 |
 
 ---
 

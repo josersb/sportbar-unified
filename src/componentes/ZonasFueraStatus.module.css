@@ -1,6 +1,6 @@
 /* ============================================================
-   AudioStatus — CSS Module
-   Shows 3 audio zones with flex layout
+   ZonasFueraStatus — CSS Module
+   Shows external zones with video/audio DTV signals
    ============================================================ */
 
 .section {
@@ -38,39 +38,28 @@
 }
 
 .headerRow span:nth-child(2),
-.headerRow span:nth-child(3),
-.headerRow span:nth-child(4) {
+.headerRow span:nth-child(3) {
   flex: 1;
   text-align: center;
-  padding: 0 clamp(4px, 2vw, 12px);
-}
-
-.emojiCol {
-  width: 1.2em;
-  text-align: center;
-  font-size: var(--font-size-xs, 0.75rem);
 }
 
 .row {
   padding: var(--space-xs, 4px);
   display: flex;
   flex-direction: row;
+  justify-content: space-between;
   align-items: center;
   gap: var(--gap-xs, 4px);
   font-size: var(--font-size-xs, 0.75rem);
   font-weight: var(--font-weight-normal, 400);
-  border-radius: var(--radius-sm, 4px);
-  container-type: inline-size;
 }
 
-.cell {
-  flex: 1;
-  text-align: center;
-}
-
-.cell:first-child {
+.zoneName {
   flex: 2;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .signal {
@@ -80,22 +69,7 @@
   border-radius: var(--radius-sm, 4px);
 }
 
-.muteOn {
-  background-color: #dc2626;
-  color: white;
-}
-
-.muteOff {
-  background-color: #16a34a;
-  color: white;
-}
-
-@container (max-width: 200px) {
-  .emojiCol {
-    display: none;
-  }
-}
-
+.loading,
 .empty {
   margin: var(--space-lg, 16px);
   text-align: center;

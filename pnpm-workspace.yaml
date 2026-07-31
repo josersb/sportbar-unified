@@ -1,8 +1,8 @@
 allowBuilds:
-  '@fortawesome/fontawesome-common-types': true
-  '@fortawesome/fontawesome-svg-core': true
-  esbuild: true
-  snyk: true
+  '@fortawesome/fontawesome-common-types': set this to true or false
+  '@fortawesome/fontawesome-svg-core': set this to true or false
+  esbuild: set this to true or false
+  snyk: set this to true or false
 onlyBuiltDependencies:
   - "@fortawesome/fontawesome-common-types"
   - "@fortawesome/fontawesome-svg-core"

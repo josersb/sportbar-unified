@@ -3,6 +3,47 @@
 ## Idioma de Configuracion
 Todos los procesos de pensamiento y respuestas deben ser generados en Espanol.
 
+## Entorno de Ejecucion (MANDATORIO — leer antes de ejecutar cualquier comando)
+
+| Dato | Valor |
+|---|---|
+| Sistema operativo | **Windows** |
+| Terminal | **PowerShell 7+ (pwsh)** |
+| Shell scripts | Usar `node -e "..."` o `pwsh -Command "..."`, NUNCA `rm`, `cp`, `chmod` ni pipes de Unix |
+| Paths | Backslash o forward slash, PowerShell acepta ambos. Usar forward slash por consistencia con Git. |
+| Comandos compuestos | `&&` funciona en pwsh. `;` solo si no importa el exit code. |
+
+**⚠️ Todos los agentes y subagentes DEBEN adaptar sus comandos a PowerShell 7+.** Si un comando documentado usa `rm -rf`, traducirlo a `Remove-Item -Recurse -Force`. Si usa `grep`, usar `Select-String`. NUNCA asumir que el entorno es Unix/Linux.
+
+### Servidores y procesos de larga duración (MANDATORIO)
+
+**NUNCA iniciar servidores con timeout.** Un timeout mata el proceso automáticamente, lo cual es ilógico para un servidor que debe correr hasta que el usuario decida detenerlo.
+
+| Regla | Instrucción |
+|---|---|
+| Inicio | Usar `Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "<comando>"` para lanzar en segundo plano. Redirigir salida con `> $null 2>&1` para no quedarse escuchando. |
+| Timeout | **NUNCA** usar timeout en comandos de servidores. Si la herramienta lo exige, usar `Start-Process`. |
+| Cierre | **ANTES de iniciar**, proporcionar al usuario los comandos para matar el proceso. |
+| Soltar | Inmediatamente después de lanzar, **soltar y volver al chat**. No quedarse escuchando logs. |
+
+**Ejemplo correcto para Vite:**
+```powershell
+Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "node_modules\.bin\vite.cmd --port 5176"
+```
+**Para matarlo después:**
+```powershell
+Get-Process -Name "node" | Where-Object { $_.CommandLine -like "*vite*5176*" } | Stop-Process -Force
+```
+
+**Ejemplo correcto para Express:**
+```powershell
+Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "$env:PORT='3104'; node server/server.js"
+```
+**Para matarlo después:**
+```powershell
+Get-Process -Name "node" | Where-Object { $_.CommandLine -like "*server.js*" } | Stop-Process -Force
+```
+
 ## Project Overview
 Aplicacion React/Vite para controlar una matriz audiovisual de sport bars. Se interfacea con hardware fisico (matriz Arranger en `192.168.2.254:80`).
 
@@ -22,17 +63,13 @@ Este proyecto usa múltiples ramas y worktrees. El orquestador debe seguir estas
 |------|----------|------|---------|--------|
 | `v2` | `sportbar-unified` (principal) | 5173 | 3101 | `pnpm run sportbar:dev` |
 | `feat/ahm-integration` | `sportbar-unified-worktrees/ahm-integration` | 5174 | 3102 | `pnpm run sportbar:dev` |
-| `feat/frontend-redesign` | `sportbar-unified-worktrees/frontend-redesign` | 5175 | 3103 | `pnpm run sportbar:dev` |
-| `feat/buttons-redesign` | `sportbar-unified-worktrees/buttons-redesign` | 5176 | 3104 | `pnpm run sportbar:dev` |
 | `master` | — | — | 3000 | producción (solo deploy) |
 
 ### Flujo de trabajo
 
 ```
 feat/ahm-integration ──→ v2 ──→ master
-feat/frontend-redesign ─┘  (staging)  (producción)
-feat/buttons-redesign ────→ feat/frontend-redesign
-     (worktrees aislados)
+     (worktree aislado)   (staging)  (producción)
 ```
 
 ### Reglas obligatorias para el orquestador
@@ -52,14 +89,58 @@ feat/buttons-redesign ────→ feat/frontend-redesign
 |----------|------|------|---------|
 | `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified` | `v2` | 5173 | 3101 |
 | `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified-worktrees\ahm-integration` | `feat/ahm-integration` | 5174 | 3102 |
-| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified-worktrees\frontend-redesign` | `feat/frontend-redesign` | 5175 | 3103 |
-| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified-worktrees\buttons-redesign` | `feat/buttons-redesign` | 5176 | 3104 |
 
 Para crear un nuevo worktree:
 ```bash
 git worktree add -b feat/<nombre> ../sportbar-unified-worktrees/<nombre> v2
 ```
 Luego configurar `vite.config.js` (puerto Vite único), `package.json` (PORT=31XX en scripts), y `server/server.js` (CORS/CSP con nuevo puerto).
+
+**⚠️ pnpm 11 — worktree nuevo**: después de `pnpm install`, verificar `pnpm-workspace.yaml`. Si `allowBuilds` tiene `"set this to true or false"`, reemplazar por `true` en los 4 paquetes (esbuild, @fortawesome/fontawesome-common-types, @fortawesome/fontawesome-svg-core, snyk). Sin esto, `pnpm run build` falla con `ERR_PNPM_IGNORED_BUILDS`. Solución documentada en Engram #630.
+
+**⚠️ Server en worktree nuevo**: el `pnpm-lock.yaml` del server referencia paths del worktree original. `pnpm install` en `server/` dice "Already up to date" pero no crea `server/node_modules/`. Solución en 2 pasos:
+1. `Remove-Item -Force server/pnpm-lock.yaml`
+2. `pnpm install --ignore-workspace` (en el directorio `server/`)
+
+El flag `--ignore-workspace` es necesario porque pnpm 11 detecta el `pnpm-workspace.yaml` de la raíz y no trata `server/` como proyecto independiente. Documentado en Engram #648.
+
+## Variables de Entorno y Secrets (MANDATORIO)
+
+### Estrategia híbrida
+
+| Tipo | Dónde vive | Ejemplos |
+|---|---|---|
+| **No sensibles** (host, puerto, flags) | `.env-shared` en `Proyectos hip/` | `VITE_ARRANGER_HOST`, `VITE_ARRANGER_PORT`, `VITE_MOCK_ARRANGER` |
+| **Secretos** (tokens, keys) | Variable de entorno del sistema Windows | `VITE_ARRANGER_TOKEN` |
+
+### `.env-shared`
+
+Archivo único en `C:\Users\joserafael\Proyectos\proyectos hip\.env-shared`. Cada worktree tiene un **symlink** `.env → ../../.env-shared`. Al editar `.env-shared`, todos los worktrees ven el cambio al instante.
+
+**Al crear un worktree nuevo:**
+```powershell
+Remove-Item ".env" -Force -ErrorAction SilentlyContinue
+New-Item -ItemType SymbolicLink -Path ".env" -Target "..\..\.env-shared"
+```
+
+**⚠️ El token NO está en este archivo.** `.env-shared` contiene un comentario recordatorio.
+
+### `VITE_ARRANGER_TOKEN`
+
+Vive en el sistema operativo, nunca en un archivo del proyecto. Esto evita que un commit, un `git clean`, o una copia del worktree filtren el token.
+
+**Consultar el token actual:**
+```powershell
+[Environment]::GetEnvironmentVariable('VITE_ARRANGER_TOKEN', 'User')
+```
+
+**Cambiar el token:**
+```powershell
+[Environment]::SetEnvironmentVariable('VITE_ARRANGER_TOKEN', '<token-real>', 'User')
+# Reiniciar la terminal para que Vite/Express lo lean
+```
+
+**⚠️ Si Vite no encuentra el token**, verificar que la variable esté configurada a nivel `User` (no `Process`). Usar `[Environment]::GetEnvironmentVariable(...)` para confirmar.
 
 ## Gestor de Paquetes: pnpm (UNICO)
 

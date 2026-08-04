@@ -1,3 +1,9 @@
+/* ============================================================
+   CanalFavorito — CSS Module
+   Migrated from CanalFavorito.css (global) preserving styles
+   (CSM-04). Composes on top of the shared Button component.
+   ============================================================ */
+
 .CanalFavorito {
   margin: 5px 5px;
   width: 90px;
@@ -33,6 +39,7 @@
   cursor: pointer;
   background-color: rgb(239, 234, 250);
 }
+
 .CanalFavorito:active {
   cursor: pointer;
   transform: translateY(4px);

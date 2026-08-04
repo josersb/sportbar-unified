@@ -10,6 +10,7 @@ import { sendSerialCommand } from "../api/arrangerApi";
 import "./Toast.css";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
+import Button from "./ui/Button";
 import styles from "./Audio.module.css";
 
 const Audio = () => {
@@ -144,9 +145,9 @@ const Audio = () => {
                   <CheckBox name="muteSur">Mute</CheckBox>
                 </div>
               </div>
-              <button type="submit" className={styles.formSubmit} disabled={submitting}>
+              <Button type="submit" variant="primary" loading={submitting}>
                 {submitting ? "Enviando..." : "Enviar"}
-              </button>
+              </Button>
             </Form>
           </div>
         </PageContainer>

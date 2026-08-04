@@ -4,9 +4,9 @@ import { getByCapability } from "../contexto/dispositivos";
 import { CANALES_FAVORITOS } from "../data/canalesFavoritos";
 import { sendChannelDigits } from "../api/arrangerApi";
 import "./Toast.css";
-import "../elementos/CanalFavorito.css";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
+import Button from "./ui/Button";
 import styles from "./Canales.module.css";
 
 const Canales = () => {
@@ -75,28 +75,31 @@ const Canales = () => {
               className={styles.formInput}
               required
             />
-            <input
+            <Button
+              as="input"
               type="submit"
-              value={loading ? "Enviando..." : "Aplicar"}
+              variant="primary"
               className={styles.formSubmit}
-              disabled={loading}
+              value={loading ? "Enviando..." : "Aplicar"}
+              loading={loading}
             />
           </form>
         </div>
         <h3 className={styles.titulo}>Canales Favoritos</h3>
         <ul className={styles.grillaFavoritos}>
           {CANALES_FAVORITOS.map((ch) => (
-            <button
-              key={ch.canal}
-              className="CanalFavorito"
-              data-canal={ch.canal}
-              onClick={handleFavorito}
-            >
-              {ch.img ? (
-                <img src={ch.img} alt={ch.nombre} />
-              ) : null}
-              <h3>{ch.canal}</h3>
-            </button>
+            <li key={ch.canal} className={styles.channelItem}>
+              <span className={styles.channelNumber}>{ch.canal}</span>
+              <Button
+                variant="primary"
+                size="sm"
+                className={styles.channelBtn}
+                icon={ch.img ? <img src={ch.img} alt={ch.nombre} /> : null}
+                onClick={handleFavorito}
+                data-canal={ch.canal}
+                aria-label={`Canal ${ch.canal} — ${ch.nombre}`}
+              />
+            </li>
           ))}
         </ul>
       </PageContainer>

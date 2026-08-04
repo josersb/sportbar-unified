@@ -8,7 +8,7 @@ import { joinMultipleTVs, assignSourceToDestination, assignVideoSource, assignAu
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
-import BrawlStarsButton from "./ui/BrawlStarsButton";
+import Button from "./ui/Button";
 
 const ZONE_LABELS = {
   'aVip-Barra-Centro': 'VIP Barra Centro',
@@ -554,9 +554,9 @@ const MatrizVideo = () => {
                 </div>
               </div>
               <div className={styles.submitContainer}>
-                <button type="submit" className={styles.formSubmit}>
+                <Button type="submit" variant="primary">
                   Enviar
-                </button>
+                </Button>
               </div>
               <div className={styles.selectZona}>
                 <h3 className={styles.selectZonaTitulo}>
@@ -574,14 +574,15 @@ const MatrizVideo = () => {
                     {getByCapability("videoSource").map((d) => {
                       const isActive = d.id === tvrackState.video;
                       return (
-                        <BrawlStarsButton
+                        <Button
                           key={`video-${d.id}`}
-                          deviceId={d.id}
-                          isActive={isActive}
+                          selected={isActive}
                           onClick={handleTvrackBtn("video", d.id)}
                           loading={loadingVideoBtn === d.id}
-                          dataTestId={`btn-video-${d.id}`}
-                        />
+                          data-testid={`btn-video-${d.id}`}
+                        >
+                          {d.id}
+                        </Button>
                       );
                     })}
                   </div>
@@ -609,14 +610,15 @@ const MatrizVideo = () => {
                     {getByCapability("videoSource").map((d) => {
                       const isActive = d.id === tvrackState.audio;
                       return (
-                        <BrawlStarsButton
+                        <Button
                           key={`audio-${d.id}`}
-                          deviceId={d.id}
-                          isActive={isActive}
+                          selected={isActive}
                           onClick={handleTvrackBtn("audio", d.id)}
                           loading={loadingAudioBtn === d.id}
-                          dataTestId={`btn-audio-${d.id}`}
-                        />
+                          data-testid={`btn-audio-${d.id}`}
+                        >
+                          {d.id}
+                        </Button>
                       );
                     })}
                   </div>
@@ -639,13 +641,14 @@ const MatrizVideo = () => {
                         </div>
                         <div className={styles.rackRow}>
                           {getByCapability('videoSource').map((d) => (
-                            <BrawlStarsButton
+                            <Button
                               key={`zf-${zoneId}-${d.id}`}
-                              deviceId={d.id}
-                              isActive={d.id === zoneState.video}
+                              selected={d.id === zoneState.video}
                               onClick={() => handleZonasFueraChange(zoneId, 'video', d.id)}
-                              dataTestId={`btn-zf-video-${zoneId}-${d.id}`}
-                            />
+                              data-testid={`btn-zf-video-${zoneId}-${d.id}`}
+                            >
+                              {d.id}
+                            </Button>
                           ))}
                         </div>
                         <div className={styles.tvrackLinkRow}>

@@ -1,6 +1,7 @@
 import { useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
 import { getAllDevices } from "../contexto/dispositivos";
+import Button from "./ui/Button";
 import styles from "./DecosStatus.module.css";
 
 const DecosStatus = () => {
@@ -29,14 +30,14 @@ const DecosStatus = () => {
           Error al cargar estado de decodificadores
         </p>
         <div className={styles.errorActions}>
-          <button
-            type="button"
-            className={styles.retryBtn}
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={reintentarDecos}
             aria-label="Reintentar cargar estado"
           >
             Reintentar
-          </button>
+          </Button>
         </div>
       </section>
     );
@@ -57,14 +58,14 @@ const DecosStatus = () => {
     <section className={styles.section} aria-label="Estado de canales">
       <h2 className={styles.heading}>
         Estado de canales
-        <button
-          type="button"
-          className={styles.reloadBtn}
+        <Button
+          variant="secondary"
+          size="sm"
           aria-label="Recargar estado de canales"
           onClick={() => window.location.reload()}
         >
           Recargar
-        </button>
+        </Button>
       </h2>
 
       <ul className={styles.list} role="list">

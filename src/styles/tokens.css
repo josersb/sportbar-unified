@@ -6,8 +6,9 @@
 
 :root {
   /* ---- Brand Colors ---- */
-  --color-brand-primary: #ff3900;
+  --color-brand-primary: #e85d3a;
   --color-brand-secondary: #807781;
+  --color-header-bg: #fc3c04;              /* BetWarrior brand red — header only */
 
   /* ---- Surface Colors ---- */
   --color-surface: #ffffff;
@@ -44,6 +45,7 @@
   --font-weight-bold: 700;
 
   /* ---- Shadows ---- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.08); /* neutral, subtle elevation (DTK-09) */
   --shadow-sm: 1px 1px 0px #ff3900;
   --shadow-md: 2px 3px 0px red;
 
@@ -102,6 +104,8 @@
 
   /* ---- Typography Additions ---- */
   --font-weight-normal: 400;
+  --font-weight-medium: 500;   /* DTK-08: scale intermedia */
+  --font-weight-semibold: 600; /* DTK-08: entre medium y bold */
   --font-size-xs: 0.75rem;
 
   /* ---- Breakpoints ---- */
@@ -117,6 +121,64 @@
   --motion-duration-fast: 150ms;
   --motion-duration-normal: 300ms;
   --motion-easing-default: ease;
+
+  /* ---- Button Tokens ---- */
+  /* Spacing (DTK-04, BTN-02) — escala de 4px */
+  --btn-padding-x-sm: var(--space-sm);  /* 8px */
+  --btn-padding-x-md: var(--space-md);  /* 16px */
+  --btn-padding-x-lg: var(--gap-lg);    /* 24px */
+  --btn-padding-y-sm: var(--space-xs);  /* 4px */
+  --btn-padding-y-md: var(--space-sm);  /* 8px */
+  --btn-padding-y-lg: 12px;             /* 3 × space-xs */
+
+  /* Layout y tipografía (DTK-07, BTN-02) */
+  --btn-radius: var(--radius-md);           /* 8px */
+  --btn-font-weight: var(--font-weight-bold); /* 700 */
+  --btn-font-size-sm: var(--font-size-sm);  /* 14px */
+  --btn-font-size-md: var(--font-size-md);  /* 16px */
+  --btn-font-size-lg: 18px;                 /* > md, sin token base previo */
+  --btn-gap: var(--gap-sm);                 /* 8px, separación icono-texto (BTN-06) */
+
+  /* Colores semánticos por variante (DTK-05, BTN-01) */
+  /* primary: default = light bg + brand border, selected = full brand fill (ver --btn-selected-*) */
+  --btn-primary-bg: var(--color-surface);
+  --btn-primary-hover-bg: rgba(232, 93, 58, 0.08);
+  --btn-primary-active-bg: rgba(232, 93, 58, 0.16);
+  --btn-primary-text: var(--color-brand-primary);
+  --btn-primary-border: var(--color-brand-primary);
+
+  --btn-secondary-bg: var(--color-brand-secondary);
+  --btn-secondary-hover-bg: #6e6671;
+  --btn-secondary-active-bg: #5f5862;
+  --btn-secondary-text: var(--color-text-inverse);
+  --btn-secondary-border: #6e6671;
+
+  --btn-danger-bg: #dc2626;
+  --btn-danger-hover-bg: #b91c1c;
+  --btn-danger-active-bg: #991b1b;
+  --btn-danger-text: var(--color-text-inverse);
+  --btn-danger-border: #b91c1c;
+
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover-bg: rgba(232, 93, 58, 0.08);
+  --btn-ghost-active-bg: rgba(232, 93, 58, 0.16);
+  --btn-ghost-text: var(--color-brand-primary);
+  --btn-ghost-border: transparent;
+
+  --btn-outline-bg: transparent;
+  --btn-outline-hover-bg: rgba(232, 93, 58, 0.06);
+  --btn-outline-active-bg: rgba(232, 93, 58, 0.12);
+  --btn-outline-text: var(--color-brand-primary);
+  --btn-outline-border: var(--color-brand-primary);
+
+  /* Estado seleccionado, loading y disabled (DTK-06, BTN-03, BTN-04) */
+  --btn-selected-bg: var(--color-brand-primary);
+  --btn-selected-text: var(--color-text-inverse);
+  --btn-selected-border: var(--color-brand-primary);
+  --btn-selected-border-width: 3px;
+  --btn-selected-glow: 0 0 12px rgba(232, 93, 58, 0.5);
+  --btn-loading-opacity: 0.8;
+  --btn-disabled-opacity: 0.5;
 }
 
 /* ============================================================
@@ -128,6 +190,9 @@
   --color-surface-secondary: #16213e;
   --color-surface-aside: #1a1a2e;
   --color-surface-footer: #0f3460;
+
+  /* ---- Brand Colors (dark) ---- */
+  --color-header-bg: #fc3c04;              /* BetWarrior brand red — same identity color in dark */
 
   /* ---- Text Colors ---- */
   --color-text-primary: #e0e0e0;
@@ -143,6 +208,7 @@
   --color-active: #e0e0e0;
 
   /* ---- Shadows ---- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35); /* neutral, subtle elevation (DTK-09) */
   --shadow-sm: 1px 1px 0px #ff6b35;
   --shadow-md: 2px 3px 0px #ff6b35;
 
@@ -152,6 +218,64 @@
   /* ---- Motion (reduced by default in dark mode) ---- */
   --motion-duration-fast: 150ms;
   --motion-duration-normal: 300ms;
+
+  /* ---- Button Tokens ---- */
+  /* Todos los --btn-* tienen override dark (DMK-04, BTN-09) */
+  /* Spacing — misma escala, override requerido por DMK-04 */
+  --btn-padding-x-sm: var(--space-sm);
+  --btn-padding-x-md: var(--space-md);
+  --btn-padding-x-lg: var(--gap-lg);
+  --btn-padding-y-sm: var(--space-xs);
+  --btn-padding-y-md: var(--space-sm);
+  --btn-padding-y-lg: 12px;
+
+  /* Layout y tipografía — sin cambio por tema */
+  --btn-radius: var(--radius-md);
+  --btn-font-weight: var(--font-weight-bold);
+  --btn-font-size-sm: var(--font-size-sm);
+  --btn-font-size-md: var(--font-size-md);
+  --btn-font-size-lg: 18px;
+  --btn-gap: var(--gap-sm);
+
+  /* Colores dark: primary=dark bg + orange text; selected=brand fill (DMK-05, DMK-07) */
+  --btn-primary-bg: var(--color-surface);       /* #1a1a2e, dark surface */
+  --btn-primary-hover-bg: rgba(255, 107, 53, 0.12);
+  --btn-primary-active-bg: rgba(255, 107, 53, 0.22);
+  --btn-primary-text: #ff6b35;                  /* ≥ 3:1 sobre #1a1a2e */
+  --btn-primary-border: #ff6b35;
+
+  --btn-secondary-bg: #8a8091;           /* L 23% */
+  --btn-secondary-hover-bg: #948a9c;     /* L 27% */
+  --btn-secondary-active-bg: #847b8d;    /* L 21% */
+  --btn-secondary-text: var(--color-text-inverse);
+  --btn-secondary-border: #a89fb0;       /* visible sobre #1a1a2e */
+
+  --btn-danger-bg: #ef4444;              /* L 23% */
+  --btn-danger-hover-bg: #f04f4f;        /* L 25% */
+  --btn-danger-active-bg: #e14545;       /* L 21% */
+  --btn-danger-text: var(--color-text-inverse);
+  --btn-danger-border: #f87171;          /* visible sobre #1a1a2e */
+
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover-bg: rgba(255, 107, 53, 0.12);
+  --btn-ghost-active-bg: rgba(255, 107, 53, 0.22);
+  --btn-ghost-text: #ff6b35;             /* ≥ 3:1 sobre #1a1a2e */
+  --btn-ghost-border: transparent;
+
+  --btn-outline-bg: transparent;
+  --btn-outline-hover-bg: rgba(255, 107, 53, 0.10);
+  --btn-outline-active-bg: rgba(255, 107, 53, 0.18);
+  --btn-outline-text: #ff6b35;
+  --btn-outline-border: #ff6b35;
+
+  /* Selected: brand fill + white text + visible glow (DMK-06, opacity ≤ 0.5) */
+  --btn-selected-bg: #e85d3a;                /* mismo brand que light */
+  --btn-selected-text: var(--color-text-inverse);
+  --btn-selected-border: #ff6b35;            /* visible sobre dark bg */
+  --btn-selected-border-width: 3px;
+  --btn-selected-glow: 0 0 14px rgba(255, 107, 53, 0.5);  /* más visible en dark */
+  --btn-loading-opacity: 0.8;
+  --btn-disabled-opacity: 0.45;
 }
 
 /* ============================================================

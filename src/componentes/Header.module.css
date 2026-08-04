@@ -14,7 +14,7 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--space-xs, 4px) var(--space-lg, 20px);
-  background-color: var(--color-brand-primary, #ff3900);
+  background-color: var(--color-header-bg, #cc0c24);
   font-family: var(--font-family-primary, "Roboto", sans-serif);
   font-weight: var(--font-weight-bold, 700);
   font-size: var(--font-size-xl, 32px);
@@ -50,7 +50,9 @@
 }
 
 .palermoLogo {
-  height: auto;
+  height: calc(var(--header-height, 70px) - 10px);
+  width: calc(var(--header-height, 70px) - 10px);
   max-height: var(--header-height, 70px);
-  width: auto;
+  border-radius: 50%;
+  object-fit: cover;
 }

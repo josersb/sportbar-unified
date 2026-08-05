@@ -24,6 +24,8 @@ Todos los procesos de pensamiento y respuestas deben ser generados en Espanol.
 3. **ANTES de lanzar**, dar al usuario los comandos para matar
 4. Después de lanzar, **soltar y volver al chat**
 
+**⚠️ Para validar el build de producción** usar `pnpm run sportbar:build` (build + serve), no solo `serve` que sirve el build anterior.
+
 Para matar todo: `Get-Process -Name "node" | Stop-Process -Force`
 
 **⚠️ Configuración de worktree NUNCA se versiona.** Los puertos específicos de cada worktree viven en `worktree.config.json` (gitignored). `vite.config.js`, `server/server.js`, y `package.json` leen de ese archivo y permanecen genéricos. Al mergear feat/* → v2, estos archivos no generan conflictos de configuración.

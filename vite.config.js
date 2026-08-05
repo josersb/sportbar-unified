@@ -1,8 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Leer configuración específica del worktree (gitignored)
+let wtConfig = { vitePort: 5173, expressPort: 3101 };
+try {
+  wtConfig = JSON.parse(readFileSync(resolve(__dirname, "worktree.config.json"), "utf-8"));
+} catch { /* usar defaults */ }
 
 const ARRANGER_HOST = process.env.ARRANGER_HOST || "192.168.2.254";
 const ARRANGER_PORT = process.env.ARRANGER_PORT || "80";
+const EXPRESS_URL = `http://localhost:${wtConfig.expressPort}`;
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -10,34 +22,34 @@ export default defineConfig({
 
   // Development server configuration
   server: {
-    port: 5173,
+    port: wtConfig.vitePort,
     host: true, // Allow external connections
     open: true, // Auto-open browser
     cors: true,
     proxy: {
       // Device status endpoint → Express (must come before the generic /api rule)
       "/api/device/": {
-        target: "http://localhost:3104",
+        target: EXPRESS_URL,
         changeOrigin: true,
       },
       // State persistence endpoint → Express (must come before the generic /api rule)
       "/api/state": {
-        target: "http://localhost:3104",
+        target: EXPRESS_URL,
         changeOrigin: true,
       },
       // TVRACK shared state → Express (must come before the generic /api rule)
       "/api/tvrack": {
-        target: "http://localhost:3104",
+        target: EXPRESS_URL,
         changeOrigin: true,
       },
       // Presets compartidos → Express (must come before the generic /api rule)
       "/api/presets": {
-        target: "http://localhost:3104",
+        target: EXPRESS_URL,
         changeOrigin: true,
       },
       // Zonas Fuera → Express (must come before the generic /api rule)
       "/api/zonas-fuera": {
-        target: "http://localhost:3104",
+        target: EXPRESS_URL,
         changeOrigin: true,
       },
       // Proxy API calls to avoid CORS issues during development

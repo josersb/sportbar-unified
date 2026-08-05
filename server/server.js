@@ -4,7 +4,15 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || wtConfig.expressPort || 3000;
+
+// Leer configuración específica del worktree (gitignored)
+let wtConfig = { vitePort: 5173, expressPort: 3101 };
+try {
+  wtConfig = JSON.parse(require("fs").readFileSync(path.join(__dirname, "..", "worktree.config.json"), "utf-8"));
+} catch { /* usar defaults */ }
+
+const VITE_URL = `http://localhost:${wtConfig.vitePort}`;
 
 const ARRANGER_HOST = process.env.ARRANGER_HOST || "192.168.2.254";
 const ARRANGER_PORT = process.env.ARRANGER_PORT || "80";
@@ -21,9 +29,9 @@ app.use(
         imgSrc: ["'self'", "data:", "blob:"],
         connectSrc: [
           "'self'",
-          "http://localhost:5176",          // Vite dev server (buttons-redesign)
-          "http://localhost:3104",          // Express self (buttons-redesign)
-          ARRANGER_BASE,           // Arranger matrix
+          VITE_URL,                             // Vite dev server
+          `http://localhost:${PORT}`,           // Express self
+          ARRANGER_BASE,                        // Arranger matrix
         ],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
@@ -36,13 +44,13 @@ app.use(
 
 // ── CORS: restringido a orígenes conocidos (antes era *) ──
 const allowedOrigins = [
-  "http://localhost:5176",                  // Vite dev (buttons-redesign)
-  "http://localhost:3104",                  // Express (buttons-redesign)
-  "http://localhost:3000",                  // Express v1 (legacy)
-  "http://127.0.0.1:5176",
-  "http://127.0.0.1:3104",
+  VITE_URL,                                   // Vite dev
+  `http://localhost:${PORT}`,                 // Express self
+  "http://localhost:3000",                    // Express v1 (legacy)
+  `http://127.0.0.1:${wtConfig.vitePort}`,
+  `http://127.0.0.1:${PORT}`,
   "http://127.0.0.1:3000",
-  /^http:\/\/192\.168\.2\.\d{1,3}(:\d+)?$/, // Red local Arranger
+  /^http:\/\/192\.168\.2\.\d{1,3}(:\d+)?$/,  // Red local Arranger
 ];
 app.use((req, res, next) => {
   const origin = req.get("origin");

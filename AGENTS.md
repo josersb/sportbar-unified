@@ -28,21 +28,23 @@ Todos los procesos de pensamiento y respuestas deben ser generados en Espanol.
 
 **Ejemplo correcto para Vite:**
 ```powershell
-Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "node_modules\.bin\vite.cmd --port 5176"
+Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "pnpm run dev"
 ```
 **Para matarlo después:**
 ```powershell
-Get-Process -Name "node" | Where-Object { $_.CommandLine -like "*vite*5176*" } | Stop-Process -Force
+Get-Process -Name "node" | Where-Object { $_.CommandLine -like "*vite*" } | Stop-Process -Force
 ```
 
 **Ejemplo correcto para Express:**
 ```powershell
-Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "$env:PORT='3104'; node server/server.js"
+Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "pnpm run serve"
 ```
 **Para matarlo después:**
 ```powershell
 Get-Process -Name "node" | Where-Object { $_.CommandLine -like "*server.js*" } | Stop-Process -Force
 ```
+
+**⚠️ Configuración de worktree NUNCA se versiona.** Los puertos específicos de cada worktree viven en `worktree.config.json` (gitignored). `vite.config.js`, `server/server.js`, y `package.json` leen de ese archivo y permanecen genéricos. Al mergear feat/* → v2, estos archivos no generan conflictos de configuración.
 
 ## Project Overview
 Aplicacion React/Vite para controlar una matriz audiovisual de sport bars. Se interfacea con hardware fisico (matriz Arranger en `192.168.2.254:80`).
@@ -87,14 +89,19 @@ feat/ahm-integration ──→ v2 ──→ master
 
 | Worktree | Rama | Vite | Express |
 |----------|------|------|---------|
-| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified` | `v2` | 5173 | 3101 |
-| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified-worktrees\ahm-integration` | `feat/ahm-integration` | 5174 | 3102 |
+| `sportbar-unified` (principal) | `v2` | 5173 | 3101 |
+| `sportbar-unified-worktrees/ahm-integration` | `feat/ahm-integration` | 5174 | 3102 |
+| `sportbar-unified-worktrees/buttons-redesign` | `feat/buttons-redesign` | 5176 | 3104 |
+| `sportbar-unified-worktrees/frontend-redesign` | `feat/frontend-redesign` | ? | ? |
+| `sportbar-unified-worktrees/security-ronda-4` | `feat/security-ronda-4` | ? | ? |
 
 Para crear un nuevo worktree:
 ```bash
 git worktree add -b feat/<nombre> ../sportbar-unified-worktrees/<nombre> v2
+# Luego generar la configuración automáticamente:
+node scripts/bootstrap-worktree.cjs --name "feat/<nombre>" --vite-port <puerto> --express-port <puerto>
 ```
-Luego configurar `vite.config.js` (puerto Vite único), `package.json` (PORT=31XX en scripts), y `server/server.js` (CORS/CSP con nuevo puerto).
+La configuración de puertos queda en `worktree.config.json` (gitignored). `vite.config.js`, `server/server.js`, y `package.json` leen de ese archivo — no se modifican por worktree. Al mergear feat/* → v2, estos archivos no generan conflictos.
 
 **⚠️ pnpm 11 — worktree nuevo**: después de `pnpm install`, verificar `pnpm-workspace.yaml`. Si `allowBuilds` tiene `"set this to true or false"`, reemplazar por `true` en los 4 paquetes (esbuild, @fortawesome/fontawesome-common-types, @fortawesome/fontawesome-svg-core, snyk). Sin esto, `pnpm run build` falla con `ERR_PNPM_IGNORED_BUILDS`. Solución documentada en Engram #630.
 

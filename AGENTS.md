@@ -33,6 +33,17 @@ Para matar todo: `Get-Process -Name "node" | Stop-Process -Force`
 ## Project Overview
 Aplicacion React/Vite para controlar una matriz audiovisual de sport bars. Se interfacea con hardware fisico (matriz Arranger en `192.168.2.254:80`).
 
+### Arranger Hardware (MANDATORIO — fuente de verdad)
+
+| Dato | Valor |
+|---|---|
+| Modelo | Liberty AV DigiIP IPEXCB Controller |
+| Firmware | **v1.3.4** |
+| Documentación oficial | **API V210826** (2021) |
+| Documentación de referencia | API V1.4.0.0 (Rev 240207) — SOLO como referencia |
+
+**⚠️ Todo desarrollo y documentación DEBE basarse en la API V210826.** La API V1.4.0.0 solo se consulta para consolidar comandos que ya existían en V210826. Hasta que no se actualice el firmware a ≥1.4.0.0 o se reemplace el hardware, los comandos exclusivos de V1.4.0.0 (`get matrix`, `get joins`, `get status`) no están disponibles en el hardware real.
+
 ## Arquitectura
 - **Frontend**: React 18 + Vite 5 (ES modules, puerto 5173 dev / 3000 prod)
 - **Backend**: Express 4 server en directorio `server/` (CommonJS)

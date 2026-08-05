@@ -1,6 +1,6 @@
 # GetJoins
 
-> ⚠️ **Requiere firmware del controlador Arranger ≥1.4.0.0.** La instalación actual del SportBar ejecuta v1.3.4 (verificado 2026-07-28). El comando devuelve `invalid property`. Para habilitarlo, actualizar el controlador Arranger IPEXCB a ≥1.4.0.0 vía el portal de Liberty AV.
+> ⚠️ **NO DISPONIBLE en el hardware actual.** Requiere firmware ≥1.4.0.0. El controlador Arranger IPEXCB del SportBar ejecuta **v1.3.4 (API V210826)**. Este comando es exclusivo de V1.4.0.0 y devuelve `invalid property`. La función está implementada en `arrangerApi.js` pero no es funcional hasta actualizar el firmware.
 
 Comando `get joins` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para consultar qué encoder está conectado a una suscripción específica de un decoder (video, audio, serial, ir, usb, usb_ext).
 

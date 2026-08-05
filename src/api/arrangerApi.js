@@ -101,6 +101,12 @@ export async function getDevices(target = "all") {
   return sendArrangerCommand(buildArrangerCommand("get devices", target));
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚠️ FW-LOCKED: Los siguientes comandos requieren firmware Arranger ≥1.4.0.0
+// El hardware actual ejecuta v1.3.4 (API V210826). Estos comandos devuelven
+// "invalid property". Están implementados para cuando se actualice el firmware.
+// ═══════════════════════════════════════════════════════════════════════════
+
 export async function getStatus(device, stream = "") {
   const args = stream ? `${device} ${stream}` : device;
   return sendArrangerCommand(buildArrangerCommand("get status", args));

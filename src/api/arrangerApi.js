@@ -455,6 +455,18 @@ export async function setZonasFueraLink(zoneId, linked) {
   return response.json();
 }
 
+/**
+ * Consulta el estado real de la matriz Arranger vía el endpoint del server.
+ * El server hace batched get encoder contra el Arranger y devuelve el estado completo.
+ * @param {string} [subscription="video"] — Tipo de stream: "video" | "audio"
+ * @returns {Promise<Object>} — { timestamp, connected, disconnected, state: { destino: encoder } }
+ */
+export async function fetchMatrixState(subscription = "video") {
+  const response = await fetch(`/api/matrix/state?subscription=${subscription}`);
+  if (!response.ok) throw new Error(`Failed to fetch matrix state: ${response.status}`);
+  return response.json();
+}
+
 // Exportar la URL y el token por si se necesitan en otros módulos
 export const ARRANGER_API_CONFIG = {
   baseUrl: ARRANGER_BASE_URL,

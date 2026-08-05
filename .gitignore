@@ -280,6 +280,7 @@ production-config.json
 local-config.json
 dev-config.json
 worktree.config.json
+arranger-state-*.json
 
 # SDD tooling
 .atl/

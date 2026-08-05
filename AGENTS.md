@@ -92,8 +92,8 @@ feat/ahm-integration ──→ v2 ──→ master
 | `sportbar-unified` (principal) | `v2` | 5173 | 3101 |
 | `sportbar-unified-worktrees/ahm-integration` | `feat/ahm-integration` | 5174 | 3102 |
 | `sportbar-unified-worktrees/buttons-redesign` | `feat/buttons-redesign` | 5176 | 3104 |
-| `sportbar-unified-worktrees/frontend-redesign` | `feat/frontend-redesign` | ? | ? |
-| `sportbar-unified-worktrees/security-ronda-4` | `feat/security-ronda-4` | ? | ? |
+| `sportbar-unified-worktrees/frontend-redesign` | `feat/frontend-redesign` | 5175 | 3103 |
+| `sportbar-unified-worktrees/security-ronda-4` | `feat/security-ronda-4` | 5177 | 3105 |
 
 Para crear un nuevo worktree:
 ```bash

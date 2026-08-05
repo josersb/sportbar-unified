@@ -3,14 +3,14 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
-const app = express();
-const PORT = process.env.PORT || wtConfig.expressPort || 3000;
-
 // Leer configuración específica del worktree (gitignored)
 let wtConfig = { vitePort: 5173, expressPort: 3101 };
 try {
   wtConfig = JSON.parse(require("fs").readFileSync(path.join(__dirname, "..", "worktree.config.json"), "utf-8"));
 } catch { /* usar defaults */ }
+
+const app = express();
+const PORT = process.env.PORT || wtConfig.expressPort || 3000;
 
 const VITE_URL = `http://localhost:${wtConfig.vitePort}`;
 

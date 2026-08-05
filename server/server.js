@@ -3,12 +3,21 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
+// Leer configuración específica del worktree (gitignored)
+let wtConfig = { vitePort: 5173, expressPort: 3101 };
+try {
+  wtConfig = JSON.parse(require("fs").readFileSync(path.join(__dirname, "..", "worktree.config.json"), "utf-8"));
+} catch { /* usar defaults */ }
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || wtConfig.expressPort || 3000;
+
+const VITE_URL = `http://localhost:${wtConfig.vitePort}`;
 
 const ARRANGER_HOST = process.env.ARRANGER_HOST || "192.168.2.254";
 const ARRANGER_PORT = process.env.ARRANGER_PORT || "80";
 const ARRANGER_BASE = `http://${ARRANGER_HOST}:${ARRANGER_PORT}`;
+const ARRANGER_TOKEN = process.env.VITE_ARRANGER_TOKEN;
 
 // ── Security: Helmet (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, etc.) ──
 app.use(
@@ -21,9 +30,9 @@ app.use(
         imgSrc: ["'self'", "data:", "blob:"],
         connectSrc: [
           "'self'",
-          "http://localhost:5173",          // Vite dev server
-          "http://localhost:3101",          // Express self (v2)
-          ARRANGER_BASE,           // Arranger matrix
+          VITE_URL,                             // Vite dev server
+          `http://localhost:${PORT}`,           // Express self
+          ARRANGER_BASE,                        // Arranger matrix
         ],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
@@ -36,13 +45,13 @@ app.use(
 
 // ── CORS: restringido a orígenes conocidos (antes era *) ──
 const allowedOrigins = [
-  "http://localhost:5173",                  // Vite dev
-  "http://localhost:3101",                  // Express v2
-  "http://localhost:3000",                  // Express v1 (legacy)
-  "http://127.0.0.1:5173",
-  "http://127.0.0.1:3101",
+  VITE_URL,                                   // Vite dev
+  `http://localhost:${PORT}`,                 // Express self
+  "http://localhost:3000",                    // Express v1 (legacy)
+  `http://127.0.0.1:${wtConfig.vitePort}`,
+  `http://127.0.0.1:${PORT}`,
   "http://127.0.0.1:3000",
-  /^http:\/\/192\.168\.2\.\d{1,3}(:\d+)?$/, // Red local Arranger
+  /^http:\/\/192\.168\.2\.\d{1,3}(:\d+)?$/,  // Red local Arranger
 ];
 app.use((req, res, next) => {
   const origin = req.get("origin");
@@ -109,6 +118,22 @@ let stateDb;
     stateDb.data.presets = { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null };
     await stateDb.write();
   }
+
+  // Schema integrity: ensure required keys exist
+  let repaired = false;
+  if (!stateDb.data.presets) {
+    stateDb.data.presets = { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null };
+    repaired = true;
+  }
+  if (!stateDb.data.tvrack) {
+    stateDb.data.tvrack = { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null };
+    repaired = true;
+  }
+  if (!stateDb.data.zonasFuera) {
+    stateDb.data.zonasFuera = {};
+    repaired = true;
+  }
+  if (repaired) await stateDb.write();
 
   // ── Migration v2: extraer zonas fuera de state.tvs → zonasFuera ──
   await migrateZonasFueraV2();
@@ -317,6 +342,65 @@ app.post("/api/zonas-fuera/:id/link", stateLimiter, validateZonaFueraId, async (
   stateDb.data.zonasFuera[id].lastUpdated = new Date().toISOString();
   await stateDb.write();
   res.json({ zoneId: id, ...stateDb.data.zonasFuera[id] });
+});
+
+// ── Matrix State: consulta estado real del Arranger vía get encoder ──
+
+const MATRIX_DESTINATIONS = [
+  "TV01","TV02","TV03","TV04","TV05","TV06","TV07","TV08","TV09","TV10",
+  "TV11","TV12","TV13","TV14","TV15","TV16","TV17","TV18","TV19","TV20",
+  "TV21","TV22","TV23","TV24","TV25","TV26",
+  "VW-Norte","VW-Centro","VW-Sur",
+  "TVRACK",
+  "aVip-Barra-Centro","aVip-Lobby-Batacazo","aVip-Bar-Boveda",
+  "RACK-VIP-PANTALLABATACA","aMas-15-Barra",
+  "a-Menos1-Escenario","a-Menos1-Escenario2",
+  "a-QMR75-Menos1-TV1","a-QMR75-Menos1-TV2","a-QMC65-Menos1-TV2",
+];
+
+async function fetchEncoderFromArranger(decoder, subscription) {
+  const cmd = `get encoder ${decoder} ${subscription}`;
+  const url = `${ARRANGER_BASE}/api/command/${encodeURIComponent(cmd)}/${ARRANGER_TOKEN}`;
+  try {
+    const response = await fetch(url);
+    const text = (await response.text()).trim();
+    if (text.toLowerCase().includes("no encoder connected")) return null;
+    if (text.toLowerCase().includes("error") || text.toLowerCase().includes("invalid")) return null;
+    const match = text.match(/get encoder success (.+)/i);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+app.get("/api/matrix/state", async (req, res) => {
+  if (!ARRANGER_TOKEN) return res.status(503).json({ error: "ARRANGER_TOKEN not configured" });
+
+  const subscription = req.query.subscription || "video";
+  const BATCH = 4;
+  const results = {};
+  const start = Date.now();
+
+  for (let i = 0; i < MATRIX_DESTINATIONS.length; i += BATCH) {
+    const batch = MATRIX_DESTINATIONS.slice(i, i + BATCH);
+    const batchResults = await Promise.allSettled(
+      batch.map(async (dest) => ({ dest, encoder: await fetchEncoderFromArranger(dest, subscription) }))
+    );
+    for (const r of batchResults) {
+      if (r.status === "fulfilled") results[r.value.dest] = r.value.encoder;
+    }
+  }
+
+  const connected = Object.values(results).filter((v) => v !== null).length;
+  res.json({
+    timestamp: new Date().toISOString(),
+    subscription,
+    destinations: MATRIX_DESTINATIONS.length,
+    connected,
+    disconnected: MATRIX_DESTINATIONS.length - connected,
+    elapsedMs: Date.now() - start,
+    state: results,
+  });
 });
 
 // ── Presets Compartidos ──

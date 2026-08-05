@@ -3,8 +3,46 @@
 ## Idioma de Configuracion
 Todos los procesos de pensamiento y respuestas deben ser generados en Espanol.
 
+## Entorno de Ejecucion (MANDATORIO — leer antes de ejecutar cualquier comando)
+
+| Dato | Valor |
+|---|---|
+| Sistema operativo | **Windows** |
+| Terminal | **PowerShell 7+ (pwsh)** |
+| Shell scripts | Usar `node -e "..."` o `pwsh -Command "..."`, NUNCA `rm`, `cp`, `chmod` ni pipes de Unix |
+| Paths | Backslash o forward slash, PowerShell acepta ambos. Usar forward slash por consistencia con Git. |
+| Comandos compuestos | `&&` funciona en pwsh. `;` solo si no importa el exit code. |
+
+**⚠️ Todos los agentes y subagentes DEBEN adaptar sus comandos a PowerShell 7+.** Si un comando documentado usa `rm -rf`, traducirlo a `Remove-Item -Recurse -Force`. Si usa `grep`, usar `Select-String`. NUNCA asumir que el entorno es Unix/Linux.
+
+### Servidores para testing (MANDATORIO)
+
+**NUNCA usar timeout ni `Start-Process`.** El usuario necesita ver cada servicio.
+
+1. Por cada servicio que el usuario pida iniciar, abrir **una ventana de terminal visible** en el directorio del worktree
+2. El orden de inicio lo define el usuario
+3. **ANTES de lanzar**, dar al usuario los comandos para matar
+4. Después de lanzar, **soltar y volver al chat**
+
+**⚠️ Para validar el build de producción** usar `pnpm run sportbar:build` (build + serve), no solo `serve` que sirve el build anterior.
+
+Para matar todo: `Get-Process -Name "node" | Stop-Process -Force`
+
+**⚠️ Configuración de worktree NUNCA se versiona.** Los puertos específicos de cada worktree viven en `worktree.config.json` (gitignored). `vite.config.js`, `server/server.js`, y `package.json` leen de ese archivo y permanecen genéricos. Al mergear feat/* → v2, estos archivos no generan conflictos de configuración.
+
 ## Project Overview
 Aplicacion React/Vite para controlar una matriz audiovisual de sport bars. Se interfacea con hardware fisico (matriz Arranger en `192.168.2.254:80`).
+
+### Arranger Hardware (MANDATORIO — fuente de verdad)
+
+| Dato | Valor |
+|---|---|
+| Modelo | Liberty AV DigiIP IPEXCB Controller |
+| Firmware | **v1.3.4** |
+| Documentación oficial | **API V210826** (2021) |
+| Documentación de referencia | API V1.4.0.0 (Rev 240207) — SOLO como referencia |
+
+**⚠️ Todo desarrollo y documentación DEBE basarse en la API V210826.** La API V1.4.0.0 solo se consulta para consolidar comandos que ya existían en V210826. Hasta que no se actualice el firmware a ≥1.4.0.0 o se reemplace el hardware, los comandos exclusivos de V1.4.0.0 (`get matrix`, `get joins`, `get status`) no están disponibles en el hardware real.
 
 ## Arquitectura
 - **Frontend**: React 18 + Vite 5 (ES modules, puerto 5173 dev / 3000 prod)
@@ -46,14 +84,65 @@ feat/ahm-integration ──→ v2 ──→ master
 
 | Worktree | Rama | Vite | Express |
 |----------|------|------|---------|
-| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified` | `v2` | 5173 | 3101 |
-| `C:\Users\joserafael\Proyectos\proyectos hip\sportbar-unified-worktrees\ahm-integration` | `feat/ahm-integration` | 5174 | 3102 |
+| `sportbar-unified` (principal) | `v2` | 5173 | 3101 |
+| `sportbar-unified-worktrees/ahm-integration` | `feat/ahm-integration` | 5174 | 3102 |
+| `sportbar-unified-worktrees/buttons-redesign` | `feat/buttons-redesign` | 5176 | 3104 |
+| `sportbar-unified-worktrees/frontend-redesign` | `feat/frontend-redesign` | 5175 | 3103 |
+| `sportbar-unified-worktrees/security-ronda-4` | `feat/security-ronda-4` | 5177 | 3105 |
 
 Para crear un nuevo worktree:
 ```bash
 git worktree add -b feat/<nombre> ../sportbar-unified-worktrees/<nombre> v2
+# Luego generar la configuración automáticamente:
+node scripts/bootstrap-worktree.cjs --name "feat/<nombre>" --vite-port <puerto> --express-port <puerto>
 ```
-Luego configurar `vite.config.js` (puerto Vite único), `package.json` (PORT=31XX en scripts), y `server/server.js` (CORS/CSP con nuevo puerto).
+La configuración de puertos queda en `worktree.config.json` (gitignored). `vite.config.js`, `server/server.js`, y `package.json` leen de ese archivo — no se modifican por worktree. Al mergear feat/* → v2, estos archivos no generan conflictos.
+
+**⚠️ pnpm 11 — worktree nuevo**: después de `pnpm install`, verificar `pnpm-workspace.yaml`. Si `allowBuilds` tiene `"set this to true or false"`, reemplazar por `true` en los 4 paquetes (esbuild, @fortawesome/fontawesome-common-types, @fortawesome/fontawesome-svg-core, snyk). Sin esto, `pnpm run build` falla con `ERR_PNPM_IGNORED_BUILDS`. Solución documentada en Engram #630.
+
+**⚠️ Server en worktree nuevo**: el `pnpm-lock.yaml` del server referencia paths del worktree original. `pnpm install` en `server/` dice "Already up to date" pero no crea `server/node_modules/`. Solución en 2 pasos:
+1. `Remove-Item -Force server/pnpm-lock.yaml`
+2. `pnpm install --ignore-workspace` (en el directorio `server/`)
+
+El flag `--ignore-workspace` es necesario porque pnpm 11 detecta el `pnpm-workspace.yaml` de la raíz y no trata `server/` como proyecto independiente. Documentado en Engram #648.
+
+## Variables de Entorno y Secrets (MANDATORIO)
+
+### Estrategia híbrida
+
+| Tipo | Dónde vive | Ejemplos |
+|---|---|---|
+| **No sensibles** (host, puerto, flags) | `.env-shared` en `Proyectos hip/` | `VITE_ARRANGER_HOST`, `VITE_ARRANGER_PORT`, `VITE_MOCK_ARRANGER` |
+| **Secretos** (tokens, keys) | Variable de entorno del sistema Windows | `VITE_ARRANGER_TOKEN` |
+
+### `.env-shared`
+
+Archivo único en `C:\Users\joserafael\Proyectos\proyectos hip\.env-shared`. Cada worktree tiene un **symlink** `.env → ../../.env-shared`. Al editar `.env-shared`, todos los worktrees ven el cambio al instante.
+
+**Al crear un worktree nuevo:**
+```powershell
+Remove-Item ".env" -Force -ErrorAction SilentlyContinue
+New-Item -ItemType SymbolicLink -Path ".env" -Target "..\..\.env-shared"
+```
+
+**⚠️ El token NO está en este archivo.** `.env-shared` contiene un comentario recordatorio.
+
+### `VITE_ARRANGER_TOKEN`
+
+Vive en el sistema operativo, nunca en un archivo del proyecto. Esto evita que un commit, un `git clean`, o una copia del worktree filtren el token.
+
+**Consultar el token actual:**
+```powershell
+[Environment]::GetEnvironmentVariable('VITE_ARRANGER_TOKEN', 'User')
+```
+
+**Cambiar el token:**
+```powershell
+[Environment]::SetEnvironmentVariable('VITE_ARRANGER_TOKEN', '<token-real>', 'User')
+# Reiniciar la terminal para que Vite/Express lo lean
+```
+
+**⚠️ Si Vite no encuentra el token**, verificar que la variable esté configurada a nivel `User` (no `Process`). Usar `[Environment]::GetEnvironmentVariable(...)` para confirmar.
 
 ## Gestor de Paquetes: pnpm (UNICO)
 

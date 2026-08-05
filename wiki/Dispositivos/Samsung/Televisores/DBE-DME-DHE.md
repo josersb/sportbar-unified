@@ -114,6 +114,78 @@ PC[RS232C] → Display1[RS232C IN] → Display1[RS232C OUT] → Display2[RS232C 
 - Daisy-chain entre displays usando cable LAN (el display 1 conecta al PC vía RJ45, los siguientes se encadenan por RS232C OUT → RS232C IN).
 - El software MDC corre en Windows y permite controlar múltiples displays desde una interfaz gráfica.
 
+## Control IR (Infrarrojo)
+
+### Cableado
+
+El IPEX5002 dispone de un puerto **IR OUT** (jack 3.5mm TRS) que permite emitir señales infrarrojas hacia dispositivos locales. La Samsung DBE/DME/DHE tiene un puerto **IR/AMBIENT SENSOR IN** (jack 3.5mm) para recibir señales IR por cable.
+
+```
+IPEX5002-TVRACK (IR OUT)              TV Samsung (IR/AMBIENT SENSOR IN)
+  ┌──────────────────────┐              ┌──────────────────────────────┐
+  │ Jack 3.5mm TRS ──────┼──cable──────┼── Jack 3.5mm                 │
+  │ (IR emitter out)      │  estéreo    │  (entrada IR cableada)       │
+  └──────────────────────┘              └──────────────────────────────┘
+```
+
+Se utiliza un cable estéreo 3.5mm macho-macho estándar. Sin adaptadores DB9 ni configuración de baud rate.
+
+### Envío de comandos
+
+El Arranger soporta el comando `send ir` para emitir códigos infrarrojos en formato **Pronto HEX** a través del puerto IR OUT de cualquier decoder:
+
+```
+send ir <device_name> <pronto_hex_code>
+```
+
+En SportBar, se usa `sendIrCommand(deviceId, hexCode)` de la [[../../../API/ArrangerApi]].
+
+### Comandos disponibles (23)
+
+Los siguientes códigos fueron capturados del mando a distancia Samsung y almacenados en formato Pronto HEX:
+
+| # | Comando | Verificado | Uso en SportBar |
+|---|---------|-----------|-----------------|
+| 1 | Power On | 🔲 | Encender TV |
+| 2 | Power Off | 🔲 | Apagar TV |
+| 3 | Power Toggle | 🔲 | Alternar encendido |
+| 4 | Volume Up | ✅ | Subir volumen |
+| 5 | Volume Down | 🔲 | Bajar volumen |
+| 6 | Mute Toggle | 🔲 | Silenciar |
+| 7 | Channel Up | 🔲 | Cambiar canal |
+| 8 | Channel Down | 🔲 | Cambiar canal |
+| 9 | Previous Channel | 🔲 | Volver al canal anterior |
+| 10 | Input HDMI 1 | 🔲 | Seleccionar fuente HDMI 1 |
+| 11 | Input HDMI 2 | 🔲 | Seleccionar fuente HDMI 2 |
+| 12 | Input HDMI 3 | 🔲 | Seleccionar fuente HDMI 3 |
+| 13 | Input HDMI 4 | 🔲 | Seleccionar fuente HDMI 4 |
+| 14 | Cursor Up | 🔲 | Navegación |
+| 15 | Cursor Down | 🔲 | Navegación |
+| 16 | Cursor Left | 🔲 | Navegación |
+| 17 | Cursor Right | 🔲 | Navegación |
+| 18 | Cursor Enter | 🔲 | Seleccionar |
+| 19 | Home | 🔲 | Ir a inicio |
+| 20 | Exit | 🔲 | Salir |
+| 21 | Return | 🔲 | Volver |
+| 22 | Main Menu | 🔲 | Menú principal |
+| 23 | Volume Up | ✅ | **Verificado in situ — 2026-07-28** |
+
+> ✅ = Verificado en el sitio con IPEX5002-TVRACK → Samsung TV real  
+> 🔲 = Pendiente de verificación (el formato de código es consistente con el verificado)
+
+Los códigos completos en formato Pronto HEX están en:
+`Docs/equipaments/Tvs Samsung/Codigo pronto IR - samsung v1.txt`
+
+### Comandos prioritarios para SportBar
+
+| Prioridad | Comando | Aplicación |
+|-----------|---------|-----------|
+| Alta | Power On / Power Off | Apagar/encender TVs por zona u horario |
+| Alta | Volume Up / Down / Mute | Control de volumen por TV |
+| Alta | Input HDMI 1-4 | Cambiar fuente si hay múltiples entradas |
+| Media | Channel Up / Down | Si la TV tiene sintonizador propio |
+| Baja | Navegación (cursores, Home) | Solo para configuración remota |
+
 ## Tabla de comandos RS-232C
 
 | # | Comando | Código | Rango | Descripción |
@@ -205,7 +277,16 @@ Véase [[../Software/MagicInfo]] para la instalación específica del Hipódromo
 
 ## Relevancia para SportBar
 
-### Control directo vía RS-232C
+Las Samsung DBE/DME/DHE pueden controlarse remotamente desde SportBar por dos vías:
+
+### Control IR (infrarrojo) — Menor fricción
+- **Cableado**: jack 3.5mm estéreo del IPEX5002 IR OUT al IR/AMBIENT SENSOR IN de la TV
+- **Comando Arranger**: `send ir <device> <pronto_hex>`
+- **Verificado**: Volume Up ✅ (2026-07-28)
+- **Ventaja**: sin configuración de baud rate, cable estándar
+- **Limitación**: unidireccional (sin feedback), requiere aprender códigos
+
+### Control RS-232C — Mayor precisión
 
 Si las TVs del SportBar son de estas líneas y están cableadas con RS-232C, se podrían controlar remotamente mediante comandos seriales enviados desde la app SportBar vía el [[../../Liberty/Controladores/Arranger-IPEXCB]] usando el comando `send serial`.
 

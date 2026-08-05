@@ -4,11 +4,11 @@ import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import "./Toast.css";
-import { joinMultipleTVs, assignSourceToDestination, assignVideoSource, assignAudioSource, fetchTvrackState, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
+import { joinMultipleTVs, assignSourceToDestination, assignVideoSource, assignAudioSource, fetchTvrackState, setTvrackVideo, setTvrackAudio, setTvrackLink, fetchMatrixState } from "../api/arrangerApi";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
-import BrawlStarsButton from "./ui/BrawlStarsButton";
+import Button from "./ui/Button";
 
 const ZONE_LABELS = {
   'aVip-Barra-Centro': 'VIP Barra Centro',
@@ -38,6 +38,44 @@ const MatrizVideo = () => {
 
   const [loadingVideoBtn, setLoadingVideoBtn] = useState(null);
   const [loadingAudioBtn, setLoadingAudioBtn] = useState(null);
+  const [matrixLoading, setMatrixLoading] = useState(false);
+  const [matrixResult, setMatrixResult] = useState(null);
+  const [matrixDiff, setMatrixDiff] = useState([]);
+
+  const handleSyncMatrix = async () => {
+    setMatrixLoading(true);
+    try {
+      const data = await fetchMatrixState();
+      setMatrixResult(data);
+
+      const diffs = [];
+      const vwReverse = { "VW-Norte": "VWN", "VW-Centro": "VWC", "VW-Sur": "VWS" };
+
+      for (const [dest, arrangerEncoder] of Object.entries(data.state)) {
+        const appKey = vwReverse[dest] || dest;
+
+        if (tvs[appKey] !== undefined) {
+          if (tvs[appKey] !== arrangerEncoder && arrangerEncoder !== null) {
+            diffs.push({ dest: appKey, app: tvs[appKey], arranger: arrangerEncoder });
+          }
+        } else if (zonasFueraState[appKey] !== undefined) {
+          const appVideo = zonasFueraState[appKey].video;
+          if (appVideo !== arrangerEncoder && arrangerEncoder !== null) {
+            diffs.push({ dest: appKey, app: appVideo, arranger: arrangerEncoder });
+          }
+        }
+      }
+
+      setMatrixDiff(diffs);
+      if (diffs.length === 0) {
+        toast.success("✅ La app coincide con el Arranger");
+      }
+    } catch (err) {
+      toast.error("Error al consultar el Arranger");
+    } finally {
+      setMatrixLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchTvrackState().then(state => {
@@ -98,6 +136,38 @@ const MatrizVideo = () => {
     <main className={styles.main}>
       <PageContainer>
         <h3 className={styles.titulo}>Ajustes de la matriz de video</h3>
+        <div className={styles.syncRow}>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={matrixLoading}
+            onClick={handleSyncMatrix}
+          >
+            ⚡ Sincronizar con Arranger
+          </Button>
+          {matrixResult && (
+            <span className={styles.syncInfo}>
+              {matrixResult.connected}/{matrixResult.connected + matrixResult.disconnected} online · {(matrixResult.elapsedMs / 1000).toFixed(1)}s
+            </span>
+          )}
+        </div>
+        {matrixDiff.length > 0 && (
+          <div className={styles.diffPanel}>
+            <h4>⚠️ {matrixDiff.length} diferencia(s) con el Arranger</h4>
+            <table className={styles.diffTable}>
+              <thead><tr><th>Destino</th><th>App</th><th>Arranger</th></tr></thead>
+              <tbody>
+                {matrixDiff.map((d) => (
+                  <tr key={d.dest}>
+                    <td>{d.dest}</td>
+                    <td className={styles.diffApp}>{d.app}</td>
+                    <td className={styles.diffArranger}>{d.arranger}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         <Formik
           initialValues={{
             //ALLTV: tvs.all,
@@ -554,9 +624,9 @@ const MatrizVideo = () => {
                 </div>
               </div>
               <div className={styles.submitContainer}>
-                <button type="submit" className={styles.formSubmit}>
+                <Button type="submit" variant="primary">
                   Enviar
-                </button>
+                </Button>
               </div>
               <div className={styles.selectZona}>
                 <h3 className={styles.selectZonaTitulo}>
@@ -574,14 +644,15 @@ const MatrizVideo = () => {
                     {getByCapability("videoSource").map((d) => {
                       const isActive = d.id === tvrackState.video;
                       return (
-                        <BrawlStarsButton
+                        <Button
                           key={`video-${d.id}`}
-                          deviceId={d.id}
-                          isActive={isActive}
+                          selected={isActive}
                           onClick={handleTvrackBtn("video", d.id)}
                           loading={loadingVideoBtn === d.id}
-                          dataTestId={`btn-video-${d.id}`}
-                        />
+                          data-testid={`btn-video-${d.id}`}
+                        >
+                          {d.id}
+                        </Button>
                       );
                     })}
                   </div>
@@ -609,14 +680,15 @@ const MatrizVideo = () => {
                     {getByCapability("videoSource").map((d) => {
                       const isActive = d.id === tvrackState.audio;
                       return (
-                        <BrawlStarsButton
+                        <Button
                           key={`audio-${d.id}`}
-                          deviceId={d.id}
-                          isActive={isActive}
+                          selected={isActive}
                           onClick={handleTvrackBtn("audio", d.id)}
                           loading={loadingAudioBtn === d.id}
-                          dataTestId={`btn-audio-${d.id}`}
-                        />
+                          data-testid={`btn-audio-${d.id}`}
+                        >
+                          {d.id}
+                        </Button>
                       );
                     })}
                   </div>
@@ -639,13 +711,14 @@ const MatrizVideo = () => {
                         </div>
                         <div className={styles.rackRow}>
                           {getByCapability('videoSource').map((d) => (
-                            <BrawlStarsButton
+                            <Button
                               key={`zf-${zoneId}-${d.id}`}
-                              deviceId={d.id}
-                              isActive={d.id === zoneState.video}
+                              selected={d.id === zoneState.video}
                               onClick={() => handleZonasFueraChange(zoneId, 'video', d.id)}
-                              dataTestId={`btn-zf-video-${zoneId}-${d.id}`}
-                            />
+                              data-testid={`btn-zf-video-${zoneId}-${d.id}`}
+                            >
+                              {d.id}
+                            </Button>
                           ))}
                         </div>
                         <div className={styles.tvrackLinkRow}>

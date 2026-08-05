@@ -4,38 +4,38 @@ import styles from "./Nav.module.css";
 const linkClass = ({ isActive }) =>
   isActive ? `${styles.linkItem} ${styles.active}` : styles.linkItem;
 
-const linkAria = ({ isActive }) => isActive ? "page" : undefined;
+const linkAria = ({ isActive }) => (isActive ? "page" : undefined);
+
+const LINKS = [
+  { to: "/inicio", label: "Inicio" },
+  { to: "/matrizvideo", label: "Matriz Video" },
+  { to: "/audio", label: "Audio" },
+  { to: "/canales", label: "Canales" },
+  { to: "/arranger", label: "Links-Arranger" },
+  { to: "/presets", label: "Presets Guardados" },
+];
 
 const Nav = () => {
   return (
-    <nav>
-      <div className={styles.container}>
-        <ul className={styles.ulContainer}>
-          <NavLink to="/inicio" className={linkClass} aria-current={linkAria}>
-            Inicio
-          </NavLink>
-          <NavLink to="/matrizvideo" className={linkClass} aria-current={linkAria}>
-            Matriz Video
-          </NavLink>
-          <NavLink to="/audio" className={linkClass} aria-current={linkAria}>
-            Audio
-          </NavLink>
-          <NavLink to="/canales" className={linkClass} aria-current={linkAria}>
-            Canales
-          </NavLink>
-          <NavLink to="/arranger" className={linkClass} aria-current={linkAria}>
-            Links-Arranger
-          </NavLink>
-          <NavLink to="/presets" className={linkClass} aria-current={linkAria}>
-            Presets Guardados
-          </NavLink>
-        </ul>
-        <div className={styles.ulContainer}>
+    <nav className={styles.nav} aria-label="Navegación principal">
+      <ul className={styles.list} role="list">
+        {LINKS.map((link) => (
+          <li key={link.to} className={styles.listItem}>
+            <NavLink
+              to={link.to}
+              className={linkClass}
+              aria-current={linkAria}
+            >
+              {link.label}
+            </NavLink>
+          </li>
+        ))}
+        <li className={`${styles.listItem} ${styles.separator}`}>
           <NavLink to="/soporte" className={linkClass} aria-current={linkAria}>
             Soporte
           </NavLink>
-        </div>
-      </div>
+        </li>
+      </ul>
     </nav>
   );
 };

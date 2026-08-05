@@ -1,78 +1,203 @@
 /* ============================================================
-   Button — CSS Module (shared component)
+   Button — CSS Module (token-driven)
+   Class composition: .btn + .btn--{variant} + .btn--{size} + state.
+   ALL visual values come from var(--btn-*) tokens in tokens.css.
+   Theme is passive: [data-theme="dark"] overrides resolve below.
    ============================================================ */
 
 .btn {
+  /* Variant indirection — defaults to primary; states written once below */
+  --btn-bg: var(--btn-primary-bg);
+  --btn-bg-hover: var(--btn-primary-hover-bg);
+  --btn-bg-active: var(--btn-primary-active-bg);
+  --btn-text: var(--btn-primary-text);
+  --btn-border: var(--btn-primary-border);
+
+  /* Layout */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-xs, 4px);
-  padding: var(--space-sm, 8px) var(--space-md, 16px);
-  border: 2px solid var(--color-brand-primary, #ff3900);
-  border-radius: 5px;
-  font-family: var(--font-family-primary, "Roboto", sans-serif);
-  font-size: var(--font-size-md, 16px);
-  font-weight: var(--font-weight-bold, 700);
+  gap: var(--btn-gap);
+  min-width: var(--touch-target-min);   /* A11Y-05: 44px touch target */
+  min-height: var(--touch-target-min);  /* A11Y-05: 44px touch target */
+  padding: var(--btn-padding-y-md) var(--btn-padding-x-md);
+
+  /* Typography */
+  font-family: var(--font-family-primary);
+  font-size: var(--btn-font-size-md);
+  font-weight: var(--btn-font-weight);
+  line-height: var(--line-height-tight);
   text-align: center;
+  color: var(--btn-text);
+
+  /* Appearance — "personalidad sutil": soft gradient + layered neutral depth */
+  appearance: none;
+  -webkit-appearance: none;
+  border: var(--border-width) solid var(--btn-border);
+  border-radius: var(--btn-radius);
+  background-color: var(--btn-bg);
+  box-shadow: var(--shadow-xs); /* neutral elevation (DTK-09), never brand bias */
   cursor: pointer;
-  transition-duration: 0.4s;
-  line-height: 1.2;
+  user-select: none;
+  text-decoration: none;
+
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
 }
 
-.btn:hover {
-  color: white;
-  box-shadow:
-    0 2px 2px 0 rgba(0, 0, 0, 0.24),
-    0 4px 4px 0 rgba(0, 0, 0, 0.19);
-}
-
-.btn:active {
-  color: white;
-  box-shadow: 0 5px #666;
-  transform: translateY(4px);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.btn:focus-visible {
-  outline: 3px solid var(--color-brand-primary, #ff3900);
-  outline-offset: 2px;
-}
-
-/* ── Variants ── */
+/* ── Variants (BTN-01) — each only remaps tokens ── */
 
 .btn--primary {
-  background-color: var(--color-surface-secondary, #f5f6f9);
-  color: inherit;
-}
-
-.btn--primary:hover,
-.btn--primary:active {
-  background-color: var(--color-brand-primary, #ff3900);
+  --btn-bg: var(--btn-primary-bg);
+  --btn-bg-hover: var(--btn-primary-hover-bg);
+  --btn-bg-active: var(--btn-primary-active-bg);
+  --btn-text: var(--btn-primary-text);
+  --btn-border: var(--btn-primary-border);
+  background-image: linear-gradient(180deg, var(--btn-bg-hover) 0%, var(--btn-bg) 100%);
 }
 
 .btn--secondary {
-  background-color: transparent;
-  border-color: var(--color-brand-secondary, #807781);
-  color: var(--color-text-primary, #000000);
-}
-
-.btn--secondary:hover,
-.btn--secondary:active {
-  background-color: var(--color-brand-secondary, #807781);
+  --btn-bg: var(--btn-secondary-bg);
+  --btn-bg-hover: var(--btn-secondary-hover-bg);
+  --btn-bg-active: var(--btn-secondary-active-bg);
+  --btn-text: var(--btn-secondary-text);
+  --btn-border: var(--btn-secondary-border);
+  background-image: linear-gradient(180deg, var(--btn-bg-hover) 0%, var(--btn-bg) 100%);
 }
 
 .btn--danger {
-  background-color: #dc3545;
-  border-color: #c82333;
-  color: #fff;
+  --btn-bg: var(--btn-danger-bg);
+  --btn-bg-hover: var(--btn-danger-hover-bg);
+  --btn-bg-active: var(--btn-danger-active-bg);
+  --btn-text: var(--btn-danger-text);
+  --btn-border: var(--btn-danger-border);
+  background-image: linear-gradient(180deg, var(--btn-bg-hover) 0%, var(--btn-bg) 100%);
 }
 
-.btn--danger:hover,
-.btn--danger:active {
-  background-color: #c82333;
+.btn--ghost {
+  --btn-bg: var(--btn-ghost-bg);
+  --btn-bg-hover: var(--btn-ghost-hover-bg);
+  --btn-bg-active: var(--btn-ghost-active-bg);
+  --btn-text: var(--btn-ghost-text);
+  --btn-border: var(--btn-ghost-border);
+}
+
+.btn--outline {
+  --btn-bg: var(--btn-outline-bg);
+  --btn-bg-hover: var(--btn-outline-hover-bg);
+  --btn-bg-active: var(--btn-outline-active-bg);
+  --btn-text: var(--btn-outline-text);
+  --btn-border: var(--btn-outline-border);
+}
+
+/* ── Sizes (BTN-02) ── */
+
+.btn--sm {
+  padding: var(--btn-padding-y-sm) var(--btn-padding-x-sm);
+  font-size: var(--btn-font-size-sm);
+}
+
+.btn--md {
+  padding: var(--btn-padding-y-md) var(--btn-padding-x-md);
+  font-size: var(--btn-font-size-md);
+}
+
+.btn--lg {
+  padding: var(--btn-padding-y-lg) var(--btn-padding-x-lg);
+  font-size: var(--btn-font-size-lg);
+}
+
+/* ── States (BTN-03) — written once via --btn-* indirection ── */
+
+.btn:hover:not(:disabled):not(.btn--selected):not(.btn--loading) {
+  background-color: var(--btn-bg-hover);
+  border-color: var(--btn-border);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn:active:not(:disabled):not(.btn--selected):not(.btn--loading) {
+  background-color: var(--btn-bg-active);
+  box-shadow: none;
+  transform: translateY(1px);
+}
+
+/* Selected (BTN-04): full brand fill + 3px border + visible glow — unmistakable without hover */
+.btn--selected {
+  --btn-bg: var(--btn-selected-bg);
+  --btn-bg-hover: var(--btn-selected-bg);
+  --btn-bg-active: var(--btn-selected-bg);
+  --btn-text: var(--btn-selected-text);
+  --btn-border: var(--btn-selected-border);
+
+  border-width: var(--btn-selected-border-width);
+  background-color: var(--btn-selected-bg);
+  background-image: none;
+  color: var(--btn-selected-text);
+  box-shadow: var(--shadow-xs), var(--btn-selected-glow);
+}
+
+/* Loading (BTN-03, A11Y-07): spinner visible, cursor wait, reduced emphasis */
+.btn--loading {
+  cursor: wait;
+  opacity: var(--btn-loading-opacity);
+}
+
+/* Disabled (BTN-03, A11Y-08): reduced opacity + not-allowed, clicks blocked natively */
+.btn--disabled,
+.btn:disabled {
+  opacity: var(--btn-disabled-opacity);
+  cursor: not-allowed;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+/* Icon (BTN-06): explicit gap between icon and children */
+.btn--icon {
+  gap: var(--btn-gap);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.icon img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* ── Focus (A11Y-10): 3px ring, 2px offset, only on keyboard focus ── */
+
+.btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ── Internal SVG Spinner (BTN-03) ── */
+
+.spinner {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  animation: btn-spin 0.8s linear infinite;
+}
+
+.spinnerTrack {
+  opacity: 0.25;
+}
+
+.spinnerHead {
+  opacity: 0.75;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

@@ -1,5 +1,7 @@
 # GetMatrix
 
+> ⚠️ **NO DISPONIBLE en el hardware actual.** Requiere firmware ≥1.4.0.0. El controlador Arranger IPEXCB del SportBar ejecuta **v1.3.4 (API V210826)**. Este comando es exclusivo de V1.4.0.0 y devuelve `invalid property`. La función está implementada en `arrangerApi.js` pero no es funcional hasta actualizar el firmware.
+
 Comando `get matrix` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para obtener el estado completo del enrutamiento de la matriz por tipo de stream. Retorna un JSON con todas las conexiones encoder-decoder activas.
 
 ## Sintaxis

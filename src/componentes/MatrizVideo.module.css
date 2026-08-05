@@ -94,28 +94,6 @@
   padding: 0.5rem 0;
 }
 
-.formSubmit {
-  margin-left: 10px;
-  width: 150px;
-  height: 30px;
-  border: 2px solid var(--color-brand-primary, #ff3900);
-  border-radius: 5px;
-  background-color: var(--color-surface-secondary, #f5f6f9);
-  font-size: var(--font-size-md, 16px);
-  font-weight: var(--font-weight-bold, 700);
-  text-align: center;
-  transition-duration: 0.4s;
-}
-
-.formSubmit:hover {
-  cursor: pointer;
-  color: var(--color-text-inverse, white);
-  background-color: var(--color-brand-primary, #ff3900);
-  box-shadow:
-    0 2px 2px 0 rgba(0, 0, 0, 0.24),
-    0 4px 4px 0 rgba(0, 0, 0, 0.19);
-}
-
 .formSelect {
   width: 100px;
   margin-bottom: 20px;
@@ -129,15 +107,6 @@
   font-size: var(--font-size-md, 16px);
 }
 
-.formSubmit:active {
-  cursor: pointer;
-  color: var(--color-text-inverse, white);
-  background-color: var(--color-brand-primary, #ff3900);
-  box-shadow: 0 5px #666;
-  transform: translateY(4px);
-}
-
-.formSubmit:focus-visible,
 .formSelect:focus-visible {
   outline: 3px solid var(--color-brand-primary, #ff3900);
   outline-offset: 2px;
@@ -207,18 +176,59 @@
   cursor: pointer;
 }
 
-[data-theme="dark"] .formSubmit {
-  background-color: #212d4a;
-  color: #c9d1d9;
-}
-
-[data-theme="dark"] .formSubmit:hover {
-  background-color: var(--color-brand-primary, #ff3900);
-  color: #ffffff;
-}
-
 [data-theme="dark"] .formSelect {
   background-color: #161b22;
   color: #c9d1d9;
   border-color: #30363d;
+}
+
+.syncRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.syncInfo {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.diffPanel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-warning, #d29922);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.diffPanel h4 {
+  margin: 0 0 0.5rem;
+  color: var(--color-warning, #d29922);
+  font-size: 0.95rem;
+}
+
+.diffTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.diffTable th,
+.diffTable td {
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+}
+
+.diffTable th {
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.diffApp {
+  color: var(--color-danger, #dc2626);
+}
+
+.diffArranger {
+  color: var(--color-success, #3fb950);
 }

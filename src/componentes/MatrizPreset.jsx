@@ -4,6 +4,7 @@ import { usePreset } from "../hooks/usePreset";
 import PageContainer from "./ui/PageContainer";
 import "./Toast.css";
 import { useToast } from "./Toast";
+import Button from "./ui/Button";
 import styles from "./MatrizPreset.module.css";
 
 const MatrizPreset = () => {
@@ -128,26 +129,29 @@ const MatrizPreset = () => {
                 />
 
                 <div className={styles.cardActions}>
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={handleLoad(hook, n)}
-                    className={`${styles.btn} ${styles.btnLoad}`}
                     disabled={!loaded}
                   >
                     Cargar
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={handleSave(hook, ref, n)}
-                    className={`${styles.btn} ${styles.btnSave}`}
                   >
                     Guardar
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={handleClear(hook, n)}
-                    className={`${styles.btn} ${styles.btnClear}`}
                     disabled={!loaded}
                   >
                     Limpiar
-                  </button>
+                  </Button>
                 </div>
               </div>
             );

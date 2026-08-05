@@ -1,0 +1,40 @@
+/* ============================================================
+   SkipToContent — Accessible skip link
+   Visually hidden by default, visible on :focus-visible.
+   ============================================================ */
+
+.skipLink {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+
+  /* Visually hidden off-screen */
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text-primary, #000000);
+  font-family: var(--font-family-primary, "Roboto", sans-serif);
+  font-size: var(--font-size-md, 16px);
+  font-weight: var(--font-weight-bold, 700);
+  text-decoration: none;
+
+  border: var(--border-width-thick, 2px) solid var(--focus-ring-color, #2563eb);
+  border-radius: var(--radius-sm, 4px);
+  outline: none;
+
+  transition: transform var(--motion-duration-fast, 150ms) var(--motion-easing-default, ease),
+              opacity var(--motion-duration-fast, 150ms) var(--motion-easing-default, ease);
+}
+
+.skipLink:focus-visible {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+
+  box-shadow: 0 0 0 var(--focus-ring-offset, 2px) var(--color-surface, #ffffff),
+              0 0 0 calc(var(--focus-ring-width, 3px) + var(--focus-ring-offset, 2px)) var(--focus-ring-color, #2563eb);
+}

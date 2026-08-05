@@ -1,5 +1,7 @@
 # GetJoins
 
+> ⚠️ **NO DISPONIBLE en el hardware actual.** Requiere firmware ≥1.4.0.0. El controlador Arranger IPEXCB del SportBar ejecuta **v1.3.4 (API V210826)**. Este comando es exclusivo de V1.4.0.0 y devuelve `invalid property`. La función está implementada en `arrangerApi.js` pero no es funcional hasta actualizar el firmware.
+
 Comando `get joins` del [[../Dispositivos/Liberty/Controladores/Arranger-IPEXCB|Arranger IPEXCB]] para consultar qué encoder está conectado a una suscripción específica de un decoder (video, audio, serial, ir, usb, usb_ext).
 
 ## Sintaxis
@@ -80,10 +82,17 @@ get joins Decoder1 video
 
 ## Implementación en SportBar
 
-- **Estado**: ✅ Implementado en `arrangerApi.js` como `getJoins(decoder)`
-- **Línea**: `src/api/arrangerApi.js:103` — función `getJoins(decoder)` que construye el comando `get joins <decoder>` y lo envía mediante `sendArrangerCommand`
-- Cuando `decoder` está vacío, el comando se emite sin nombre de dispositivo.
-- Valor potencial: verificar la fuente de video/audio de una TV específica sin consultar la matriz completa, útil para debugging y verificación de presets individuales.
+- **Estado**: ✅ Implementado en `arrangerApi.js` como `getJoins(decoder, subscription?)`
+- **Línea**: `src/api/arrangerApi.js:103` — función `getJoins(decoder, subscription)` que construye el comando `get joins <decoder> [subscription]` y lo envía mediante `sendArrangerCommand`
+- **Parámetros**:
+  - `decoder` (string): nombre del decoder a consultar. Si está vacío, consulta sin dispositivo.
+  - `subscription` (string, opcional): tipo de suscripción — `video`, `audio`, `serial`, `ir`, `usb`, `usb_ext`. Si no se especifica, consulta general del decoder.
+- **Ejemplos de uso**:
+  - `getJoins("TVRACK", "ir")` — ¿qué encoder está conectado al IR de TVRACK?
+  - `getJoins("TVRACK", "serial")` — ¿qué encoder vía RS-232?
+  - `getJoins("TVRACK")` — consulta general del decoder
+  - `getJoins()` — consulta sin dispositivo específico
+- Valor potencial: verificar conexiones IR/serial/USB de un decoder sin consultar la matriz completa, útil para debugging de rutas no-AV y verificación de joins independientes.
 
 ## Ver también
 

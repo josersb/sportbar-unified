@@ -1,0 +1,83 @@
+/* ============================================================
+   DecosStatus — CSS Module
+   Shows 8 deco channels with reload button
+   ============================================================ */
+
+.section {
+  margin: var(--space-xs, 4px);
+  padding: var(--space-xs, 4px);
+  border: var(--border-width-thin, 1px) solid var(--color-border-aside, rgb(247, 217, 182));
+  border-radius: var(--radius-sm, 4px);
+}
+
+.heading {
+  margin: var(--space-sm, 8px);
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid grey;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.list {
+  margin: var(--space-sm, 8px);
+  padding: 0;
+  list-style: none;
+}
+
+.headerRow {
+  margin-bottom: var(--space-sm, 8px);
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  border-bottom: 1px solid lightgrey;
+  font-weight: var(--font-weight-bold, 700);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.decoRow {
+  padding: var(--space-xs, 4px);
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  font-weight: var(--font-weight-normal, 400);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.decoId {
+  text-align: center;
+}
+
+.decoChannel {
+  text-align: center;
+}
+
+.empty {
+  margin: var(--space-lg, 16px);
+  text-align: center;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-primary, #000);
+}
+
+.loading {
+  margin: var(--space-lg, 16px);
+  text-align: center;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary, #666);
+}
+
+.error {
+  margin: var(--space-lg, 16px);
+  text-align: center;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-error, #dc2626);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.errorActions {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-sm, 8px);
+}

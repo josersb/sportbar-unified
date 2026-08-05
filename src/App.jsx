@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BrowserRouter as Router } from "react-router-dom";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import { DISPOSITIVOS, getDevice } from "./contexto/dispositivos";
 import {
@@ -9,6 +10,7 @@ import {
   assignVideoSource,
   assignAudioSource,
   assignSourceToDestination,
+  fetchMatrixState,
 } from "./api/arrangerApi";
 import Body from "./componentes/Body";
 import { useToast } from "./componentes/Toast";
@@ -58,6 +60,7 @@ const App = () => {
   const [zonasFueraState, setZonasFueraState] = useState({});
   const toast = useToast();
   const [estadoLoaded, setEstadoLoaded] = useState(false);
+  const [errorDecos, setErrorDecos] = useState(false);
 
   // Load state: server first, localStorage fallback, then initial state
   useEffect(() => {
@@ -77,6 +80,7 @@ const App = () => {
         }
       } catch {
         // Server not available, fall through to localStorage
+        if (!cancelled) setErrorDecos(true);
       }
 
       // 2. Fallback to localStorage
@@ -117,6 +121,8 @@ const App = () => {
       if (!cancelled) {
         setEstado(estadoInicial);
         setEstadoLoaded(true);
+        // If we reached here, both server and localStorage failed
+        setErrorDecos(true);
       }
     }
 
@@ -125,6 +131,65 @@ const App = () => {
       cancelled = true;
     };
   }, []);
+
+  // ── Reconciliación con Arranger al iniciar ──
+  // Consulta el estado real del Arranger (video + audio) y lo compara con
+  // lo que tenemos en Express. Si hay diferencias, el Arranger gana.
+  useEffect(() => {
+    if (!estadoLoaded) return;
+
+    const vwReverse = { "VW-Norte": "VWN", "VW-Centro": "VWC", "VW-Sur": "VWS" };
+
+    async function reconcile() {
+      try {
+        const [videoData, audioData] = await Promise.all([
+          fetchMatrixState("video"),
+          fetchMatrixState("audio"),
+        ]);
+
+        let tvsChanged = false;
+        let zonasChanged = false;
+        const newTvs = { ...estado.tvs };
+        const newZonas = { ...zonasFueraState };
+
+        // Reconciliar TVs desde video state
+        for (const [dest, encoder] of Object.entries(videoData.state)) {
+          const key = vwReverse[dest] || dest;
+          if (encoder && newTvs[key] !== undefined && newTvs[key] !== encoder) {
+            newTvs[key] = encoder;
+            tvsChanged = true;
+          }
+        }
+
+        // Reconciliar zonas-fuera: video y audio
+        for (const [dest, encoder] of Object.entries(videoData.state)) {
+          if (encoder && newZonas[dest] && newZonas[dest].video !== encoder) {
+            newZonas[dest] = { ...newZonas[dest], video: encoder };
+            zonasChanged = true;
+          }
+        }
+        for (const [dest, encoder] of Object.entries(audioData.state)) {
+          if (encoder && newZonas[dest] && newZonas[dest].audio !== encoder) {
+            newZonas[dest] = { ...newZonas[dest], audio: encoder };
+            zonasChanged = true;
+          }
+        }
+
+        if (tvsChanged) setEstado((prev) => ({ ...prev, tvs: newTvs }));
+        if (zonasChanged) setZonasFueraState(newZonas);
+
+        if (tvsChanged || zonasChanged) {
+          console.log(
+            `[Arranger] Estado reconciliado — ${tvsChanged ? "TVs" : ""}${tvsChanged && zonasChanged ? " + " : ""}${zonasChanged ? "zonas-fuera" : ""} actualizados`
+          );
+        }
+      } catch {
+        // Arranger offline — usar estado de Express sin cambios
+      }
+    }
+
+    reconcile();
+  }, [estadoLoaded]); // solo al iniciar, cuando estadoLoaded pasa a true
 
   // Persist state: localStorage + server (fire-and-forget)
   useEffect(() => {
@@ -283,6 +348,44 @@ const App = () => {
     setTvrackState(newTvrack);
   };
 
+  const reintentarDecos = async () => {
+    setErrorDecos(false);
+    try {
+      const res = await fetch("/api/state");
+      if (res.ok) {
+        const { state } = await res.json();
+        if (state) {
+          setEstado(state);
+          setEstadoLoaded(true);
+          return;
+        }
+      }
+    } catch {
+      // Server still not available
+      setErrorDecos(true);
+    }
+
+    // Fallback to localStorage
+    const saved = localStorage.getItem("estadoApp");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const data = !parsed._version || parsed._version < 1
+          ? migrarEstado(parsed)
+          : parsed;
+        setEstado(data);
+        setEstadoLoaded(true);
+        return;
+      } catch {
+        // corrupted
+      }
+    }
+
+    // Ultimate fallback
+    setEstado(estadoInicial);
+    setEstadoLoaded(true);
+  };
+
   const handleZonasFueraChange = async (zoneId, type, deviceId) => {
     const prev = zonasFueraState[zoneId] || {};
     let response;
@@ -324,24 +427,29 @@ const App = () => {
   };
 
   return (
-    <ThemeProvider>
-      <ProviderUser
-        value={{
-          estado,
-          tvrackState,
-          zonasFueraState,
-          handleChangeEstadoDecos,
-          handleChangeEstadoAudio,
-          handleChangeEstadoVideo,
-          handleChangeEstadoPreset,
-          handleUpdateDispositivo,
-          handleChangeTvrack,
-          handleZonasFueraChange,
-        }}
-      >
-        <Body />
-      </ProviderUser>
-    </ThemeProvider>
+    <Router>
+      <ThemeProvider>
+          <ProviderUser
+            value={{
+              estado,
+              estadoLoaded,
+              errorDecos,
+              tvrackState,
+              zonasFueraState,
+              handleChangeEstadoDecos,
+            handleChangeEstadoAudio,
+            handleChangeEstadoVideo,
+            handleChangeEstadoPreset,
+            handleUpdateDispositivo,
+            handleChangeTvrack,
+            handleZonasFueraChange,
+            reintentarDecos,
+          }}
+        >
+          <Body />
+        </ProviderUser>
+      </ThemeProvider>
+    </Router>
   );
 };
 

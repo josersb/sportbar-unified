@@ -87,9 +87,86 @@ export async function assignAudioSource(source, destination) {
   return sendArrangerCommand(command);
 }
 
+export async function joinIr(encoder, decoder) {
+  const command = buildArrangerCommand("join ir", encoder, decoder);
+  return sendArrangerCommand(command);
+}
+
+export async function joinSerial(encoder, decoder) {
+  const command = buildArrangerCommand("join serial", encoder, decoder);
+  return sendArrangerCommand(command);
+}
+
 export async function getDevices(target = "all") {
   return sendArrangerCommand(buildArrangerCommand("get devices", target));
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Comandos V210826 (disponibles en firmware v1.3.4)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Consulta qué encoder está conectado a una suscripción de un decoder.
+ * Disponible en firmware v1.3.4 (API V210826). NO requiere ≥1.4.0.0.
+ *
+ * @param {string} decoder — Nombre del decoder (ej: "TVRACK", "aVip-Barra-Centro")
+ * @param {string} subscription — Tipo de stream: "video" | "audio" | "serial" | "ir" | "usb"
+ * @returns {Promise<string|null>} — Nombre del encoder conectado, o null si no hay conexión
+ * @throws {Error} — Si el decoder no existe o está desconectado
+ */
+export async function getEncoder(decoder, subscription) {
+  const command = buildArrangerCommand("get encoder", decoder, subscription);
+  try {
+    const response = await sendArrangerCommand(command);
+    const text = (await response.text()).trim();
+    // Respuesta: "get encoder success Encoder1"
+    const match = text.match(/get encoder success (.+)/i);
+    return match ? match[1] : text;
+  } catch (err) {
+    // "get encoder error [no encoder connected]" → no hay conexión activa
+    if (err.message.includes("no encoder connected")) return null;
+    throw err;
+  }
+}
+
+/**
+ * Reconstruye el estado completo de la matriz consultando get encoder
+ * para cada destino en batches de 8 en paralelo.
+ * Disponible en firmware v1.3.4 (API V210826).
+ *
+ * @param {string[]} destinations — Lista de nombres de decoders/destinos
+ * @param {string} [subscription="video"] — Tipo de stream a consultar
+ * @returns {Promise<Object<string, string|null>>} — Mapa destino → encoder
+ */
+export async function reconstructMatrixState(destinations, subscription = "video") {
+  const results = {};
+  const BATCH_SIZE = 8;
+
+  for (let i = 0; i < destinations.length; i += BATCH_SIZE) {
+    const batch = destinations.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.allSettled(
+      batch.map((dest) =>
+        getEncoder(dest, subscription).then((encoder) => ({ dest, encoder }))
+      )
+    );
+
+    for (const result of batchResults) {
+      if (result.status === "fulfilled") {
+        results[result.value.dest] = result.value.encoder;
+      } else {
+        results[result.value?.dest || `batch_${i}`] = null;
+      }
+    }
+  }
+
+  return results;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚠️ FW-LOCKED: Los siguientes comandos requieren firmware Arranger ≥1.4.0.0
+// El hardware actual ejecuta v1.3.4 (API V210826). Estos comandos devuelven
+// "invalid property". Están implementados para cuando se actualice el firmware.
+// ═══════════════════════════════════════════════════════════════════════════
 
 export async function getStatus(device, stream = "") {
   const args = stream ? `${device} ${stream}` : device;
@@ -100,8 +177,8 @@ export async function getMatrix(stream) {
   return sendArrangerCommand(buildArrangerCommand("get matrix", stream));
 }
 
-export async function getJoins(decoder = "") {
-  const args = decoder || "";
+export async function getJoins(decoder = "", subscription = "") {
+  const args = subscription ? `${decoder} ${subscription}` : (decoder || "");
   return sendArrangerCommand(buildArrangerCommand("get joins", args));
 }
 
@@ -171,6 +248,33 @@ export async function loadChannelPreset(decoNumber, channel) {
  */
 export async function loadMatrixPreset(presetName) {
   return sendArrangerCommand(`preset load ${presetName}`);
+}
+
+/**
+ * Crea un nuevo preset en el Arranger.
+ * @param {string} name - Nombre del preset
+ * @param {string} command - Comando(s) del preset (puede contener condicionales)
+ * @returns {Promise<Response>}
+ */
+export async function addPreset(name, command) {
+  return sendArrangerCommand(`preset add ${name} ${command}`);
+}
+
+/**
+ * Elimina un preset del Arranger.
+ * @param {string} name - Nombre del preset a eliminar
+ * @returns {Promise<Response>}
+ */
+export async function deletePreset(name) {
+  return sendArrangerCommand(`preset delete ${name}`);
+}
+
+/**
+ * Obtiene la lista de presets guardados en el Arranger.
+ * @returns {Promise<Response>}
+ */
+export async function getPresets() {
+  return sendArrangerCommand("get presets");
 }
 
 /**
@@ -348,6 +452,18 @@ export async function setZonasFueraLink(zoneId, linked) {
     body: JSON.stringify({ linked }),
   });
   if (!response.ok) throw new Error(`Failed to set link for ${zoneId}: ${response.status}`);
+  return response.json();
+}
+
+/**
+ * Consulta el estado real de la matriz Arranger vía el endpoint del server.
+ * El server hace batched get encoder contra el Arranger y devuelve el estado completo.
+ * @param {string} [subscription="video"] — Tipo de stream: "video" | "audio"
+ * @returns {Promise<Object>} — { timestamp, connected, disconnected, state: { destino: encoder } }
+ */
+export async function fetchMatrixState(subscription = "video") {
+  const response = await fetch(`/api/matrix/state?subscription=${subscription}`);
+  if (!response.ok) throw new Error(`Failed to fetch matrix state: ${response.status}`);
   return response.json();
 }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getStatus, getMatrix, getJoins, leaveAv, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
+import { addPreset, deletePreset, getPresets, joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getEncoder, getStatus, getMatrix, getJoins, leaveAv, joinIr, joinSerial, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
 
 // Mock IR_CODES so the dynamic import inside sendChannelDigits resolves synchronously
 // and doesn't interfere with vi.useFakeTimers
@@ -238,6 +238,51 @@ describe("getDevices", () => {
   });
 });
 
+describe("getEncoder", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns encoder name on success", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("get encoder success DTV1"),
+    }));
+    const encoder = await getEncoder("TVRACK", "video");
+    expect(encoder).toBe("DTV1");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20encoder%20TVRACK%20video");
+  });
+
+  it("returns null when no encoder connected", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("get encoder error [no encoder connected]"),
+    }));
+    const encoder = await getEncoder("TVRACK", "video");
+    expect(encoder).toBeNull();
+  });
+
+  it("sends get encoder for audio subscription", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("get encoder success DTV2"),
+    }));
+    const encoder = await getEncoder("Decoder1", "audio");
+    expect(encoder).toBe("DTV2");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20encoder%20Decoder1%20audio");
+  });
+
+  it("throws on invalid decoder", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("get encoder error [decoder 'Fake' not found]"),
+    }));
+    await expect(getEncoder("Fake", "video")).rejects.toThrow("Arranger");
+  });
+});
+
 describe("getStatus", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
@@ -296,6 +341,30 @@ describe("getJoins", () => {
     const calledUrl = fetch.mock.calls[0][0];
     expect(calledUrl).toContain("get%20joins");
   });
+
+  it("sends get joins with decoder only (no subscription)", async () => {
+    await getJoins("TVRACK");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20joins%20TVRACK");
+  });
+
+  it("sends get joins with decoder and ir subscription", async () => {
+    await getJoins("TVRACK", "ir");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20joins%20TVRACK%20ir");
+  });
+
+  it("sends get joins with decoder and serial subscription", async () => {
+    await getJoins("DTV1", "serial");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20joins%20DTV1%20serial");
+  });
+
+  it("sends get joins with decoder and video subscription", async () => {
+    await getJoins("Decoder1", "video");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20joins%20Decoder1%20video");
+  });
 });
 
 describe("leaveAv", () => {
@@ -311,6 +380,92 @@ describe("leaveAv", () => {
     await leaveAv("TVRACK");
     const calledUrl = fetch.mock.calls[0][0];
     expect(calledUrl).toContain("leave%20av%20TVRACK");
+  });
+});
+
+describe("addPreset", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends preset add command with encoded name and command", async () => {
+    await addPreset("test", "join av DTV1 TV01");
+
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("preset%20add%20test%20join%20av%20DTV1%20TV01");
+  });
+
+  it("throws when Arranger rejects with error message", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("Error: preset already exists"),
+    }));
+
+    await expect(addPreset("test", "futbol")).rejects.toThrow("Arranger rechazó el comando");
+  });
+});
+
+describe("deletePreset", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends preset delete command with encoded name", async () => {
+    await deletePreset("futbol-domingo");
+
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("preset%20delete%20futbol-domingo");
+  });
+
+  it("throws when preset is not found", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("not found"),
+    }));
+
+    await expect(deletePreset("inexistente")).rejects.toThrow("Arranger rechazó el comando");
+  });
+});
+
+describe("getPresets", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends get presets command", async () => {
+    await getPresets();
+
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20presets");
+  });
+
+  it("throws on timeout", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("The operation was aborted", "AbortError")));
+
+    await expect(getPresets()).rejects.toThrow("Timeout");
+  });
+
+  it("returns the presets text body", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      text: () => Promise.resolve("preset1, preset2, preset3"),
+    }));
+
+    const response = await getPresets();
+    const text = await response.text();
+
+    expect(text).toBe("preset1, preset2, preset3");
   });
 });
 
@@ -441,5 +596,37 @@ describe("Zonas Fuera State Functions", () => {
 
       await expect(setZonasFueraLink("INVALID", true)).rejects.toThrow("Failed to set link for INVALID: 400");
     });
+  });
+});
+
+describe("joinIr", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends join ir with encoder and decoder", async () => {
+    await joinIr("DTV1", "TVRACK");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("join%20ir%20DTV1%20TVRACK");
+  });
+});
+
+describe("joinSerial", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends join serial with encoder and decoder", async () => {
+    await joinSerial("DTV1", "TVRACK");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("join%20serial%20DTV1%20TVRACK");
   });
 });

@@ -1,0 +1,104 @@
+/* ============================================================
+   AudioStatus — CSS Module
+   Shows 3 audio zones with flex layout
+   ============================================================ */
+
+.section {
+  margin: var(--space-xs, 4px);
+  padding: var(--space-xs, 4px);
+  border: var(--border-width-thin, 1px) solid var(--color-border-aside, rgb(247, 217, 182));
+  border-radius: var(--radius-sm, 4px);
+}
+
+.heading {
+  margin: var(--space-sm, 8px);
+  border-bottom: 1px solid grey;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.list {
+  margin: var(--space-sm, 8px);
+  padding: 0;
+  list-style: none;
+}
+
+.headerRow {
+  margin-bottom: var(--space-xs, 4px);
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid lightgrey;
+  font-weight: var(--font-weight-bold, 700);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.headerRow span:nth-child(1) {
+  flex: 2;
+  text-align: left;
+}
+
+.headerRow span:nth-child(2),
+.headerRow span:nth-child(3),
+.headerRow span:nth-child(4) {
+  flex: 1;
+  text-align: center;
+  padding: 0 clamp(4px, 2vw, 12px);
+}
+
+.emojiCol {
+  width: 1.2em;
+  text-align: center;
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.row {
+  padding: var(--space-xs, 4px);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--gap-xs, 4px);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-normal, 400);
+  border-radius: var(--radius-sm, 4px);
+  container-type: inline-size;
+}
+
+.cell {
+  flex: 1;
+  text-align: center;
+}
+
+.cell:first-child {
+  flex: 2;
+  text-align: left;
+}
+
+.signal {
+  flex: 1;
+  text-align: center;
+  padding: 2px clamp(4px, 2vw, 12px);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.muteOn {
+  background-color: #dc2626;
+  color: white;
+}
+
+.muteOff {
+  background-color: #16a34a;
+  color: white;
+}
+
+@container (max-width: 200px) {
+  .emojiCol {
+    display: none;
+  }
+}
+
+.empty {
+  margin: var(--space-lg, 16px);
+  text-align: center;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary, #666);
+}

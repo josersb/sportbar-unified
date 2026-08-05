@@ -279,6 +279,8 @@ production-config.json
 # Local development overrides
 local-config.json
 dev-config.json
+worktree.config.json
+arranger-state-*.json
 
 # SDD tooling
 .atl/

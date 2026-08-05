@@ -15,34 +15,16 @@ Todos los procesos de pensamiento y respuestas deben ser generados en Espanol.
 
 **⚠️ Todos los agentes y subagentes DEBEN adaptar sus comandos a PowerShell 7+.** Si un comando documentado usa `rm -rf`, traducirlo a `Remove-Item -Recurse -Force`. Si usa `grep`, usar `Select-String`. NUNCA asumir que el entorno es Unix/Linux.
 
-### Servidores y procesos de larga duración (MANDATORIO)
+### Servidores para testing (MANDATORIO)
 
-**NUNCA iniciar servidores con timeout.** Un timeout mata el proceso automáticamente, lo cual es ilógico para un servidor que debe correr hasta que el usuario decida detenerlo.
+**NUNCA usar timeout ni `Start-Process`.** El usuario necesita ver cada servicio.
 
-| Regla | Instrucción |
-|---|---|
-| Inicio | Usar `Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "<comando>"` para lanzar en segundo plano. Redirigir salida con `> $null 2>&1` para no quedarse escuchando. |
-| Timeout | **NUNCA** usar timeout en comandos de servidores. Si la herramienta lo exige, usar `Start-Process`. |
-| Cierre | **ANTES de iniciar**, proporcionar al usuario los comandos para matar el proceso. |
-| Soltar | Inmediatamente después de lanzar, **soltar y volver al chat**. No quedarse escuchando logs. |
+1. Por cada servicio que el usuario pida iniciar, abrir **una ventana de terminal visible** en el directorio del worktree
+2. El orden de inicio lo define el usuario
+3. **ANTES de lanzar**, dar al usuario los comandos para matar
+4. Después de lanzar, **soltar y volver al chat**
 
-**Ejemplo correcto para Vite:**
-```powershell
-Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "pnpm run dev"
-```
-**Para matarlo después:**
-```powershell
-Get-Process -Name "node" | Where-Object { $_.CommandLine -like "*vite*" } | Stop-Process -Force
-```
-
-**Ejemplo correcto para Express:**
-```powershell
-Start-Process -NoNewWindow pwsh -ArgumentList "-Command", "pnpm run serve"
-```
-**Para matarlo después:**
-```powershell
-Get-Process -Name "node" | Where-Object { $_.CommandLine -like "*server.js*" } | Stop-Process -Force
-```
+Para matar todo: `Get-Process -Name "node" | Stop-Process -Force`
 
 **⚠️ Configuración de worktree NUNCA se versiona.** Los puertos específicos de cada worktree viven en `worktree.config.json` (gitignored). `vite.config.js`, `server/server.js`, y `package.json` leen de ese archivo y permanecen genéricos. Al mergear feat/* → v2, estos archivos no generan conflictos de configuración.
 

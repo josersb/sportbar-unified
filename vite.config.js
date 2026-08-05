@@ -10,7 +10,7 @@ export default defineConfig({
 
   // Development server configuration
   server: {
-    port: 5176,
+    port: 5173,
     host: true, // Allow external connections
     open: true, // Auto-open browser
     cors: true,

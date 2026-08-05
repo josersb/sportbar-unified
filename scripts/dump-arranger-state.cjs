@@ -20,7 +20,7 @@ const ARRANGER_HOST = process.env.ARRANGER_HOST || "192.168.2.254";
 const ARRANGER_PORT = process.env.ARRANGER_PORT || "80";
 const TOKEN = process.env.VITE_ARRANGER_TOKEN;
 const SUBSCRIPTION = process.argv[2] || "video";
-const BATCH_SIZE = 8;
+const BATCH_SIZE = 4;
 const TIMEOUT_MS = 10000;
 const GLOBAL_TIMEOUT_MS = 120000; // 2 minutos máximo total
 const ARRANGER_BASE = `http://${ARRANGER_HOST}:${ARRANGER_PORT}/api/command`;
@@ -33,13 +33,15 @@ if (!TOKEN) {
 }
 
 // ── Destinos a consultar ──
+// Nota: los nombres deben coincidir con los del Arranger físico.
+// VWN/VWC/VWS se mapean a VW-Norte/VW-Centro/VW-Sur (los nombres reales en la matriz).
 const DESTINATIONS = [
   // TVs principales
   "TV01","TV02","TV03","TV04","TV05","TV06","TV07","TV08","TV09","TV10",
   "TV11","TV12","TV13","TV14","TV15","TV16","TV17","TV18","TV19","TV20",
   "TV21","TV22","TV23","TV24","TV25","TV26",
-  // Video Wall
-  "VWN","VWC","VWS",
+  // Video Wall — los nombres reales en el Arranger son VW-*, no VW*
+  "VW-Norte","VW-Centro","VW-Sur",
   // Rack
   "TVRACK",
   // Zonas fuera de sportbar

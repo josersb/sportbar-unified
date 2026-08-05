@@ -129,6 +129,39 @@ export async function getEncoder(decoder, subscription) {
   }
 }
 
+/**
+ * Reconstruye el estado completo de la matriz consultando get encoder
+ * para cada destino en batches de 8 en paralelo.
+ * Disponible en firmware v1.3.4 (API V210826).
+ *
+ * @param {string[]} destinations — Lista de nombres de decoders/destinos
+ * @param {string} [subscription="video"] — Tipo de stream a consultar
+ * @returns {Promise<Object<string, string|null>>} — Mapa destino → encoder
+ */
+export async function reconstructMatrixState(destinations, subscription = "video") {
+  const results = {};
+  const BATCH_SIZE = 8;
+
+  for (let i = 0; i < destinations.length; i += BATCH_SIZE) {
+    const batch = destinations.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.allSettled(
+      batch.map((dest) =>
+        getEncoder(dest, subscription).then((encoder) => ({ dest, encoder }))
+      )
+    );
+
+    for (const result of batchResults) {
+      if (result.status === "fulfilled") {
+        results[result.value.dest] = result.value.encoder;
+      } else {
+        results[result.value?.dest || `batch_${i}`] = null;
+      }
+    }
+  }
+
+  return results;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ⚠️ FW-LOCKED: Los siguientes comandos requieren firmware Arranger ≥1.4.0.0
 // El hardware actual ejecuta v1.3.4 (API V210826). Estos comandos devuelven

@@ -10,6 +10,7 @@ import {
   assignVideoSource,
   assignAudioSource,
   assignSourceToDestination,
+  fetchMatrixState,
 } from "./api/arrangerApi";
 import Body from "./componentes/Body";
 import { useToast } from "./componentes/Toast";
@@ -130,6 +131,65 @@ const App = () => {
       cancelled = true;
     };
   }, []);
+
+  // ── Reconciliación con Arranger al iniciar ──
+  // Consulta el estado real del Arranger (video + audio) y lo compara con
+  // lo que tenemos en Express. Si hay diferencias, el Arranger gana.
+  useEffect(() => {
+    if (!estadoLoaded) return;
+
+    const vwReverse = { "VW-Norte": "VWN", "VW-Centro": "VWC", "VW-Sur": "VWS" };
+
+    async function reconcile() {
+      try {
+        const [videoData, audioData] = await Promise.all([
+          fetchMatrixState("video"),
+          fetchMatrixState("audio"),
+        ]);
+
+        let tvsChanged = false;
+        let zonasChanged = false;
+        const newTvs = { ...estado.tvs };
+        const newZonas = { ...zonasFueraState };
+
+        // Reconciliar TVs desde video state
+        for (const [dest, encoder] of Object.entries(videoData.state)) {
+          const key = vwReverse[dest] || dest;
+          if (encoder && newTvs[key] !== undefined && newTvs[key] !== encoder) {
+            newTvs[key] = encoder;
+            tvsChanged = true;
+          }
+        }
+
+        // Reconciliar zonas-fuera: video y audio
+        for (const [dest, encoder] of Object.entries(videoData.state)) {
+          if (encoder && newZonas[dest] && newZonas[dest].video !== encoder) {
+            newZonas[dest] = { ...newZonas[dest], video: encoder };
+            zonasChanged = true;
+          }
+        }
+        for (const [dest, encoder] of Object.entries(audioData.state)) {
+          if (encoder && newZonas[dest] && newZonas[dest].audio !== encoder) {
+            newZonas[dest] = { ...newZonas[dest], audio: encoder };
+            zonasChanged = true;
+          }
+        }
+
+        if (tvsChanged) setEstado((prev) => ({ ...prev, tvs: newTvs }));
+        if (zonasChanged) setZonasFueraState(newZonas);
+
+        if (tvsChanged || zonasChanged) {
+          console.log(
+            `[Arranger] Estado reconciliado — ${tvsChanged ? "TVs" : ""}${tvsChanged && zonasChanged ? " + " : ""}${zonasChanged ? "zonas-fuera" : ""} actualizados`
+          );
+        }
+      } catch {
+        // Arranger offline — usar estado de Express sin cambios
+      }
+    }
+
+    reconcile();
+  }, [estadoLoaded]); // solo al iniciar, cuando estadoLoaded pasa a true
 
   // Persist state: localStorage + server (fire-and-forget)
   useEffect(() => {

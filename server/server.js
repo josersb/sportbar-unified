@@ -118,6 +118,22 @@ let stateDb;
     await stateDb.write();
   }
 
+  // Schema integrity: ensure required keys exist
+  let repaired = false;
+  if (!stateDb.data.presets) {
+    stateDb.data.presets = { preset1: null, preset2: null, preset3: null, preset4: null, preset5: null };
+    repaired = true;
+  }
+  if (!stateDb.data.tvrack) {
+    stateDb.data.tvrack = { video: "DTV1", audio: "DTV1", link: false, lastUpdated: null };
+    repaired = true;
+  }
+  if (!stateDb.data.zonasFuera) {
+    stateDb.data.zonasFuera = {};
+    repaired = true;
+  }
+  if (repaired) await stateDb.write();
+
   // ── Migration v2: extraer zonas fuera de state.tvs → zonasFuera ──
   await migrateZonasFueraV2();
 })();

@@ -52,6 +52,11 @@ export default defineConfig({
         target: EXPRESS_URL,
         changeOrigin: true,
       },
+      // Matrix State → Express (must come before the generic /api rule)
+      "/api/matrix": {
+        target: EXPRESS_URL,
+        changeOrigin: true,
+      },
       // Proxy API calls to avoid CORS issues during development
       "/api": {
         target: `http://${ARRANGER_HOST}:${ARRANGER_PORT}`,

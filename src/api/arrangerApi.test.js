@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { addPreset, deletePreset, getPresets, joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getStatus, getMatrix, getJoins, leaveAv, joinIr, joinSerial, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
+import { addPreset, deletePreset, getPresets, joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getEncoder, getStatus, getMatrix, getJoins, leaveAv, joinIr, joinSerial, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
 
 // Mock IR_CODES so the dynamic import inside sendChannelDigits resolves synchronously
 // and doesn't interfere with vi.useFakeTimers
@@ -235,6 +235,51 @@ describe("getDevices", () => {
     await getDevices("Encoders");
     const calledUrl = fetch.mock.calls[0][0];
     expect(calledUrl).toContain("get%20devices%20Encoders");
+  });
+});
+
+describe("getEncoder", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns encoder name on success", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("get encoder success DTV1"),
+    }));
+    const encoder = await getEncoder("TVRACK", "video");
+    expect(encoder).toBe("DTV1");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20encoder%20TVRACK%20video");
+  });
+
+  it("returns null when no encoder connected", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("get encoder error [no encoder connected]"),
+    }));
+    const encoder = await getEncoder("TVRACK", "video");
+    expect(encoder).toBeNull();
+  });
+
+  it("sends get encoder for audio subscription", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("get encoder success DTV2"),
+    }));
+    const encoder = await getEncoder("Decoder1", "audio");
+    expect(encoder).toBe("DTV2");
+    const calledUrl = fetch.mock.calls[0][0];
+    expect(calledUrl).toContain("get%20encoder%20Decoder1%20audio");
+  });
+
+  it("throws on invalid decoder", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve("get encoder error [decoder 'Fake' not found]"),
+    }));
+    await expect(getEncoder("Fake", "video")).rejects.toThrow("Arranger");
   });
 });
 

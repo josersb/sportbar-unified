@@ -102,6 +102,34 @@ export async function getDevices(target = "all") {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Comandos V210826 (disponibles en firmware v1.3.4)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Consulta qué encoder está conectado a una suscripción de un decoder.
+ * Disponible en firmware v1.3.4 (API V210826). NO requiere ≥1.4.0.0.
+ *
+ * @param {string} decoder — Nombre del decoder (ej: "TVRACK", "aVip-Barra-Centro")
+ * @param {string} subscription — Tipo de stream: "video" | "audio" | "serial" | "ir" | "usb"
+ * @returns {Promise<string|null>} — Nombre del encoder conectado, o null si no hay conexión
+ * @throws {Error} — Si el decoder no existe o está desconectado
+ */
+export async function getEncoder(decoder, subscription) {
+  const command = buildArrangerCommand("get encoder", decoder, subscription);
+  try {
+    const response = await sendArrangerCommand(command);
+    const text = (await response.text()).trim();
+    // Respuesta: "get encoder success Encoder1"
+    const match = text.match(/get encoder success (.+)/i);
+    return match ? match[1] : text;
+  } catch (err) {
+    // "get encoder error [no encoder connected]" → no hay conexión activa
+    if (err.message.includes("no encoder connected")) return null;
+    throw err;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ⚠️ FW-LOCKED: Los siguientes comandos requieren firmware Arranger ≥1.4.0.0
 // El hardware actual ejecuta v1.3.4 (API V210826). Estos comandos devuelven
 // "invalid property". Están implementados para cuando se actualice el firmware.

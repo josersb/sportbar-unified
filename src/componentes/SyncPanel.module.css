@@ -1,0 +1,457 @@
+/* ============================================================
+   SyncPanel — CSS Module
+   Drawer lateral derecho (≥768px) / bottom sheet (<768px).
+   Transiciones CSS puras (transform), sin animación JS.
+   Todos los valores vía design tokens (src/styles/tokens.css).
+   ============================================================ */
+
+/* ── Backdrop (click fuera cierra) ── */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+}
+
+/* ── Pestaña lateral (visible cuando el panel está cerrado) ── */
+.tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-target-min, 44px);
+  height: var(--touch-target-min, 44px);
+  padding: var(--space-sm, 8px) var(--space-xs, 4px);
+  border: var(--border-width-thin, 1px) solid var(--color-border, #333);
+  border-right: none;
+  border-radius: var(--radius-md, 8px) 0 0 var(--radius-md, 8px);
+  background: var(--color-surface-secondary, #f5f6f9);
+  color: var(--color-text-primary, #000);
+  font-size: var(--font-size-md, 16px);
+  font-weight: var(--font-weight-bold, 700);
+  cursor: pointer;
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.08));
+}
+
+.tab:hover {
+  filter: brightness(0.97);
+}
+
+.tabOk {
+  border-color: var(--color-success, #3fb950);
+}
+
+.tabWarn {
+  border-color: var(--color-warning, #d29922);
+}
+
+.tabError {
+  border-color: var(--color-danger, #dc2626);
+}
+
+.tabBusy {
+  animation: syncPulse 1.2s ease-in-out infinite;
+}
+
+/* ── Drawer ── */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  width: clamp(320px, 32vw, 420px);
+  max-width: 100vw;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-primary, #000);
+  border-left: var(--border-width-thin, 1px) solid var(--color-border, #333);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.08));
+  transform: translateX(100%);
+  visibility: hidden;
+  transition:
+    transform var(--motion-duration-normal, 300ms) var(--motion-easing-default, ease),
+    visibility 0s linear var(--motion-duration-normal, 300ms);
+}
+
+.drawerOpen {
+  transform: translateX(0);
+  visibility: visible;
+  transition:
+    transform var(--motion-duration-normal, 300ms) var(--motion-easing-default, ease),
+    visibility 0s;
+}
+
+.drawerClosed {
+  transform: translateX(100%);
+  visibility: hidden;
+}
+
+/* ── Header del drawer ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-sm, 8px);
+  padding: var(--space-md, 16px);
+  border-bottom: var(--border-width-thin, 1px) solid var(--color-border, #333);
+  background: var(--color-surface-secondary, #f5f6f9);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-lg, 24px);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm, 8px);
+}
+
+.lastSync {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-primary, #000);
+  opacity: 0.65;
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min, 44px);
+  height: var(--touch-target-min, 44px);
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  color: var(--color-text-primary, #000);
+  font-size: var(--font-size-md, 16px);
+  cursor: pointer;
+}
+
+.closeBtn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.closeBtn:focus-visible {
+  outline: var(--focus-ring-width, 3px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+/* ── Cuerpo ── */
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md, 16px);
+}
+
+/* ── Progreso (status === 'fetching') ── */
+.progressArea {
+  padding: var(--space-md, 16px);
+  border: var(--border-width-thin, 1px) solid var(--color-border, #333);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface-secondary, #f5f6f9);
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm, 8px);
+  margin-bottom: var(--space-xs, 4px);
+}
+
+.progressLabel {
+  width: 3.5rem;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.progressChars {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--font-size-sm, 14px);
+  letter-spacing: -1px;
+  color: var(--color-text-primary, #000);
+  opacity: 0.45;
+}
+
+.progressCharsDone {
+  color: var(--color-success, #3fb950);
+  opacity: 1;
+}
+
+.progressCheck {
+  font-size: var(--font-size-sm, 14px);
+}
+
+.progressMeta {
+  margin: var(--space-xs, 4px) 0 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-primary, #000);
+  opacity: 0.65;
+}
+
+.comparing {
+  margin: 0;
+  padding: var(--space-md, 16px);
+  border: var(--border-width-thin, 1px) solid var(--color-border, #333);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface-secondary, #f5f6f9);
+  font-size: var(--font-size-sm, 14px);
+  text-align: center;
+}
+
+/* ── Error (status === 'error') ── */
+.errorBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-sm, 8px);
+  padding: var(--space-md, 16px);
+  border: var(--border-width-thin, 1px) solid var(--color-danger, #dc2626);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface-secondary, #f5f6f9);
+}
+
+.errorText {
+  margin: 0;
+  font-size: var(--font-size-sm, 14px);
+}
+
+.retryInfo {
+  margin: 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-primary, #000);
+  opacity: 0.65;
+}
+
+/* ── Stale: cache offline / datos desfasados (PR3 4.1, 4.5) ── */
+.staleBanner {
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  border: var(--border-width-thin, 1px) solid var(--color-warning, #d29922);
+  border-radius: var(--radius-md, 8px);
+  background: rgba(210, 153, 34, 0.12);
+  font-size: var(--font-size-sm, 14px);
+}
+
+/* ── Parcial: destinos sin respuesta (PR3 4.2, AR-R7) ── */
+.partialBanner {
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  border: var(--border-width-thin, 1px) solid var(--color-warning, #d29922);
+  border-radius: var(--radius-md, 8px);
+  background: rgba(210, 153, 34, 0.12);
+}
+
+.partialLine {
+  margin: 0;
+  font-size: var(--font-size-sm, 14px);
+}
+
+.partialLine + .partialLine {
+  margin-top: var(--space-xs, 4px);
+}
+
+/* ── Footer de staleness (PR3 4.5) ── */
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs, 4px);
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  border-top: var(--border-width-thin, 1px) solid var(--color-border, #333);
+  background: var(--color-surface-secondary, #f5f6f9);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.staleBadge {
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-warning, #d29922);
+}
+
+.staleMeta {
+  color: var(--color-text-primary, #000);
+  opacity: 0.65;
+}
+
+/* ── Sección diffs: tabs + toolbar + tabla ── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm, 8px);
+}
+
+.tabsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-xs, 4px);
+}
+
+.tabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-xs, 4px);
+  padding: var(--space-xs, 4px) var(--space-sm, 8px);
+  border: var(--border-width-thin, 1px) solid var(--color-border, #333);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-surface-secondary, #f5f6f9);
+  color: var(--color-text-primary, #000);
+  font-size: var(--font-size-sm, 14px);
+  cursor: pointer;
+}
+
+.tabBtn:hover {
+  filter: brightness(0.97);
+}
+
+.tabBtnActive {
+  border-color: var(--color-brand-primary, #e85d3a);
+  background: var(--color-brand-primary, #e85d3a);
+  color: var(--color-text-inverse, #fff);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-xs, 4px);
+  border-radius: 9px;
+  background: var(--color-warning, #d29922);
+  color: var(--color-text-inverse, #fff);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-bold, 700);
+  line-height: 1;
+}
+
+.tabBtnActive .badge {
+  background: var(--color-text-inverse, #fff);
+  color: var(--color-brand-primary, #e85d3a);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-sm, 8px);
+}
+
+.toolbarInfo {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-primary, #000);
+  opacity: 0.65;
+}
+
+.diffTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm, 14px);
+}
+
+.diffTable th,
+.diffTable td {
+  padding: var(--space-xs, 4px) var(--space-sm, 8px);
+  text-align: left;
+  border-bottom: var(--border-width-thin, 1px) solid var(--color-border, #333);
+  vertical-align: middle;
+}
+
+.diffTable th {
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--color-text-primary, #000);
+  opacity: 0.65;
+}
+
+.destCell {
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.typeCell {
+  color: var(--color-text-primary, #000);
+  opacity: 0.75;
+}
+
+.appVal {
+  color: var(--color-danger, #dc2626);
+}
+
+.arrangerVal {
+  color: var(--color-success, #3fb950);
+}
+
+/* PR3 4.2: destino sin respuesta ("—" en la columna Arranger) */
+.arrangerNull {
+  color: var(--color-text-primary, #000);
+  opacity: 0.4;
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.actions {
+  display: flex;
+  gap: var(--gap-xs, 4px);
+  white-space: nowrap;
+}
+
+/* ── Estados vacíos ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-xs, 4px);
+  padding: var(--space-lg, 20px) var(--space-md, 16px);
+  border: var(--border-width-thin, 1px) dashed var(--color-border, #333);
+  border-radius: var(--radius-md, 8px);
+}
+
+.emptyText {
+  margin: 0;
+  font-size: var(--font-size-sm, 14px);
+}
+
+/* ── Mobile (<768px): bottom sheet a ancho completo (RL-ADD1) ── */
+@media (max-width: 767.98px) {
+  .drawer {
+    top: auto;
+    width: 100%;
+    height: 70vh;
+    border-left: none;
+    border-top: var(--border-width-thin, 1px) solid var(--color-border, #333);
+    transform: translateY(100%);
+  }
+
+  .drawerOpen {
+    transform: translateY(0);
+  }
+
+  .drawerClosed {
+    transform: translateY(100%);
+  }
+
+  .tab {
+    top: auto;
+    bottom: var(--gap-lg, 24px);
+    transform: none;
+    border-right: var(--border-width-thin, 1px) solid var(--color-border, #333);
+    border-radius: var(--radius-md, 8px);
+  }
+}
+
+@keyframes syncPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}

@@ -11,11 +11,13 @@ import Arranger from "./Arranger";
 import Soporte from "./Soporte";
 import MatrizPreset from "./MatrizPreset";
 import SkipToContent from "./SkipToContent";
+import SyncPanel from "./SyncPanel";
 
 function Body() {
   return (
     <>
       <SkipToContent />
+      <SyncPanel />
       <div className={styles.container}>
         <div className={styles.header}><Header /></div>
         <div className={styles.nav}><Nav /></div>

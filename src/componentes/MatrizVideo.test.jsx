@@ -88,6 +88,14 @@ function renderWithContext(overrideValue = {}) {
     handleChangeTvrack: vi.fn(),
     zonasFueraState: {},
     handleZonasFueraChange: mockHandleZonasFueraChange,
+    reconciliationStatus: {
+      status: "idle",
+      progress: { done: 0, total: 0, subscription: "video" },
+      diffs: [],
+      elapsedMs: 0,
+      lastSync: null,
+      reconcile: vi.fn(),
+    },
     ...overrideValue,
   };
   return render(

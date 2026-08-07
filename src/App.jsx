@@ -214,8 +214,37 @@ const App = () => {
     if (tvsChanged) setEstado((prev) => ({ ...prev, tvs: newTvs }));
     if (zonasChanged) setZonasFueraState(newZonas);
     if (tvrackChanged) setTvrackState(newTvrack);
-    reconciledRef.current = true; // bloquea el polling hasta el próximo ciclo
-    setTimeout(() => { reconciledRef.current = false; }, 6000);
+
+    // Persistir al server para que el polling no pise con datos viejos
+    if (zonasChanged) {
+      for (const [id, data] of Object.entries(newZonas)) {
+        fetch(`/api/zonas-fuera/${id}/video`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: data.video }),
+        }).catch(() => {});
+        fetch(`/api/zonas-fuera/${id}/audio`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: data.audio }),
+        }).catch(() => {});
+      }
+    }
+    if (tvrackChanged) {
+      fetch("/api/tvrack/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: newTvrack.video }),
+      }).catch(() => {});
+      fetch("/api/tvrack/audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: newTvrack.audio }),
+      }).catch(() => {});
+    }
+
+    reconciledRef.current = true;
+    setTimeout(() => { reconciledRef.current = false; }, 2000);
 
     // Notificación + limpieza: los diffs ya se aplicaron automáticamente.
     if (applied > 0) {

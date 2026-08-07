@@ -159,6 +159,7 @@ const App = () => {
   // (ya no representan el estado real — el Arranger pasó a ser la fuente).
   const appliedDiffsRef = useRef(null);
   const toastSuccessRef = useRef();
+  const reconciledRef = useRef(false); // evita que el polling pise el estado recién reconciliado
   useEffect(() => {
     toastSuccessRef.current = toast.success;
   });
@@ -213,6 +214,8 @@ const App = () => {
     if (tvsChanged) setEstado((prev) => ({ ...prev, tvs: newTvs }));
     if (zonasChanged) setZonasFueraState(newZonas);
     if (tvrackChanged) setTvrackState(newTvrack);
+    reconciledRef.current = true; // bloquea el polling hasta el próximo ciclo
+    setTimeout(() => { reconciledRef.current = false; }, 6000);
 
     // Notificación + limpieza: los diffs ya se aplicaron automáticamente.
     if (applied > 0) {
@@ -247,6 +250,7 @@ const App = () => {
 
     async function loadZonasFuera() {
       try {
+        if (reconciledRef.current) return; // reconciliación reciente — no pisar
         const data = await fetchZonasFueraState();
         if (!cancelled) {
           setZonasFueraState((prev) => {
@@ -273,6 +277,7 @@ const App = () => {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
+        if (reconciledRef.current) return; // reconciliación reciente — no pisar
         const res = await fetch("/api/state");
         if (!res.ok) return;
         const { state: serverState } = await res.json();
@@ -297,6 +302,7 @@ const App = () => {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
+        if (reconciledRef.current) return; // reconciliación reciente — no pisar
         const res = await fetch("/api/tvrack/state");
         if (!res.ok) return;
         const tvrack = await res.json();

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import { DISPOSITIVOS, getDevice } from "./contexto/dispositivos";
@@ -10,8 +10,8 @@ import {
   assignVideoSource,
   assignAudioSource,
   assignSourceToDestination,
-  fetchMatrixState,
 } from "./api/arrangerApi";
+import { useArrangerReconciliation } from "./hooks/useArrangerReconciliation";
 import Body from "./componentes/Body";
 import { useToast } from "./componentes/Toast";
 import ThemeProvider from "./contexto/ThemeProvider";
@@ -61,6 +61,21 @@ const App = () => {
   const toast = useToast();
   const [estadoLoaded, setEstadoLoaded] = useState(false);
   const [errorDecos, setErrorDecos] = useState(false);
+
+  // ── Reconciliación con Arranger (hook extraído) ──
+  const {
+    progress,
+    diffs,
+    status: reconciliationStatus,
+    elapsedMs,
+    lastSync,
+    cachedDiffs,
+    cachedAt,
+    retryCount,
+    partial,
+    reconcile,
+    clearDiffs,
+  } = useArrangerReconciliation(estado.tvs, zonasFueraState, tvrackState);
 
   // Load state: server first, localStorage fallback, then initial state
   useEffect(() => {
@@ -132,64 +147,111 @@ const App = () => {
     };
   }, []);
 
-  // ── Reconciliación con Arranger al iniciar ──
-  // Consulta el estado real del Arranger (video + audio) y lo compara con
-  // lo que tenemos en Express. Si hay diferencias, el Arranger gana.
+  // ── Reconciliación con Arranger al iniciar (diferida 500ms, no bloqueante) ──
   useEffect(() => {
     if (!estadoLoaded) return;
+    const timer = setTimeout(() => reconcile(), 500);
+    return () => clearTimeout(timer);
+  }, [estadoLoaded, reconcile]);
 
-    const vwReverse = { "VW-Norte": "VWN", "VW-Centro": "VWC", "VW-Sur": "VWS" };
+  // ── Aplicar diffs en un único batch al terminar la reconciliación ──
+  // PR3 4.4: tras aplicar el batch se notifica con toast y se limpian los diffs
+  // (ya no representan el estado real — el Arranger pasó a ser la fuente).
+  const appliedDiffsRef = useRef(null);
+  const toastSuccessRef = useRef();
+  const reconciledRef = useRef(false); // evita que el polling pise el estado recién reconciliado
+  useEffect(() => {
+    toastSuccessRef.current = toast.success;
+  });
+  useEffect(() => {
+    if (reconciliationStatus !== "done" || diffs.length === 0) return;
+    if (appliedDiffsRef.current === diffs) return; // ya aplicados en este run
+    appliedDiffsRef.current = diffs;
 
-    async function reconcile() {
-      try {
-        const [videoData, audioData] = await Promise.all([
-          fetchMatrixState("video"),
-          fetchMatrixState("audio"),
-        ]);
+    let tvsChanged = false;
+    let zonasChanged = false;
+    let tvrackChanged = false;
+    let applied = 0;
+    const newTvs = { ...estado.tvs };
+    const newZonas = { ...zonasFueraState };
+    const newTvrack = { ...tvrackState };
 
-        let tvsChanged = false;
-        let zonasChanged = false;
-        const newTvs = { ...estado.tvs };
-        const newZonas = { ...zonasFueraState };
-
-        // Reconciliar TVs desde video state
-        for (const [dest, encoder] of Object.entries(videoData.state)) {
-          const key = vwReverse[dest] || dest;
-          if (encoder && newTvs[key] !== undefined && newTvs[key] !== encoder) {
-            newTvs[key] = encoder;
-            tvsChanged = true;
-          }
-        }
-
-        // Reconciliar zonas-fuera: video y audio
-        for (const [dest, encoder] of Object.entries(videoData.state)) {
-          if (encoder && newZonas[dest] && newZonas[dest].video !== encoder) {
-            newZonas[dest] = { ...newZonas[dest], video: encoder };
-            zonasChanged = true;
-          }
-        }
-        for (const [dest, encoder] of Object.entries(audioData.state)) {
-          if (encoder && newZonas[dest] && newZonas[dest].audio !== encoder) {
-            newZonas[dest] = { ...newZonas[dest], audio: encoder };
-            zonasChanged = true;
-          }
-        }
-
-        if (tvsChanged) setEstado((prev) => ({ ...prev, tvs: newTvs }));
-        if (zonasChanged) setZonasFueraState(newZonas);
-
-        if (tvsChanged || zonasChanged) {
-          console.log(
-            `[Arranger] Estado reconciliado — ${tvsChanged ? "TVs" : ""}${tvsChanged && zonasChanged ? " + " : ""}${zonasChanged ? "zonas-fuera" : ""} actualizados`
-          );
-        }
-      } catch {
-        // Arranger offline — usar estado de Express sin cambios
+    for (const diff of diffs) {
+      // PR3 4.2: destinos sin respuesta (arranger null) NO se auto-aplican —
+      // quedan visibles en SyncPanel con Aplicar deshabilitado.
+      if (diff.arranger == null) continue;
+      switch (diff.type) {
+        case "tv":
+          newTvs[diff.dest] = diff.arranger;
+          tvsChanged = true;
+          applied += 1;
+          break;
+        case "tvrack-video":
+          newTvrack.video = diff.arranger;
+          tvrackChanged = true;
+          applied += 1;
+          break;
+        case "tvrack-audio":
+          newTvrack.audio = diff.arranger;
+          tvrackChanged = true;
+          applied += 1;
+          break;
+        case "zona-video":
+          newZonas[diff.dest] = { ...newZonas[diff.dest], video: diff.arranger };
+          zonasChanged = true;
+          applied += 1;
+          break;
+        case "zona-audio":
+          newZonas[diff.dest] = { ...newZonas[diff.dest], audio: diff.arranger };
+          zonasChanged = true;
+          applied += 1;
+          break;
+        default:
+          break;
       }
     }
 
-    reconcile();
-  }, [estadoLoaded]); // solo al iniciar, cuando estadoLoaded pasa a true
+    if (tvsChanged) setEstado((prev) => ({ ...prev, tvs: newTvs }));
+    if (zonasChanged) setZonasFueraState(newZonas);
+    if (tvrackChanged) setTvrackState(newTvrack);
+
+    // Persistir al server para que el polling no pise con datos viejos
+    if (zonasChanged) {
+      for (const [id, data] of Object.entries(newZonas)) {
+        fetch(`/api/zonas-fuera/${id}/video`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: data.video }),
+        }).catch(() => {});
+        fetch(`/api/zonas-fuera/${id}/audio`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: data.audio }),
+        }).catch(() => {});
+      }
+    }
+    if (tvrackChanged) {
+      fetch("/api/tvrack/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: newTvrack.video }),
+      }).catch(() => {});
+      fetch("/api/tvrack/audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: newTvrack.audio }),
+      }).catch(() => {});
+    }
+
+    reconciledRef.current = true;
+    setTimeout(() => { reconciledRef.current = false; }, 2000);
+
+    // Notificación + limpieza: los diffs ya se aplicaron automáticamente.
+    if (applied > 0) {
+      toastSuccessRef.current(`✅ ${applied} cambio(s) aplicados desde Arranger`);
+      clearDiffs();
+    }
+  }, [reconciliationStatus, diffs, estado.tvs, zonasFueraState, tvrackState, clearDiffs]);
 
   // Persist state: localStorage + server (fire-and-forget)
   useEffect(() => {
@@ -217,6 +279,7 @@ const App = () => {
 
     async function loadZonasFuera() {
       try {
+        if (reconciledRef.current) return; // reconciliación reciente — no pisar
         const data = await fetchZonasFueraState();
         if (!cancelled) {
           setZonasFueraState((prev) => {
@@ -243,6 +306,7 @@ const App = () => {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
+        if (reconciledRef.current) return; // reconciliación reciente — no pisar
         const res = await fetch("/api/state");
         if (!res.ok) return;
         const { state: serverState } = await res.json();
@@ -267,6 +331,7 @@ const App = () => {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
+        if (reconciledRef.current) return; // reconciliación reciente — no pisar
         const res = await fetch("/api/tvrack/state");
         if (!res.ok) return;
         const tvrack = await res.json();
@@ -444,6 +509,7 @@ const App = () => {
             handleChangeTvrack,
             handleZonasFueraChange,
             reintentarDecos,
+            reconciliationStatus: { status: reconciliationStatus, progress, diffs, elapsedMs, lastSync, cachedDiffs, cachedAt, retryCount, partial, reconcile, clearDiffs },
           }}
         >
           <Body />

@@ -1,7 +1,15 @@
 import React from "react";
 import { DISPOSITIVOS } from "./dispositivos";
 
-const ContextoUser = React.createContext();
+const ContextoUser = React.createContext({
+  reconciliationStatus: {
+    status: "idle",
+    progress: { done: 0, total: 0, subscription: "video" },
+    diffs: [],
+    elapsedMs: 0,
+    lastSync: null,
+  },
+});
 
 export const estadoInicial = {
   // @deprecated — migrate to estado.dispositivos

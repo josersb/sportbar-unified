@@ -4,7 +4,7 @@ import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import "./Toast.css";
-import { joinMultipleTVs, assignSourceToDestination, assignVideoSource, assignAudioSource, fetchTvrackState, setTvrackVideo, setTvrackAudio, setTvrackLink, fetchMatrixState } from "../api/arrangerApi";
+import { assignSourceToDestination, assignVideoSource, assignAudioSource, fetchTvrackState, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
@@ -31,51 +31,14 @@ const ZONAS_FUERA_IDS = [
 ];
 
 const MatrizVideo = () => {
-  const { estado, handleChangeEstadoVideo, tvrackState, handleChangeTvrack, zonasFueraState, handleZonasFueraChange } = useContext(ContextoUser);
+  const { estado, handleChangeEstadoVideo, tvrackState, handleChangeTvrack, zonasFueraState, handleZonasFueraChange, reconciliationStatus } = useContext(ContextoUser);
 
   const tvs = estado.tvs;
   const toast = useToast();
+  const isSyncing = reconciliationStatus?.status === "fetching" || reconciliationStatus?.status === "comparing";
 
   const [loadingVideoBtn, setLoadingVideoBtn] = useState(null);
   const [loadingAudioBtn, setLoadingAudioBtn] = useState(null);
-  const [matrixLoading, setMatrixLoading] = useState(false);
-  const [matrixResult, setMatrixResult] = useState(null);
-  const [matrixDiff, setMatrixDiff] = useState([]);
-
-  const handleSyncMatrix = async () => {
-    setMatrixLoading(true);
-    try {
-      const data = await fetchMatrixState();
-      setMatrixResult(data);
-
-      const diffs = [];
-      const vwReverse = { "VW-Norte": "VWN", "VW-Centro": "VWC", "VW-Sur": "VWS" };
-
-      for (const [dest, arrangerEncoder] of Object.entries(data.state)) {
-        const appKey = vwReverse[dest] || dest;
-
-        if (tvs[appKey] !== undefined) {
-          if (tvs[appKey] !== arrangerEncoder && arrangerEncoder !== null) {
-            diffs.push({ dest: appKey, app: tvs[appKey], arranger: arrangerEncoder });
-          }
-        } else if (zonasFueraState[appKey] !== undefined) {
-          const appVideo = zonasFueraState[appKey].video;
-          if (appVideo !== arrangerEncoder && arrangerEncoder !== null) {
-            diffs.push({ dest: appKey, app: appVideo, arranger: arrangerEncoder });
-          }
-        }
-      }
-
-      setMatrixDiff(diffs);
-      if (diffs.length === 0) {
-        toast.success("✅ La app coincide con el Arranger");
-      }
-    } catch (err) {
-      toast.error("Error al consultar el Arranger");
-    } finally {
-      setMatrixLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchTvrackState().then(state => {
@@ -136,38 +99,16 @@ const MatrizVideo = () => {
     <main className={styles.main}>
       <PageContainer>
         <h3 className={styles.titulo}>Ajustes de la matriz de video</h3>
-        <div className={styles.syncRow}>
+        <div className={styles.syncActions}>
           <Button
             variant="secondary"
             size="sm"
-            loading={matrixLoading}
-            onClick={handleSyncMatrix}
+            loading={isSyncing}
+            onClick={() => reconciliationStatus?.reconcile?.()}
           >
             ⚡ Sincronizar con Arranger
           </Button>
-          {matrixResult && (
-            <span className={styles.syncInfo}>
-              {matrixResult.connected}/{matrixResult.connected + matrixResult.disconnected} online · {(matrixResult.elapsedMs / 1000).toFixed(1)}s
-            </span>
-          )}
         </div>
-        {matrixDiff.length > 0 && (
-          <div className={styles.diffPanel}>
-            <h4>⚠️ {matrixDiff.length} diferencia(s) con el Arranger</h4>
-            <table className={styles.diffTable}>
-              <thead><tr><th>Destino</th><th>App</th><th>Arranger</th></tr></thead>
-              <tbody>
-                {matrixDiff.map((d) => (
-                  <tr key={d.dest}>
-                    <td>{d.dest}</td>
-                    <td className={styles.diffApp}>{d.app}</td>
-                    <td className={styles.diffArranger}>{d.arranger}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
         <Formik
           initialValues={{
             //ALLTV: tvs.all,

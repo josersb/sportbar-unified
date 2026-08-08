@@ -27,7 +27,7 @@ it("shows empty message when tvs is an empty object", () => {
 
 // ── Default state ──
 
-it("renders known TV IDs (VWN, VWC, VWS, TV01–TV14, TVRACK)", () => {
+it("renders known TV IDs (VW Norte, VW Centro, VW Sur, TV1–TV14, TVRK)", () => {
   const tvs = {
     VWN: "DTV1",
     VWC: "DTV1",
@@ -43,11 +43,11 @@ it("renders known TV IDs (VWN, VWC, VWS, TV01–TV14, TVRACK)", () => {
     </ContextoUser.Provider>
   );
 
-  expect(screen.getByText("VWN")).toBeInTheDocument();
-  expect(screen.getByText("VWC")).toBeInTheDocument();
-  expect(screen.getByText("VWS")).toBeInTheDocument();
-  expect(screen.getByText("TV01")).toBeInTheDocument();
-  expect(screen.getByText("TV02")).toBeInTheDocument();
+  expect(screen.getByText("VW Norte")).toBeInTheDocument();
+  expect(screen.getByText("VW Centro")).toBeInTheDocument();
+  expect(screen.getByText("VW Sur")).toBeInTheDocument();
+  expect(screen.getByText("TV1")).toBeInTheDocument();
+  expect(screen.getByText("TV2")).toBeInTheDocument();
   expect(screen.getByText("TVRK")).toBeInTheDocument();
 });
 

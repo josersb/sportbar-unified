@@ -57,7 +57,7 @@ export function usePreset(n) {
     if (!data) {
       const saved = localStorage.getItem(key);
       if (!saved) return;
-      try { data = JSON.parse(saved); } catch { throw new Error("Preset data is corrupted"); }
+      try { data = JSON.parse(saved); } catch { return undefined; }
     }
 
     handleChangeEstadoVideo(data.tvs);

@@ -84,10 +84,10 @@ describe("AudioStatus — structure", () => {
       </ContextoUser.Provider>
     );
 
-    const table = document.querySelector("table");
-    expect(table).toBeInTheDocument();
-    expect(table.querySelector("thead")).toBeInTheDocument();
-    expect(table.querySelector("tbody")).toBeInTheDocument();
+    const list = document.querySelector("ul[role='list']");
+    expect(list).toBeInTheDocument();
+    const items = list.querySelectorAll("li");
+    expect(items.length).toBeGreaterThanOrEqual(2);
   });
 
   it("has scope='col' on all header cells", () => {

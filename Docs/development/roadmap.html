@@ -47,7 +47,7 @@
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- PENDING — tareas por hacer, ordenadas por fecha de creación     -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="section-title">PENDIENTE (7)</div>
+<div class="section-title">PENDIENTE (8)</div>
 
 <div class="card pending"><div class="idx">1</div><div class="body">
   <h2>Seguridad — Ronda 4</h2>
@@ -105,6 +105,19 @@
   </ul>
 </div><span class="badge badge-pending">plan</span></div>
 
+<div class="card pending"><div class="idx">6</div><div class="body">
+  <h2>Coexistencia v1.0 + v1.1.0 en Producción</h2>
+  <p>Desplegar v1.1.0 en coexistencia con v1.0 en la PC del bar. Puertos dinámicos (3050-3059), auto-arranque con Task Scheduler + Master.ps1, scripts .bat y .ps1. Sin tocar v1.0.</p>
+  <ul class="tasks">
+    <li>🔲 Crear Iniciar SportBar.bat para v1.1.0 (%~dp0 dinámico, PORT=3051)</li>
+    <li>🔲 Crear Iniciar SportBar.ps1 para v1.1.0 (Test-NetConnection, logs)</li>
+    <li>🔲 Crear SportBar Master.ps1 (inicia v1.0 + v1.1.0, monitorea, reintenta)</li>
+    <li>🔲 Crear SportBar Master.bat (fallback simple)</li>
+    <li>🔲 Configurar Task Scheduler en PC del bar (salamultimedia)</li>
+    <li>🔲 Clonar repo en sportbar-v1.1.0/, build, probar coexistencia</li>
+  </ul>
+</div><span class="badge badge-pending">planificado</span></div>
+
 <div class="card pending"><div class="idx">7</div><div class="body">
   <h2>AHM-32 Audio Matrix Integration</h2>
   <p>Integración del procesador de audio Allen & Heath AHM-32. Worktree feat/ahm-integration ya creado (:3102). SDD completo (proposal, spec, design, tasks). Falta implementación del frontend.</p>
@@ -112,7 +125,7 @@
 
 <div class="card pending"><div class="idx">8</div><div class="body"><h2>Fase 4: Tema compartido (muy baja prioridad)</h2><p>Tema dark/light actualmente solo en localStorage. Evaluar si vale la pena sincronizarlo entre PCs vía servidor. Impacto mínimo, opcional.</p></div><span class="badge badge-pending">opcional</span></div>
 
-<div class="card wip"><div class="idx">6</div><div class="body">
+<div class="card wip"><div class="idx">9</div><div class="body">
   <h2>Frontend Redesign — Impeccable Design</h2>
   <p>Rediseño radical del frontend. Worktree <code>feat/frontend-redesign</code> en :5175/:3103. Buttons redesign ya mergeado a v2.</p>
   <ul class="tasks">
@@ -207,7 +220,7 @@
 <div class="legend">
   <span><span class="dot dot-done"></span> Completado (37)</span>
   <span><span class="dot dot-wip"></span> En progreso (1)</span>
-  <span><span class="dot dot-pending"></span> Pendiente (7)</span>
+  <span><span class="dot dot-pending"></span> Pendiente (8)</span>
 </div>
 
 </body>

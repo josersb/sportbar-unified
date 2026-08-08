@@ -42,12 +42,12 @@
 <body>
 
 <h1>SportBar Unified — Roadmap</h1>
-<p class="sub">~110 commits · 150 tests · 13 comandos Arranger · v2 → master · feat/frontend-redesign: shell completo (28 jul 2026)</p>
+<p class="sub">~130 commits · 187 tests · 13 comandos Arranger · v1.1.0 released · v2 → master · feat/frontend-redesign: shell completo (08 ago 2026)</p>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- PENDING — tareas por hacer, ordenadas por fecha de creación     -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="section-title">PENDIENTE (9)</div>
+<div class="section-title">PENDIENTE (7)</div>
 
 <div class="card pending"><div class="idx">1</div><div class="body">
   <h2>Seguridad — Ronda 4</h2>
@@ -60,10 +60,10 @@
 
 <div class="card pending"><div class="idx">2</div><div class="body">
   <h2>Deploy a produccion</h2>
-  <p>Reemplazar la app vieja en :3000 por sportbar-unified. Ya testeada en :3101 contra Arranger real.</p>
+  <p>Reemplazar la app vieja en :3000 por sportbar-unified. Release v1.1.0 creado, merge a master completado. Falta swap de puertos.</p>
   <ul class="tasks">
     <li>✅ Validar funcionalidades en :3101 contra Arranger</li>
-    <li>✅ v2 mergeado a master (27 jul) — 99 commits, 28 features</li>
+    <li>✅ v2 mergeado a master — release v1.1.0 publicado (08 ago)</li>
     <li>🔲 Migrar estado actual de localStorage al backend lowdb</li>
     <li>🔲 Swap de puertos: nueva app → :3000</li>
     <li>🔲 Rollback plan si algo falla</li>
@@ -94,9 +94,10 @@
 
 <div class="card pending"><div class="idx">5</div><div class="body">
   <h2>Optimizar lógica de llamadas al Arranger</h2>
-  <p>Auditar y optimizar todas las rutas de código que llaman al Arranger: unificar batching, paralelizar Audio.js, medir límites de concurrencia, evaluar TCP persistente.</p>
+  <p>Auditar y optimizar todas las rutas de código que llaman al Arranger. getEncoder + reconstructMatrixState implementados, batch size 4 optimizado. Falta paralelizar Audio.js y evaluar TCP persistente.</p>
   <ul class="tasks">
-    <li>🔲 Fase 1: Medir límites de concurrencia del Arranger en el bar</li>
+    <li>✅ getEncoder(decoder, subscription) — V210826, batch size 4 (12s vs 35s para 8)</li>
+    <li>✅ reconstructMatrixState() — reconstruye estado completo desde getEncoder</li>
     <li>🔲 Fase 2.1: Unificar lógica de batching (código duplicado)</li>
     <li>🔲 Fase 2.2: Paralelizar 9 llamadas de Audio.js</li>
     <li>🔲 Fase 3: Monitoreo y observabilidad de latencia</li>
@@ -111,35 +112,30 @@
 
 <div class="card pending"><div class="idx">8</div><div class="body"><h2>Fase 4: Tema compartido (muy baja prioridad)</h2><p>Tema dark/light actualmente solo en localStorage. Evaluar si vale la pena sincronizarlo entre PCs vía servidor. Impacto mínimo, opcional.</p></div><span class="badge badge-pending">opcional</span></div>
 
-<div class="card pending"><div class="idx">10</div><div class="body">
-  <h2>Buttons Redesign</h2>
-  <p>Rediseño de botones (BrawlStarsButton y variantes). Worktree <code>feat/buttons-redesign</code> en :5176/:3104, basado en <code>feat/frontend-redesign</code>. Cadena: buttons-redesign → frontend-redesign → v2 → master.</p>
-  <ul class="tasks">
-    <li>🔲 Explorar diseño actual de botones y sus variantes</li>
-    <li>🔲 Definir nuevo diseño con impeccable-design</li>
-    <li>🔲 Implementar reemplazo de BrawlStarsButton</li>
-    <li>🔲 Aplicar a todas las páginas que usan botones</li>
-  </ul>
-</div><span class="badge badge-pending">planificado</span></div>
-
-<div class="card wip"><div class="idx">9</div><div class="body">
+<div class="card wip"><div class="idx">6</div><div class="body">
   <h2>Frontend Redesign — Impeccable Design</h2>
-  <p>Rediseño radical del frontend usando la skill <code>impeccable-design</code>. Worktree <code>feat/frontend-redesign</code> en :5175/:3103. 3 PRs encadenados en <code>feat/frontend-redesign</code>.</p>
+  <p>Rediseño radical del frontend. Worktree <code>feat/frontend-redesign</code> en :5175/:3103. Buttons redesign ya mergeado a v2.</p>
   <ul class="tasks">
-    <li>✅ Shell: SDD completo (proposal → spec → design → tasks → apply → verify → archive)</li>
-    <li>✅ Design Tokens: +24 tokens (radius, line-height, focus-ring, touch-target, gaps, breakpoints, motion)</li>
-    <li>✅ Layout: mobile-first, CSS Grid con class selectors, minmax(), 1fr, SkipToContent</li>
-    <li>✅ Componentes: Header/Nav normalizados, Aside → DecosStatus + AudioStatus + VideoMatrix</li>
+    <li>✅ Shell: SDD completo + design tokens + layout + componentes base</li>
+    <li>✅ Buttons Redesign: 9 implementaciones → 1 Button token-driven (mergeado a v2)</li>
     <li>✅ WCAG 2.2 AA: 0 BLOCKERS, 0 CRITICALS, 150 tests</li>
     <li>🔲 Próximo: rediseño de páginas individuales (MatrizVideo, Canales, Audio, Arranger, Soporte, Portada)</li>
   </ul>
-</div><span class="badge badge-wip">shell completo · jul 28</span></div>
+</div><span class="badge badge-wip">parcial · ago 08</span></div>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- COMPLETADO — ordenado por fecha de finalización ascendente      -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <hr>
-<div class="section-title">COMPLETADO (33) — jul 2026</div>
+<div class="section-title">COMPLETADO (37) — ago 2026</div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Release v1.1.0</h2><p>Primer release formal. Tag en master, GitHub release con changelog completo. 187 tests, 0 fallos. 130+ commits.</p></div><span class="badge badge-done">v1.1.0 · ago 08</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Fix 3 tests pre-existentes</h2><p>AudioStatus (table→list), VideoMatrix (VW Norte/Centro/Sur display names), usePreset (corrupted JSON). 187/187 pasando.</p></div><span class="badge badge-done">v2 · ago 08</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Reconciliación Arranger + SyncPanel</h2><p>Hook useArrangerReconciliation (5 dominios, useReducer, AbortController). SyncPanel drawer derecho con tabs, progreso, diff table, acciones Aplicar/Ignorar. Reconciliación no bloqueante. Edge cases: offline cache, timeouts parciales, retry, stale badge. Fix de race condition reconciliación vs polling (persistencia al server + reconciledRef). SDD completo (archive). Diagrama Mermaid.</p></div><span class="badge badge-done">v2 · ago 08</span></div>
+
+<div class="card done"><div class="idx">✅</div><div class="body"><h2>Buttons Redesign</h2><p>9 implementaciones ad-hoc de botones unificadas en un solo componente Button token-driven. 5 variantes (primary, secondary, danger, ghost, outline) + 3 tamaños (sm, md, lg). BrawlStarsButton y js-design eliminados. SDD completo (archive). 175 tests.</p></div><span class="badge badge-done">v2 · jul 31</span></div>
 
 <div class="card done"><div class="idx">✅</div><div class="body"><h2>Issue #6: Zonas Fuera con botones independientes</h2><p>10 zonas migradas a mini-cards con botones DTV1–DTV8 + toggle link. zonasFueraState en lowdb, 4 endpoints REST, polling multi-PC. 10 bugs fixeados en testing (rate limit, proxy, ZONAS_FUERA_IDS, Arranger commands, toast, layout). SDD completo (7 fases). Probado contra Arranger real.</p></div><span class="badge badge-done">v2 · jul 27</span></div>
 
@@ -209,7 +205,7 @@
 
 <hr>
 <div class="legend">
-  <span><span class="dot dot-done"></span> Completado (33)</span>
+  <span><span class="dot dot-done"></span> Completado (37)</span>
   <span><span class="dot dot-wip"></span> En progreso (1)</span>
   <span><span class="dot dot-pending"></span> Pendiente (7)</span>
 </div>

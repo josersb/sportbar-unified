@@ -1,10 +1,11 @@
 "use strict";
 
 /**
- * Verificación PR 1 — State Broker foundation.
+ * Verificación PR 1 + PR 2 — State Broker foundation + composition.
  *
  * Sin test runner y sin hardware: cada script usa require directo contra los
- * módulos de server/broker/. Exit code 0 = verificación OK.
+ * módulos de server/broker/ (o createServer contra mock en puerto efímero).
+ * Exit code 0 = verificación OK.
  *
  *   node server/broker/verify/run-all.cjs
  */
@@ -18,6 +19,9 @@ const steps = [
   ["verify-arranger-client", "arrangerClient getEncoder/joinAv + retry + FW-LOCKED"],
   ["verify-store", "store v3: migración v2→v3 + backup + fresh-start"],
   ["verify-eventbus", "eventBus hub SSE: snapshot, incremental, heartbeat, máx 10"],
+  ["verify-writequeue", "writeQueue FIFO por destino: serie, última intención gana"],
+  ["verify-reconciler", "reconciler: auto-adopt, null no pisa, single-flight, intervalo"],
+  ["verify-composition", "composition server.js: endpoints nuevos + legacy + SSE + stale→synced"],
 ];
 
 let failed = 0;
@@ -31,5 +35,5 @@ for (const [name, label] of steps) {
   if (!ok) failed += 1;
 }
 
-console.log(`\n${failed === 0 ? "✓ TODAS LAS VERIFICACIONES PR 1 PASARON" : `✗ ${failed} verificación(es) fallaron`}`);
+console.log(`\n${failed === 0 ? "✓ TODAS LAS VERIFICACIONES PR 1 + PR 2 PASARON" : `✗ ${failed} verificación(es) fallaron`}`);
 process.exit(failed === 0 ? 0 : 1);

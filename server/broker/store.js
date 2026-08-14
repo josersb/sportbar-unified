@@ -387,6 +387,20 @@ async function createStore(options = {}) {
     db.data.appOnly[area][key] = value;
   }
 
+  /**
+   * Estado app legacy completo (POST/GET /api/state del cliente v1). Es
+   * app-only: el server es dueño, sin arbitraje del Arranger. Se conserva en
+   * appOnly.appState para que los endpoints legacy sigan funcionando durante
+   * la coexistencia (PR 2) sin un segundo dueño de state.json.
+   */
+  function getAppState() {
+    return db.data.appOnly.appState ?? null;
+  }
+
+  function setAppState(state) {
+    db.data.appOnly.appState = state;
+  }
+
   function getPreset(n) {
     return db.data.domains.presets.desired[`preset${n}`] || null;
   }
@@ -413,6 +427,8 @@ async function createStore(options = {}) {
     setSync,
     getAppOnly,
     setAppOnly,
+    getAppState,
+    setAppState,
     getPreset,
     setPreset,
     migratePreset,

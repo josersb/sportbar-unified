@@ -388,10 +388,8 @@ async function createStore(options = {}) {
   }
 
   /**
-   * Estado app legacy completo (POST/GET /api/state del cliente v1). Es
-   * app-only: el server es dueño, sin arbitraje del Arranger. Se conserva en
-   * appOnly.appState para que los endpoints legacy sigan funcionando durante
-   * la coexistencia (PR 2) sin un segundo dueño de state.json.
+   * Estado app-only completo. El server es dueño, sin arbitraje del Arranger,
+   * y se conserva en appOnly.appState sin crear un segundo dueño de state.json.
    */
   function getAppState() {
     return db.data.appOnly.appState ?? null;

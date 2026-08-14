@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * Verify 2.4 — Composition del State Broker (server.js sobre mock).
+ * Verify 4.1 — Composition y limpieza del State Broker (server.js sobre mock).
  *
  * Bootea el server COMPLETO sin levantar un server "visible": createServer()
  * (exportado, no ejecuta listen) + app.listen(0) en puerto efímero, contra el
@@ -11,10 +11,8 @@
  *   - endpoints NUEVOS: GET /api/broker/state (?since=), POST /api/tvs/:id/source
  *     confirmado, doble POST en serie (última intención gana), POST /api/app-state,
  *     POST /api/presets/:n/load (3 dominios), GET /api/stream (SSE)
- *   - endpoints LEGACY con su contrato intacto (cliente v1 sigue operativo):
- *     GET/POST /api/state, GET /api/tvrack/state, POST zonas-fuera (shape legacy),
- *     GET /api/zonas-fuera/state, GET/POST /api/presets/:n, /api/matrix/state,
- *     /api/device/:id/status, proxy /api/command (mock-aware)
+ *   - escrituras write-through que siguen vivas: POST tvrack/zonas-fuera,
+ *     GET/POST /api/presets/:n, y proxy /api/command (mock-aware)
  *   - 2 clientes SSE sin 429; transición stale → synced por el reconciler
  *
  * Uso: node server/broker/verify/verify-composition.cjs
@@ -92,22 +90,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     body = await res.json();
     check("POST /api/app-state → ok + merge", res.status === 200 && body.ok && body.appState.descripcionPreset === "Futbol");
 
-    // ── Legacy: POST/GET /api/state (contrato v1) ──
-    const legacyState = { tvs: { TV01: "DTV4" }, dispositivos: {}, _version: 1 };
-    res = await fetch(`${base}/api/state`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state: legacyState }),
-    });
-    check("POST /api/state legacy → ok", res.status === 200);
-    res = await fetch(`${base}/api/state`);
-    body = await res.json();
-    check("GET /api/state legacy devuelve el estado guardado", res.status === 200 && body.state && body.state.tvs.TV01 === "DTV4");
-
-    // ── Legacy: TVRACK ──
-    res = await fetch(`${base}/api/tvrack/state`);
-    body = await res.json();
-    check("GET /api/tvrack/state shape legacy", res.status === 200 && "video" in body && "audio" in body && "link" in body);
+    // ── Escrituras write-through vivas: TVRACK ──
     res = await fetch(`${base}/api/tvrack/video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -124,9 +107,6 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     });
     body = await res.json();
     check("POST zonas-fuera video write-through (deviceId legacy)", res.status === 200 && body.zoneId === "aVip-Barra-Centro" && body.video === "DTV6" && "link" in body && "lastUpdated" in body);
-    res = await fetch(`${base}/api/zonas-fuera/state`);
-    body = await res.json();
-    check("GET /api/zonas-fuera/state incluye la zona actualizada", res.status === 200 && body["aVip-Barra-Centro"] && body["aVip-Barra-Centro"].video === "DTV6");
     res = await fetch(`${base}/api/zonas-fuera/INEXISTENTE/video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -156,14 +136,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         body.domains.tvrack.desired.video === "DTV9",
     );
 
-    // ── Proxy /api/command mock-aware + device status ──
+    // ── Proxy /api/command mock-aware ──
     res = await fetch(`${base}/api/command/join%20av%20DTV7%20TV03/verify-token`);
     const proxyText = await res.text();
     check("proxy /api/command join av → 200 mock", res.status === 200 && proxyText.includes("join av success DTV7 TV03"));
-    res = await fetch(`${base}/api/device/TV01/status`);
-    body = await res.json();
-    check("/api/device/:id/status → 200 mock (legacy dead code)", res.status === 200 && body.deviceId === "TV01");
-
     // ── Respaldo versionado ?since= ──
     res = await fetch(`${base}/api/broker/state?since=tvs:999999`);
     body = await res.json();

@@ -56,7 +56,7 @@ export async function setTvSource(tvId, source) {
 /**
  * Merge parcial del estado app-only (decos, dispositivos, audio, favoritos,
  * descripcionPreset, etc.). El server es dueño del estado app; el cliente no
- * hace POST /api/state completo (eso muere en PR 4).
+ * hace POST /api/app-state con parches parciales.
  * @param {object} patch — subconjunto del estado app a mergear
  * @returns {Promise<object>} { ok, appState }
  */

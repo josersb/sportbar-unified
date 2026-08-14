@@ -12,8 +12,6 @@ try {
   wtConfig = JSON.parse(readFileSync(resolve(__dirname, "worktree.config.json"), "utf-8"));
 } catch { /* usar defaults */ }
 
-const ARRANGER_HOST = process.env.ARRANGER_HOST || "192.168.2.254";
-const ARRANGER_PORT = process.env.ARRANGER_PORT || "80";
 const EXPRESS_URL = `http://localhost:${wtConfig.expressPort}`;
 
 // https://vitejs.dev/config/
@@ -27,8 +25,7 @@ export default defineConfig({
     open: true, // Auto-open browser
     cors: true,
     proxy: {
-      // ── Broker (PR 3: el cliente solo habla con el broker) ──
-      // Deben ir ANTES del fallback genérico /api → Arranger.
+      // ── Broker: el cliente solo habla con Express ──
       "/api/stream": {
         target: EXPRESS_URL,
         changeOrigin: true,
@@ -45,49 +42,20 @@ export default defineConfig({
         target: EXPRESS_URL,
         changeOrigin: true,
       },
-      // Device status endpoint → Express (must come before the generic /api rule)
-      "/api/device/": {
-        target: EXPRESS_URL,
-        changeOrigin: true,
-      },
-      // State persistence endpoint → Express (must come before the generic /api rule)
-      "/api/state": {
-        target: EXPRESS_URL,
-        changeOrigin: true,
-      },
-      // TVRACK shared state → Express (must come before the generic /api rule)
-      "/api/tvrack": {
-        target: EXPRESS_URL,
-        changeOrigin: true,
-      },
       // Presets compartidos → Express (must come before the generic /api rule)
       "/api/presets": {
         target: EXPRESS_URL,
         changeOrigin: true,
       },
-      // Zonas Fuera → Express (must come before the generic /api rule)
+      // Zonas Fuera write-through → Express
       "/api/zonas-fuera": {
         target: EXPRESS_URL,
         changeOrigin: true,
       },
-      // Matrix State → Express (must come before the generic /api rule)
-      "/api/matrix": {
+      // Comandos IR/serial/presets de dispositivos: único proxy Arranger
+      "/api/command": {
         target: EXPRESS_URL,
         changeOrigin: true,
-      },
-      // Proxy API calls to avoid CORS issues during development
-      "/api": {
-        target: `http://${ARRANGER_HOST}:${ARRANGER_PORT}`,
-        changeOrigin: true,
-        secure: false,
-        configure: (proxy, _options) => {
-          proxy.on("error", (err, _req, _res) => {
-            console.log("Proxy error:", err);
-          });
-          proxy.on("proxyReq", (proxyReq, req, _res) => {
-            console.log("Proxying request:", req.method, req.url);
-          });
-        },
       },
     },
   },
@@ -126,7 +94,7 @@ export default defineConfig({
   // Define global constants
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
-    __ARRANGER_API__: JSON.stringify(`http://${ARRANGER_HOST}:${ARRANGER_PORT}/api/command`),
+    __ARRANGER_API__: JSON.stringify("/api/command"),
   },
 
   // CSS configuration

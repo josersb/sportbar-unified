@@ -9,7 +9,6 @@ const { createEventBus } = require("./broker/eventBus.js");
 const { createWriteQueue } = require("./broker/writeQueue.js");
 const { createReconciler } = require("./broker/reconciler.js");
 const {
-  MATRIX_DESTINATIONS,
   ZONA_FUERA_IDS,
   TVRACK_ID,
   toApp,
@@ -40,9 +39,8 @@ const RECONCILER_INTERVAL_MS = parseInt(process.env.RECONCILER_INTERVAL_MS || ""
 
 // ── Rate limiters rediseñados (spec state-broker) ──
 // El presupuesto refleja el patrón nuevo: SSE (conexiones largas, no cuentan
-// por evento) y menos GETs de polling. `/api/stream` y el proxy `/api/command`
-// NO llevan limiter. Los GETs de polling legacy quedan SIN limiter (como hoy)
-// para no romper el cliente v1 durante la coexistencia (PR 4 los elimina).
+// por evento) y polling versionado contra el broker. `/api/stream` y el proxy
+// `/api/command` NO llevan limiter.
 const readsLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 300, // GETs de polling/respaldo del broker
@@ -71,11 +69,11 @@ function makeLog(silent) {
  * Composition root del State Broker.
  *
  * Crea el broker completo (client → store v3 → eventBus → writeQueue →
- * reconciler), monta los endpoints NUEVOS del broker y conserva los endpoints
- * LEGACY del cliente v1 con su mismo contrato (shapes intactos) pero sobre el
- * store unificado — el IIFE lowdb legacy desaparece (store.js es el único dueño
- * de state.json). NO escucha: devuelve { app, broker } para que el caller
- * decida (main) o para verificación sin levantar server visible (verify).
+ * reconciler), monta los endpoints del broker y conserva únicamente las
+ * escrituras legacy que siguen siendo usadas por IR/serial y controles
+ * write-through. El store unificado es el único dueño de state.json. NO
+ * escucha: devuelve { app, broker } para que el caller decida (main) o para
+ * verificación sin levantar server visible (verify).
  *
  * options: { dbPath, backupPath, token, mock, mockMode, silent,
  *            reconcilerIntervalMs }
@@ -402,34 +400,8 @@ async function createServer(options = {}) {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // ENDPOINTS LEGACY (cliente v1) — conservados con su contrato, sobre el broker
+  // ESCRITURAS LEGACY VIVAS — write-through confirmado
   // ══════════════════════════════════════════════════════════════════════
-
-  // GET/POST /api/state — estado app completo del cliente v1 (app-only)
-  app.get("/api/state", (req, res) => {
-    res.json({ state: store.getAppState() });
-  });
-
-  app.post("/api/state", writesLimiter, async (req, res) => {
-    const { state } = req.body;
-    if (!state || typeof state !== "object") {
-      return res.status(400).json({ error: "Missing or invalid state object" });
-    }
-    store.setAppState(state);
-    await store.write();
-    res.json({ ok: true });
-  });
-
-  // ── TVRACK Shared State ──
-  app.get("/api/tvrack/state", (req, res) => {
-    const d = store.getDomain("tvrack");
-    res.json({
-      video: d.desired.video,
-      audio: d.desired.audio,
-      link: !!(store.getAppOnly().tvrack && store.getAppOnly().tvrack.link),
-      lastUpdated: d.lastUpdated,
-    });
-  });
 
   // Write-through confirmado (spec: responde el estado confirmado, no fire-and-forget)
   async function tvrackWrite(req, res, sub) {
@@ -482,22 +454,6 @@ async function createServer(options = {}) {
     next();
   }
 
-  app.get("/api/zonas-fuera/state", (req, res) => {
-    const d = store.getDomain("zonasFuera");
-    const appOnly = store.getAppOnly().zonasFuera || {};
-    const out = {};
-    for (const zoneId of ZONA_FUERA_IDS) {
-      const zone = d.desired[zoneId] || {};
-      out[zoneId] = {
-        video: zone.video,
-        audio: zone.audio,
-        link: !!(appOnly[zoneId] && appOnly[zoneId].link),
-        lastUpdated: d.lastUpdated,
-      };
-    }
-    res.json(out);
-  });
-
   async function zonaFueraWrite(req, res, sub) {
     const { id } = req.params;
     const { deviceId, source } = req.body || {};
@@ -531,32 +487,6 @@ async function createServer(options = {}) {
     res.json({ zoneId: id, ...d.desired[id], link: !!linked, lastUpdated: d.lastUpdated });
   });
 
-  // ── Matrix State: estado real del Arranger vía get encoder (mock-aware) ──
-  app.get("/api/matrix/state", async (req, res) => {
-    const subscription = req.query.subscription || "video";
-    const results = {};
-    const start = Date.now();
-    for (let i = 0; i < MATRIX_DESTINATIONS.length; i += 4) {
-      const batch = MATRIX_DESTINATIONS.slice(i, i + 4);
-      const batchResults = await Promise.allSettled(
-        batch.map(async (dest) => ({ dest, encoder: await client.getEncoder(dest, subscription) })),
-      );
-      for (const r of batchResults) {
-        if (r.status === "fulfilled") results[r.value.dest] = r.value.encoder;
-      }
-    }
-    const connected = Object.values(results).filter((v) => v !== null).length;
-    res.json({
-      timestamp: new Date().toISOString(),
-      subscription,
-      destinations: MATRIX_DESTINATIONS.length,
-      connected,
-      disconnected: MATRIX_DESTINATIONS.length - connected,
-      elapsedMs: Date.now() - start,
-      state: results,
-    });
-  });
-
   // ── Presets Compartidos ──
   app.get("/api/presets/:n", (req, res) => {
     const n = parseInt(req.params.n, 10);
@@ -585,7 +515,7 @@ async function createServer(options = {}) {
   // Middleware para servir archivos estáticos desde dist (build de producción)
   app.use(express.static(path.join(__dirname, "../dist")));
 
-  // ── Retry helper con exponential backoff (proxy / device status) ──
+  // ── Retry helper con exponential backoff (proxy Arranger) ──
   async function fetchWithRetry(url, retries = 3, baseDelayMs = 1000) {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
@@ -602,29 +532,6 @@ async function createServer(options = {}) {
       }
     }
   }
-
-  // Proxy de estado de dispositivo (legacy; en mock responde sin hardware)
-  app.get("/api/device/:id/status", async (req, res) => {
-    try {
-      const { id } = req.params;
-      if (client.isMock) {
-        return res.json({ deviceId: id, streams: { video: true, audio: true }, online: true, mock: true });
-      }
-      const url = `${ARRANGER_BASE}/api/command/get status ${id}/${ARRANGER_TOKEN}`;
-      const response = await fetchWithRetry(url);
-      const text = await response.text();
-      const streams = {
-        video: text.includes("VIDEO"),
-        audio: text.includes("AUDIO"),
-        ir: text.includes("IR"),
-        serial: text.includes("SERIAL"),
-        usb: text.includes("USB"),
-      };
-      res.json({ deviceId: id, streams, online: response.ok });
-    } catch (error) {
-      res.json({ deviceId: req.params.id, streams: {}, online: false, error: error.message });
-    }
-  });
 
   // ── Proxy genérico de comandos del Arranger (único camino, spec) ──
   app.get("/api/command/:command/:token", async (req, res) => {

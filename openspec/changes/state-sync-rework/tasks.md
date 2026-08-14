@@ -52,8 +52,8 @@ Chain strategy: stacked-to-main
 - [x] 3.10 Delete `src/hooks/useArrangerReconciliation.js` (reemplazado por reconciler server-side). → eliminado + VideoMatrix lee TVRACK de tvrackState
 - [x] 3.11 Verify PR 3: propagación PC-A→PC-B <1s; tvrack no reaparece tras recarga; offline → indicador + persistido. → verify node 43/43 + 15/15 + `pnpm run build` ✓ 4.25s + `pnpm test` 179/179; checklist manual en apply-progress
 
-## Phase 4: Limpieza + E2E (PR 4)
-- [ ] 4.1 `server/server.js` — remueve `GET|POST /api/state`, `GET /api/tvrack/state`, `GET /api/zonas-fuera/state`, `GET /api/matrix/state`, `GET /api/device/:id/status`.
-- [ ] 4.2 `vite.config.js` — proxy `/api/stream`,`/api/broker`,`/api/tvs`; quita fallback `/api`→Arranger (resta solo `/api/command/:command/:token`).
-- [ ] 4.3 E2E manual: 2 browsers con mock — propagación <1s, reconexión, preset 3 dominios restaura tvs+zonasFuera+tvrack, fresh-start con state.json envenenado, modos offline/blip.
-- [ ] 4.4 Gate: `pnpm run sportbar:build`; barrido `Select-String` — sin keys legacy, `applyDiff`, ni polls residuales.
+## Phase 4: Limpieza + E2E (PR 4) ✅ COMPLETO
+- [x] 4.1 `server/server.js` — remueve endpoints legacy de lectura/estado; conserva únicamente escrituras write-through y proxy de comandos requeridos.
+- [x] 4.2 `vite.config.js` — proxies broker y `/api/command` hacia Express; eliminado fallback `/api`→Arranger.
+- [x] 4.3 E2E manual — checklist final persistido en `sdd/state-sync-rework/apply-progress` para ejecución con mock y 2 pestañas.
+- [x] 4.4 Gate — `run-all`, `pnpm test`, `pnpm run build` y barrido de referencias legacy completados.

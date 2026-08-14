@@ -1,10 +1,10 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState } from "react";
 import { Formik, Form } from "formik";
 import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
-import "./Toast.css";
-import { assignSourceToDestination, assignVideoSource, assignAudioSource, fetchTvrackState, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
+import { setTvSource, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
+import { collapseGroup, GROUP_DEFS } from "../hooks/brokerClientCore";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
@@ -30,52 +30,49 @@ const ZONAS_FUERA_IDS = [
   'a-QMC65-Menos1-TV2',
 ];
 
-const MatrizVideo = () => {
-  const { estado, handleChangeEstadoVideo, tvrackState, handleChangeTvrack, zonasFueraState, handleZonasFueraChange, reconciliationStatus } = useContext(ContextoUser);
+// Destinos de matriz reales del broker (TV01-TV26 + VWN/VWC/VWS). Los grupos
+// TvsBarra*/TvsEscalera* del form se expanden a estas TVs individuales.
+const DESTINOS_TV = [
+  "VWN", "VWC", "VWS",
+  "TV01", "TV02", "TV03", "TV04", "TV05", "TV06", "TV07", "TV08", "TV09", "TV10",
+  "TV11", "TV12", "TV13", "TV14", "TV15", "TV16", "TV17", "TV18", "TV19", "TV20",
+  "TV21", "TV22", "TV23", "TV24", "TV25", "TV26",
+];
 
-  const tvs = estado.tvs;
+const MatrizVideo = () => {
+  const {
+    estado,
+    tvrackState,
+    handleChangeTvrack,
+    zonasFueraState,
+    handleZonasFueraChange,
+    syncStatus,
+  } = useContext(ContextoUser);
+
+  const tvs = estado.tvs || {};
   const toast = useToast();
-  const isSyncing = reconciliationStatus?.status === "fetching" || reconciliationStatus?.status === "comparing";
+  const isSyncing = syncStatus?.status === "out_of_sync" || syncStatus?.status === "offline";
 
   const [loadingVideoBtn, setLoadingVideoBtn] = useState(null);
   const [loadingAudioBtn, setLoadingAudioBtn] = useState(null);
 
-  useEffect(() => {
-    fetchTvrackState().then(state => {
-      handleChangeTvrack(state);
-    }).catch(err => {
-      console.warn("No se pudo cargar estado de TVRACK del server:", err);
-    });
-  }, []);
-
-
-
-
+  // TVRACK: write-through confirmado vía broker (POST /api/tvrack/*). Con link
+  // activo el server encadena video+audio (executeWrite), sin joins cliente.
   const handleTvrackBtn = (type, deviceId) => async () => {
     const isVideo = type === "video";
     if (isVideo) setLoadingVideoBtn(deviceId);
     else setLoadingAudioBtn(deviceId);
 
     try {
-      if (tvrackState.link) {
-        // Vinculado: join av manda video + audio en un solo comando al Arranger
-        await assignSourceToDestination(deviceId, "TVRACK");
-        const newState = isVideo
-          ? await setTvrackVideo(deviceId)
-          : await setTvrackAudio(deviceId);
-        handleChangeTvrack(newState);
-        toast.success(`${deviceId} → VIDEO + AUDIO TVRACK`);
-      } else if (isVideo) {
-        await assignVideoSource(deviceId, "TVRACK");
-        const newState = await setTvrackVideo(deviceId);
-        handleChangeTvrack({ ...tvrackState, video: newState.video });
-        toast.success(`${deviceId} → VIDEO TVRACK`);
-      } else {
-        await assignAudioSource(deviceId, "TVRACK");
-        const newState = await setTvrackAudio(deviceId);
-        handleChangeTvrack({ ...tvrackState, audio: newState.audio });
-        toast.success(`${deviceId} → AUDIO TVRACK`);
-      }
+      const newState = isVideo
+        ? await setTvrackVideo(deviceId)
+        : await setTvrackAudio(deviceId);
+      handleChangeTvrack(newState);
+      toast.success(
+        tvrackState.link
+          ? `${deviceId} → VIDEO + AUDIO TVRACK`
+          : `${deviceId} → ${type.toUpperCase()} TVRACK`
+      );
     } catch {
       toast.error(`Error al asignar ${isVideo ? "video" : "audio"}`);
     }
@@ -86,43 +83,42 @@ const MatrizVideo = () => {
 
   const handleLinkToggle = async (e) => {
     const linked = e.target.checked;
-    handleChangeTvrack({ ...tvrackState, link: linked });
     try {
       const newState = await setTvrackLink(linked);
       handleChangeTvrack(newState);
     } catch {
-      handleChangeTvrack({ ...tvrackState, link: !linked });
+      toast.error("Error al cambiar el link de TVRACK");
     }
+  };
+
+  // Valores de grupo derivados de las TVs individuales del broker
+  // (sin keys legacy en el estado). El form edita grupos; el submit expande.
+  const initialValues = {
+    VWN: tvs.VWN || "DTV1",
+    VWC: tvs.VWC || "DTV1",
+    VWS: tvs.VWS || "DTV1",
+    TvsBarraLivertador: collapseGroup(tvs, GROUP_DEFS.TvsBarraLivertador) || "DTV1",
+    TvsBarraSur: collapseGroup(tvs, GROUP_DEFS.TvsBarraSur) || "DTV1",
+    TvsBarraPista: collapseGroup(tvs, GROUP_DEFS.TvsBarraPista) || "DTV1",
+    TvsBarraNorte: collapseGroup(tvs, GROUP_DEFS.TvsBarraNorte) || "DTV1",
+    TvsEscaleraNorte: collapseGroup(tvs, GROUP_DEFS.TvsEscaleraNorte) || "DTV1",
+    TvsEscaleraCentro: collapseGroup(tvs, GROUP_DEFS.TvsEscaleraCentro) || "DTV1",
+    TvsEscaleraSur: collapseGroup(tvs, GROUP_DEFS.TvsEscaleraSur) || "DTV1",
   };
 
   return (
     <main className={styles.main}>
       <PageContainer>
         <h3 className={styles.titulo}>Ajustes de la matriz de video</h3>
-        <div className={styles.syncActions}>
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={isSyncing}
-            onClick={() => reconciliationStatus?.reconcile?.()}
-          >
-            ⚡ Sincronizar con Arranger
-          </Button>
-        </div>
+        {isSyncing && (
+          <div className={styles.syncActions}>
+            <span className={styles.syncHint}>
+              {syncStatus?.status === "offline" ? "❌ Arranger offline" : "⚠️ Sin sincronizar"}
+            </span>
+          </div>
+        )}
         <Formik
-          initialValues={{
-            //ALLTV: tvs.all,
-            VWN: tvs.VWN,
-            VWC: tvs.VWC,
-            VWS: tvs.VWS,
-            TvsBarraLivertador: tvs.TvsBarraLivertador,
-            TvsBarraSur: tvs.TvsBarraSur,
-            TvsBarraPista: tvs.TvsBarraPista,
-            TvsBarraNorte: tvs.TvsBarraNorte,
-            TvsEscaleraNorte: tvs.TvsEscaleraNorte,
-            TvsEscaleraCentro: tvs.TvsEscaleraCentro,
-            TvsEscaleraSur: tvs.TvsEscaleraSur,
-          }}
+          initialValues={initialValues}
           onSubmit={async (values) => {
             const newTvs = { ...tvs };
             newTvs.VWN = values.VWN;
@@ -412,30 +408,18 @@ const MatrizVideo = () => {
                 newTvs.TV17 = values.TvsEscaleraSur;
                 newTvs.TV18 = values.TvsEscaleraSur;
             }
-            const vwDestNames = {
-              VWN: "VW-Norte",
-              VWC: "VW-Centro",
-              VWS: "VW-Sur",
-            };
-            const mappings = Object.entries(newTvs)
-              .filter(([tv]) => tv !== 'TVRACK')
-              .map(([tv, source]) => ({
-                source,
-                dest: vwDestNames[tv] || tv,
-              }));
+
+            // Escrituras confirmed-only vía broker (writeQueue serializa por
+            // destino): POST /api/tvs/:id/source por cada TV real, en batches.
+            // Sin estado local optimista — el snapshot SSE actualiza la UI.
+            const mappings = DESTINOS_TV.map((tv) => ({ dest: tv, source: newTvs[tv] }));
             try {
-              // Enviar en lotes de 8 para no saturar la red y actualizar
-              // el Aside incrementalmente (no esperar al final de los 46)
               const BATCH_SIZE = 8;
               for (let i = 0; i < mappings.length; i += BATCH_SIZE) {
                 const batch = mappings.slice(i, i + BATCH_SIZE);
                 await Promise.allSettled(
-                  batch.map(({ source, dest }) =>
-                    assignSourceToDestination(source, dest)
-                  )
+                  batch.map(({ dest, source }) => setTvSource(dest, source))
                 );
-                // Actualizar estado incremental: cada lote refresca el Aside
-                handleChangeEstadoVideo({ ...newTvs });
               }
               toast.success("Matriz de video actualizada");
             } catch {
@@ -681,10 +665,6 @@ const MatrizVideo = () => {
           </Form>
         </Formik>
       </PageContainer>
-      {/*
-        Empty div placeholder for MatrizPreset (rendered separately).
-        Kept for layout compatibility — the flex row needs a sibling.
-      */}
     </main>
   );
 };

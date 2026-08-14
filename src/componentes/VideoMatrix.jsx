@@ -27,7 +27,7 @@ const displayId = (id) => {
 };
 
 const VideoMatrix = () => {
-  const { estado } = useContext(ContextoUser);
+  const { estado, tvrackState } = useContext(ContextoUser);
   const tvs = estado.tvs;
 
   const cssColors = useMemo(() => {
@@ -39,7 +39,12 @@ const VideoMatrix = () => {
     return vars;
   }, [tvs]);
 
-  const tvColor = (id) => tvs?.[id] ? { backgroundColor: `var(--${tvs[id]})` } : {};
+  // TVRACK ya no vive en estado.tvs (task 3.3): se lee del dominio broker
+  // tvrackState, como el resto de los componentes.
+  const tvColor = (id) => {
+    const source = id === "TVRACK" ? tvrackState?.video : tvs?.[id];
+    return source ? { backgroundColor: `var(--${source})` } : {};
+  };
 
   // ── Empty state ──
   if (!tvs || Object.keys(tvs).length === 0) {

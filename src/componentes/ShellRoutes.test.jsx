@@ -9,22 +9,23 @@ import Audio from "./Audio";
 import Arranger from "./Arranger";
 import Soporte from "./Soporte";
 
-// ── Mock arrangerApi module ──
+// ── Mock arrangerApi module (contrato PR 3: cliente del broker) ──
 vi.mock("../api/arrangerApi", () => ({
-  fetchZonasFueraState: vi.fn().mockResolvedValue({}),
-  setZonasFueraVideo: vi.fn(),
-  setZonasFueraAudio: vi.fn(),
-  setZonasFueraLink: vi.fn(),
-  assignVideoSource: vi.fn(),
-  assignAudioSource: vi.fn(),
-  assignSourceToDestination: vi.fn(),
-  fetchTvrackState: vi.fn().mockRejectedValue(new Error("no server")),
-  setTvrackVideo: vi.fn(),
-  setTvrackAudio: vi.fn(),
-  setTvrackLink: vi.fn(),
+  setTvSource: vi.fn().mockResolvedValue({ ok: true, reported: "DTV1" }),
+  setAppState: vi.fn().mockResolvedValue({ ok: true }),
+  setTvrackVideo: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
+  setTvrackAudio: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
+  setTvrackLink: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
+  setZonasFueraVideo: vi.fn().mockResolvedValue({ zoneId: "z", video: "DTV1" }),
+  setZonasFueraAudio: vi.fn().mockResolvedValue({ zoneId: "z", audio: "DTV1" }),
+  setZonasFueraLink: vi.fn().mockResolvedValue({ zoneId: "z", link: false }),
+  savePreset: vi.fn().mockResolvedValue({ ok: true }),
+  loadPreset: vi.fn().mockResolvedValue({ ok: true, applied: 30, failed: 0 }),
+  deletePresetServer: vi.fn().mockResolvedValue({ ok: true }),
+  fetchPreset: vi.fn().mockResolvedValue(null),
+  fetchBrokerState: vi.fn().mockResolvedValue({ domains: {}, versions: {}, sync: { status: "stale" } }),
   sendChannelDigits: vi.fn(),
   sendSerialCommand: vi.fn(),
-  joinMultipleTVs: vi.fn(),
 }));
 
 // ── Mock Toast hook ──

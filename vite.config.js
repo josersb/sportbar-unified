@@ -27,6 +27,24 @@ export default defineConfig({
     open: true, // Auto-open browser
     cors: true,
     proxy: {
+      // ── Broker (PR 3: el cliente solo habla con el broker) ──
+      // Deben ir ANTES del fallback genérico /api → Arranger.
+      "/api/stream": {
+        target: EXPRESS_URL,
+        changeOrigin: true,
+      },
+      "/api/broker": {
+        target: EXPRESS_URL,
+        changeOrigin: true,
+      },
+      "/api/tvs": {
+        target: EXPRESS_URL,
+        changeOrigin: true,
+      },
+      "/api/app-state": {
+        target: EXPRESS_URL,
+        changeOrigin: true,
+      },
       // Device status endpoint → Express (must come before the generic /api rule)
       "/api/device/": {
         target: EXPRESS_URL,

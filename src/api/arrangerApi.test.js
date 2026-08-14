@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { addPreset, deletePreset, getPresets, joinMultipleTVs, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, getEncoder, getStatus, getMatrix, getJoins, leaveAv, joinIr, joinSerial, fetchZonasFueraState, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink } from "./arrangerApi";
+import { addPreset, deletePreset, getPresets, sendSerialCommand, loadChannelPreset, sendIrCommand, sendChannelDigits, getDevices, joinIr, joinSerial, setZonasFueraVideo, setZonasFueraAudio, setZonasFueraLink, setTvSource, fetchBrokerState, setAppState, savePreset, fetchPreset, loadPreset, deletePresetServer } from "./arrangerApi";
 
 // Mock IR_CODES so the dynamic import inside sendChannelDigits resolves synchronously
 // and doesn't interfere with vi.useFakeTimers
@@ -104,66 +104,6 @@ describe("sendChannelDigits", () => {
   });
 });
 
-describe("joinMultipleTVs", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("does nothing for empty mappings array (no-op)", async () => {
-    await joinMultipleTVs([]);
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  it("sends 3 sequential join av commands for 3 mappings", async () => {
-    const mappings = [
-      { source: "DTV1", dest: "TV01" },
-      { source: "DTV2", dest: "TV02" },
-      { source: "DTV3", dest: "TV03" },
-    ];
-
-    await joinMultipleTVs(mappings);
-
-    expect(fetch).toHaveBeenCalledTimes(3);
-    expect(fetch.mock.calls[0][0]).toContain("join%20av%20DTV1%20TV01");
-    expect(fetch.mock.calls[1][0]).toContain("join%20av%20DTV2%20TV02");
-    expect(fetch.mock.calls[2][0]).toContain("join%20av%20DTV3%20TV03");
-  });
-
-  it("continues to next mapping when one fails and logs error per item", async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce(mockArrangerOk())
-      .mockRejectedValueOnce(new Error("Network failure"))
-      .mockResolvedValueOnce(mockArrangerOk());
-
-    vi.stubGlobal("fetch", mockFetch);
-
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    const mappings = [
-      { source: "DTV1", dest: "TV01" },
-      { source: "DTV2", dest: "TV02" },
-      { source: "DTV3", dest: "TV03" },
-    ];
-
-    await joinMultipleTVs(mappings);
-
-    // All 3 mappings should be attempted
-    expect(mockFetch).toHaveBeenCalledTimes(3);
-    // The failed one should log the error
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("[ArrangerAPI] Error"),
-      expect.any(Error)
-    );
-
-    consoleSpy.mockRestore();
-  });
-});
-
 describe("sendSerialCommand", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
@@ -235,151 +175,6 @@ describe("getDevices", () => {
     await getDevices("Encoders");
     const calledUrl = fetch.mock.calls[0][0];
     expect(calledUrl).toContain("get%20devices%20Encoders");
-  });
-});
-
-describe("getEncoder", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("returns encoder name on success", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      status: 200,
-      text: () => Promise.resolve("get encoder success DTV1"),
-    }));
-    const encoder = await getEncoder("TVRACK", "video");
-    expect(encoder).toBe("DTV1");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20encoder%20TVRACK%20video");
-  });
-
-  it("returns null when no encoder connected", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      status: 200,
-      text: () => Promise.resolve("get encoder error [no encoder connected]"),
-    }));
-    const encoder = await getEncoder("TVRACK", "video");
-    expect(encoder).toBeNull();
-  });
-
-  it("sends get encoder for audio subscription", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      status: 200,
-      text: () => Promise.resolve("get encoder success DTV2"),
-    }));
-    const encoder = await getEncoder("Decoder1", "audio");
-    expect(encoder).toBe("DTV2");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20encoder%20Decoder1%20audio");
-  });
-
-  it("throws on invalid decoder", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      status: 200,
-      text: () => Promise.resolve("get encoder error [decoder 'Fake' not found]"),
-    }));
-    await expect(getEncoder("Fake", "video")).rejects.toThrow("Arranger");
-  });
-});
-
-describe("getStatus", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("sends get status for a specific device", async () => {
-    await getStatus("TVRACK");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20status%20TVRACK");
-  });
-
-  it("sends get status with stream parameter", async () => {
-    await getStatus("DTV1", "video");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20status%20DTV1%20video");
-  });
-});
-
-describe("getMatrix", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("sends get matrix video", async () => {
-    await getMatrix("video");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20matrix%20video");
-  });
-
-  it("sends get matrix audio", async () => {
-    await getMatrix("audio");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20matrix%20audio");
-  });
-});
-
-describe("getJoins", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("sends get joins without arguments", async () => {
-    await getJoins();
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20joins");
-  });
-
-  it("sends get joins with decoder only (no subscription)", async () => {
-    await getJoins("TVRACK");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20joins%20TVRACK");
-  });
-
-  it("sends get joins with decoder and ir subscription", async () => {
-    await getJoins("TVRACK", "ir");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20joins%20TVRACK%20ir");
-  });
-
-  it("sends get joins with decoder and serial subscription", async () => {
-    await getJoins("DTV1", "serial");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20joins%20DTV1%20serial");
-  });
-
-  it("sends get joins with decoder and video subscription", async () => {
-    await getJoins("Decoder1", "video");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("get%20joins%20Decoder1%20video");
-  });
-});
-
-describe("leaveAv", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("sends leave av for a decoder", async () => {
-    await leaveAv("TVRACK");
-    const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("leave%20av%20TVRACK");
   });
 });
 
@@ -469,136 +264,6 @@ describe("getPresets", () => {
   });
 });
 
-describe("Zonas Fuera State Functions", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  describe("fetchZonasFueraState", () => {
-    it("fetches GET /api/zonas-fuera/state and returns JSON", async () => {
-      const mockState = {
-        "aVip-Barra-Centro": { video: "DTV1", audio: "DTV1", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" },
-      };
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockState),
-      });
-
-      const result = await fetchZonasFueraState();
-
-      expect(fetch).toHaveBeenCalledWith("/api/zonas-fuera/state");
-      expect(result).toEqual(mockState);
-    });
-
-    it("throws when response is not ok", async () => {
-      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 500 });
-
-      await expect(fetchZonasFueraState()).rejects.toThrow("Failed to fetch zonas fuera state: 500");
-    });
-  });
-
-  describe("setZonasFueraVideo", () => {
-    it("POSTs to /api/zonas-fuera/:id/video with deviceId", async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ zoneId: "aVip-Barra-Centro", video: "DTV3", audio: "DTV3", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" }),
-      });
-
-      const result = await setZonasFueraVideo("aVip-Barra-Centro", "DTV3");
-
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/zonas-fuera/aVip-Barra-Centro/video",
-        expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId: "DTV3" }),
-        }),
-      );
-      expect(result.video).toBe("DTV3");
-    });
-
-    it("throws when response is not ok", async () => {
-      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 400 });
-
-      await expect(setZonasFueraVideo("INVALID", "DTV1")).rejects.toThrow("Failed to set video for INVALID: 400");
-    });
-  });
-
-  describe("setZonasFueraAudio", () => {
-    it("POSTs to /api/zonas-fuera/:id/audio with deviceId", async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ zoneId: "aVip-Bar-Boveda", video: "DTV5", audio: "DTV5", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" }),
-      });
-
-      const result = await setZonasFueraAudio("aVip-Bar-Boveda", "DTV5");
-
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/zonas-fuera/aVip-Bar-Boveda/audio",
-        expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId: "DTV5" }),
-        }),
-      );
-      expect(result.audio).toBe("DTV5");
-    });
-
-    it("throws when response is not ok", async () => {
-      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 503 });
-
-      await expect(setZonasFueraAudio("aVip-Barra-Centro", "DTV2")).rejects.toThrow("Failed to set audio for aVip-Barra-Centro: 503");
-    });
-  });
-
-  describe("setZonasFueraLink", () => {
-    it("POSTs to /api/zonas-fuera/:id/link with linked boolean", async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ zoneId: "aVip-Barra-Centro", video: "DTV1", audio: "DTV1", link: false, lastUpdated: "2026-01-01T00:00:00.000Z" }),
-      });
-
-      const result = await setZonasFueraLink("aVip-Barra-Centro", false);
-
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/zonas-fuera/aVip-Barra-Centro/link",
-        expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ linked: false }),
-        }),
-      );
-      expect(result.link).toBe(false);
-    });
-
-    it("accepts true for linked", async () => {
-      vi.mocked(fetch).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ zoneId: "aVip-Barra-Centro", video: "DTV4", audio: "DTV4", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" }),
-      });
-
-      await setZonasFueraLink("aVip-Barra-Centro", true);
-
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/zonas-fuera/aVip-Barra-Centro/link",
-        expect.objectContaining({
-          body: JSON.stringify({ linked: true }),
-        }),
-      );
-    });
-
-    it("throws when response is not ok", async () => {
-      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 400 });
-
-      await expect(setZonasFueraLink("INVALID", true)).rejects.toThrow("Failed to set link for INVALID: 400");
-    });
-  });
-});
-
 describe("joinIr", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockArrangerOk()));
@@ -628,5 +293,211 @@ describe("joinSerial", () => {
     await joinSerial("DTV1", "TVRACK");
     const calledUrl = fetch.mock.calls[0][0];
     expect(calledUrl).toContain("join%20serial%20DTV1%20TVRACK");
+  });
+});
+
+describe("Broker Client (PR 3)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  describe("setTvSource", () => {
+    it("POSTs to /api/tvs/:id/source with source and returns confirmed response", async () => {
+      const confirmed = {
+        ok: true, id: "TV01", source: "DTV3", dest: "TV01",
+        reported: "DTV3", version: 12, lastUpdated: "2026-08-14T00:00:00Z",
+        sync: { status: "synced", lastSync: "2026-08-14T00:00:00Z" },
+      };
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(confirmed),
+      }));
+
+      const result = await setTvSource("TV01", "DTV3");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/tvs/TV01/source",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source: "DTV3" }),
+        }),
+      );
+      expect(result.reported).toBe("DTV3");
+      expect(result.sync.status).toBe("synced");
+    });
+
+    it("throws with server error message when response is not ok", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: "Destino inválido: BOGUS" }),
+      }));
+
+      await expect(setTvSource("BOGUS", "DTV1")).rejects.toThrow("Destino inválido: BOGUS");
+    });
+  });
+
+  describe("fetchBrokerState", () => {
+    it("GETs /api/broker/state without since by default", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ domains: {}, versions: {}, sync: { status: "stale" } }),
+      }));
+
+      await fetchBrokerState();
+
+      expect(fetch).toHaveBeenCalledWith("/api/broker/state");
+    });
+
+    it("passes since query encoded", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ domains: {}, versions: {}, sync: { status: "stale" } }),
+      }));
+
+      await fetchBrokerState("tvs:12,zonasFuera:3");
+
+      expect(fetch).toHaveBeenCalledWith("/api/broker/state?since=tvs%3A12%2CzonasFuera%3A3");
+    });
+
+    it("throws when response is not ok", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+
+      await expect(fetchBrokerState()).rejects.toThrow("Failed to fetch broker state: 503");
+    });
+  });
+
+  describe("setAppState", () => {
+    it("POSTs partial merge to /api/app-state", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ ok: true, appState: { audio: [] } }),
+      }));
+
+      await setAppState({ audio: [] });
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/app-state",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ audio: [] }),
+        }),
+      );
+    });
+  });
+
+  describe("savePreset / fetchPreset / loadPreset / deletePresetServer", () => {
+    it("savePreset POSTs snapshot completo a /api/presets/:n", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) }));
+      const snapshot = { tvs: { TV01: "DTV1" }, zonasFuera: {}, tvrack: { video: "DTV1", audio: "DTV1" }, _version: 3 };
+
+      await savePreset(1, snapshot);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/presets/1",
+        expect.objectContaining({ method: "POST", body: JSON.stringify(snapshot) }),
+      );
+    });
+
+    it("fetchPreset returns preset or null", async () => {
+      const preset = { tvs: { TV01: "DTV1" }, zonasFuera: {}, tvrack: {}, _version: 3 };
+      vi.stubGlobal("fetch", vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ preset }) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ preset: null }) }));
+
+      expect(await fetchPreset(1)).toEqual(preset);
+      expect(await fetchPreset(2)).toBeNull();
+    });
+
+    it("loadPreset POSTs /api/presets/:n/load (server-side restore)", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ ok: true, applied: 30, failed: 0 }),
+      }));
+
+      const result = await loadPreset(1);
+
+      expect(fetch).toHaveBeenCalledWith("/api/presets/1/load", { method: "POST" });
+      expect(result.failed).toBe(0);
+    });
+
+    it("loadPreset throws with server error on 404 empty preset", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: "Preset 3 vacío" }),
+      }));
+
+      await expect(loadPreset(3)).rejects.toThrow("Preset 3 vacío");
+    });
+
+    it("deletePresetServer DELETEs /api/presets/:n", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) }));
+
+      await deletePresetServer(5);
+
+      expect(fetch).toHaveBeenCalledWith("/api/presets/5", { method: "DELETE" });
+    });
+  });
+
+  describe("Zonas Fuera State (write-through broker)", () => {
+    it("setZonasFueraVideo POSTs to /api/zonas-fuera/:id/video", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ zoneId: "aVip-Barra-Centro", video: "DTV3", audio: "DTV3", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" }),
+      }));
+
+      const result = await setZonasFueraVideo("aVip-Barra-Centro", "DTV3");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/zonas-fuera/aVip-Barra-Centro/video",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: "DTV3" }),
+        }),
+      );
+      expect(result.video).toBe("DTV3");
+    });
+
+    it("setZonasFueraAudio POSTs to /api/zonas-fuera/:id/audio", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ zoneId: "aVip-Bar-Boveda", video: "DTV5", audio: "DTV5", link: true, lastUpdated: "2026-01-01T00:00:00.000Z" }),
+      }));
+
+      const result = await setZonasFueraAudio("aVip-Bar-Boveda", "DTV5");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/zonas-fuera/aVip-Bar-Boveda/audio",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: "DTV5" }),
+        }),
+      );
+      expect(result.audio).toBe("DTV5");
+    });
+
+    it("setZonasFueraLink POSTs to /api/zonas-fuera/:id/link", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ zoneId: "aVip-Barra-Centro", video: "DTV1", audio: "DTV1", link: false, lastUpdated: "2026-01-01T00:00:00.000Z" }),
+      }));
+
+      const result = await setZonasFueraLink("aVip-Barra-Centro", false);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/zonas-fuera/aVip-Barra-Centro/link",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ linked: false }),
+        }),
+      );
+      expect(result.link).toBe(false);
+    });
   });
 });

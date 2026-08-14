@@ -61,10 +61,11 @@ const MatrizPreset = () => {
       return;
     }
     try {
+      // Load server-side: restaura tvs + zonasFuera + tvrack (3 dominios)
       await preset.load();
       toast.success(`Preset ${label} cargado`);
-    } catch {
-      toast.error("Error al comunicar con el Arranger");
+    } catch (err) {
+      toast.error(err?.message || `Error al cargar el preset ${label}`);
     }
   };
 
@@ -80,10 +81,7 @@ const MatrizPreset = () => {
   };
 
   const handleClear = (preset, label) => async () => {
-    try {
-      await fetch(`/api/presets/${label}`, { method: "DELETE" });
-    } catch {}
-    localStorage.removeItem(`estadoApp_Preset${label}`);
+    await preset.clear();
     toast.info(`Preset ${label} limpiado`);
     setServerStatus(prev => {
       const next = [...prev];

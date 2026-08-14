@@ -2,13 +2,12 @@ import React from "react";
 import { DISPOSITIVOS } from "./dispositivos";
 
 const ContextoUser = React.createContext({
-  reconciliationStatus: {
-    status: "idle",
-    progress: { done: 0, total: 0, subscription: "video" },
-    diffs: [],
-    elapsedMs: 0,
+  syncStatus: {
+    status: "stale",
     lastSync: null,
   },
+  syncMode: "sse",
+  syncConnected: false,
 });
 
 export const estadoInicial = {
@@ -62,6 +61,10 @@ export const estadoInicial = {
     1603, 1604, 1605, 1608, 1609, 1610, 1612, 1613, 1614, 1620, 1621, 1622, 1623, 1625, 1628, 1629,
     1631, 1639, 1644, 1677,
   ],
+  // tvs: solo destinos de matriz del broker (TV01-TV26 + VWN/VWC/VWS).
+  // PR 3: se eliminaron las keys legacy TvsBarra*, TvsEscalera* y TVRACK —
+  // TVRACK vive en tvrackState; los grupos del form de MatrizVideo se derivan
+  // de las TVs individuales (brokerClientCore.collapseGroup).
   tvs: {
     VWN: "DTV1",
     VWC: "DTV1",
@@ -92,16 +95,6 @@ export const estadoInicial = {
     TV24: "DTV1",
     TV25: "DTV1",
     TV26: "DTV1",
-    TVRACK: "DTV1",
-    TvsBarraLivertador: "DTV542",
-    TvsBarraSur: "DTV5432",
-    TvsBarraPista: "DTV542",
-    TvsBarraNorte: "DTV5432",
-    TvsEscaleraNorte: "DTV1234",
-    TvsEscaleraCentro: "DTV1234",
-    TvsEscaleraSur: "DTV1234",
-    // Zonas adicionales removidas de tvs — ahora en zonasFueraState independiente
-    // Ver: zonas-fuera-botones-independientes SDD
   },
   audio: [
     {
@@ -143,7 +136,7 @@ export const estadoInicial = {
 };
 
 // Los presets ya no se auto-inicializan. Se crean cuando el usuario
-// guarda desde MatrizPreset y se sincronizan con el servidor (lowdb).
+// guarda desde MatrizPreset y se sincronizan con el servidor (broker).
 // Si no hay datos en localStorage ni en el servidor, el preset está libre.
 
 export const ProviderUser = ContextoUser.Provider;

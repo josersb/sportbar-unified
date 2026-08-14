@@ -1,361 +1,106 @@
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
-import { DISPOSITIVOS, getDevice } from "./contexto/dispositivos";
+import { useBrokerState } from "./hooks/useBrokerState";
+import { deriveUiState, buildDiffsInfo } from "./hooks/brokerClientCore";
 import {
-  fetchZonasFueraState,
+  setAppState,
   setZonasFueraVideo,
   setZonasFueraAudio,
   setZonasFueraLink,
-  assignVideoSource,
-  assignAudioSource,
-  assignSourceToDestination,
 } from "./api/arrangerApi";
-import { useArrangerReconciliation } from "./hooks/useArrangerReconciliation";
 import Body from "./componentes/Body";
 import { useToast } from "./componentes/Toast";
 import ThemeProvider from "./contexto/ThemeProvider";
 import "./componentes/Toast.css";
 
-// Migration function: converts v0 (decos[]) to v1 (dispositivos{})
-const migrarEstado = (oldData) => {
-  try {
-    const dispositivos = {};
-    if (oldData.decos && Array.isArray(oldData.decos)) {
-      oldData.decos.forEach((deco) => {
-        const device = getDevice(deco.nombreDeco);
-        if (device) {
-          dispositivos[deco.nombreDeco] = {
-            canalActual: deco.canalDeco,
-            capabilities: device.fallbackCapabilities,
-            online: true,
-          };
-        }
-      });
-    }
-    // Fill any devices missing from old data
-    Object.entries(DISPOSITIVOS).forEach(([id, device]) => {
-      if (!dispositivos[id]) {
-        dispositivos[id] = {
-          canalActual: device.defaultChannel,
-          capabilities: device.fallbackCapabilities,
-          online: true,
-        };
-      }
-    });
-    return {
-      ...oldData,
-      dispositivos,
-      _version: 1,
-    };
-  } catch (error) {
-    console.warn("Migration failed, using initial state:", error);
-    return { ...estadoInicial, _version: 1 };
-  }
-};
+// Key legacy del estado app (v1, localStorage) para migrar al broker al arrancar.
+const ESTADO_APP_KEY = "estadoApp";
 
 const App = () => {
-  const [estado, setEstado] = useState(estadoInicial);
+  const toast = useToast();
+  const { snapshot, syncStatus, mode, connected, lastError } = useBrokerState();
+
+  // Estado app-only local (decos, dispositivos, audio, favoritos, descripcionPreset).
+  // El server es dueño del estado app (appOnly.appState); la UI lo mantiene en
+  // memoria y persiste cambios con POST /api/app-state (merge parcial).
+  const [estado, setEstado] = useState(() => {
+    try {
+      const saved = localStorage.getItem(ESTADO_APP_KEY);
+      if (saved) return { ...estadoInicial, ...JSON.parse(saved), _version: 1 };
+    } catch {
+      // localStorage corrupto → estado inicial
+    }
+    return estadoInicial;
+  });
   const [tvrackState, setTvrackState] = useState({ video: "DTV1", audio: "DTV1", link: false });
   const [zonasFueraState, setZonasFueraState] = useState({});
-  const toast = useToast();
   const [estadoLoaded, setEstadoLoaded] = useState(false);
   const [errorDecos, setErrorDecos] = useState(false);
 
-  // ── Reconciliación con Arranger (hook extraído) ──
-  const {
-    progress,
-    diffs,
-    status: reconciliationStatus,
-    elapsedMs,
-    lastSync,
-    cachedDiffs,
-    cachedAt,
-    retryCount,
-    partial,
-    reconcile,
-    clearDiffs,
-  } = useArrangerReconciliation(estado.tvs, zonasFueraState, tvrackState);
+  // ── Estado de matriz desde el broker (snapshot SSE + deltas) ──
+  // La UI de tvs/tvrack/zonas-fuera es derivada del snapshot; NO hay estado
+  // local de matriz ni polls (eliminados en PR 3). Escrituras → broker con await.
+  const { tvs, tvrackState: brokerTvrack, zonasFueraState: brokerZonas } = useMemo(
+    () => deriveUiState(snapshot),
+    [snapshot],
+  );
 
-  // Load state: server first, localStorage fallback, then initial state
   useEffect(() => {
-    let cancelled = false;
+    if (!snapshot) return;
+    setTvrackState(brokerTvrack);
+    setZonasFueraState(brokerZonas);
+    setEstadoLoaded(true);
+    setErrorDecos(false);
+  }, [snapshot, brokerTvrack, brokerZonas]);
 
-    async function loadState() {
-      // 1. Try server (shared state across devices)
-      try {
-        const res = await fetch("/api/state");
-        if (res.ok) {
-          const { state } = await res.json();
-          if (state && !cancelled) {
-            setEstado(state);
-            setEstadoLoaded(true);
-            return;
-          }
-        }
-      } catch {
-        // Server not available, fall through to localStorage
-        if (!cancelled) setErrorDecos(true);
-      }
+  // tvs del broker se inyectan en `estado` (la UI lee estado.tvs).
+  const estadoConTvs = useMemo(() => ({ ...estado, tvs }), [estado, tvs]);
 
-      // 2. Fallback to localStorage
-      const saved = localStorage.getItem("estadoApp");
-      if (saved && !cancelled) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (!parsed._version || parsed._version < 1) {
-            const migrated = migrarEstado(parsed);
-            localStorage.setItem("estadoApp", JSON.stringify(migrated));
-            // Also migrate presets
-            for (let i = 1; i <= 5; i++) {
-              const key = `estadoApp_Preset${i}`;
-              const presetSaved = localStorage.getItem(key);
-              if (presetSaved) {
-                try {
-                  const presetParsed = JSON.parse(presetSaved);
-                  if (!presetParsed._version || presetParsed._version < 1) {
-                    localStorage.setItem(key, JSON.stringify(migrarEstado(presetParsed)));
-                  }
-                } catch {
-                  // skip corrupted preset
-                }
-              }
-            }
-            setEstado(migrated);
-          } else {
-            setEstado(parsed);
-          }
-          setEstadoLoaded(true);
-          return;
-        } catch {
-          // corrupted localStorage
-        }
+  // ── Migración localStorage → broker al primer arranque (spec migracion-localstorage) ──
+  // Si el broker no tiene appState y existe estadoApp viejo, se sube (merge
+  // parcial) y se conserva localmente como backup. El estado de matriz NUNCA
+  // se migra desde localStorage: el broker lo reconstruye desde el Arranger.
+  useEffect(() => {
+    if (!snapshot || !estadoLoaded) return;
+    const serverHasApp = snapshot.appOnly && snapshot.appOnly.appState != null;
+    if (serverHasApp) return;
+    try {
+      const saved = localStorage.getItem(ESTADO_APP_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (!parsed || typeof parsed !== "object") return;
+      const patch = {};
+      for (const key of ["decos", "dispositivos", "favoritos", "audio", "descripcionPreset"]) {
+        if (parsed[key] !== undefined) patch[key] = parsed[key];
       }
-
-      // 3. Use initial state
-      if (!cancelled) {
-        setEstado(estadoInicial);
-        setEstadoLoaded(true);
-        // If we reached here, both server and localStorage failed
-        setErrorDecos(true);
+      if (Object.keys(patch).length > 0) {
+        setAppState(patch).catch(() => {});
       }
+    } catch {
+      // localStorage corrupto — el broker arranca igual
     }
+  }, [snapshot, estadoLoaded]);
 
-    loadState();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // ── Reconciliación con Arranger al iniciar (diferida 500ms, no bloqueante) ──
-  useEffect(() => {
-    if (!estadoLoaded) return;
-    const timer = setTimeout(() => reconcile(), 500);
-    return () => clearTimeout(timer);
-  }, [estadoLoaded, reconcile]);
-
-  // ── Aplicar diffs en un único batch al terminar la reconciliación ──
-  // PR3 4.4: tras aplicar el batch se notifica con toast y se limpian los diffs
-  // (ya no representan el estado real — el Arranger pasó a ser la fuente).
-  const appliedDiffsRef = useRef(null);
-  const toastSuccessRef = useRef();
-  const reconciledRef = useRef(false); // evita que el polling pise el estado recién reconciliado
-  useEffect(() => {
-    toastSuccessRef.current = toast.success;
-  });
-  useEffect(() => {
-    if (reconciliationStatus !== "done" || diffs.length === 0) return;
-    if (appliedDiffsRef.current === diffs) return; // ya aplicados en este run
-    appliedDiffsRef.current = diffs;
-
-    let tvsChanged = false;
-    let zonasChanged = false;
-    let tvrackChanged = false;
-    let applied = 0;
-    const newTvs = { ...estado.tvs };
-    const newZonas = { ...zonasFueraState };
-    const newTvrack = { ...tvrackState };
-
-    for (const diff of diffs) {
-      // PR3 4.2: destinos sin respuesta (arranger null) NO se auto-aplican —
-      // quedan visibles en SyncPanel con Aplicar deshabilitado.
-      if (diff.arranger == null) continue;
-      switch (diff.type) {
-        case "tv":
-          newTvs[diff.dest] = diff.arranger;
-          tvsChanged = true;
-          applied += 1;
-          break;
-        case "tvrack-video":
-          newTvrack.video = diff.arranger;
-          tvrackChanged = true;
-          applied += 1;
-          break;
-        case "tvrack-audio":
-          newTvrack.audio = diff.arranger;
-          tvrackChanged = true;
-          applied += 1;
-          break;
-        case "zona-video":
-          newZonas[diff.dest] = { ...newZonas[diff.dest], video: diff.arranger };
-          zonasChanged = true;
-          applied += 1;
-          break;
-        case "zona-audio":
-          newZonas[diff.dest] = { ...newZonas[diff.dest], audio: diff.arranger };
-          zonasChanged = true;
-          applied += 1;
-          break;
-        default:
-          break;
-      }
-    }
-
-    if (tvsChanged) setEstado((prev) => ({ ...prev, tvs: newTvs }));
-    if (zonasChanged) setZonasFueraState(newZonas);
-    if (tvrackChanged) setTvrackState(newTvrack);
-
-    // Persistir al server para que el polling no pise con datos viejos
-    if (zonasChanged) {
-      for (const [id, data] of Object.entries(newZonas)) {
-        fetch(`/api/zonas-fuera/${id}/video`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId: data.video }),
-        }).catch(() => {});
-        fetch(`/api/zonas-fuera/${id}/audio`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId: data.audio }),
-        }).catch(() => {});
-      }
-    }
-    if (tvrackChanged) {
-      fetch("/api/tvrack/video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId: newTvrack.video }),
-      }).catch(() => {});
-      fetch("/api/tvrack/audio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId: newTvrack.audio }),
-      }).catch(() => {});
-    }
-
-    reconciledRef.current = true;
-    setTimeout(() => { reconciledRef.current = false; }, 2000);
-
-    // Notificación + limpieza: los diffs ya se aplicaron automáticamente.
-    if (applied > 0) {
-      toastSuccessRef.current(`✅ ${applied} cambio(s) aplicados desde Arranger`);
-      clearDiffs();
-    }
-  }, [reconciliationStatus, diffs, estado.tvs, zonasFueraState, tvrackState, clearDiffs]);
-
-  // Persist state: localStorage + server (fire-and-forget)
-  useEffect(() => {
-    if (!estadoLoaded) return;
-
-    // Always persist to localStorage (fast, sync-safe for current device)
-    localStorage.setItem("estadoApp", JSON.stringify(estado));
-
-    // Also persist to server (shared state across devices, fire-and-forget)
-    fetch("/api/state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state: estado }),
-    }).catch(() => {
-      // Server not available — state still persisted in localStorage
-    });
-  }, [estado, estadoLoaded]);
-
-  // Polling interval shared across all polling effects
-  const POLL_INTERVAL_MS = 5000;
-
-  // ── Polling: sync zonas fuera state from server every 5s ──
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadZonasFuera() {
-      try {
-        if (reconciledRef.current) return; // reconciliación reciente — no pisar
-        const data = await fetchZonasFueraState();
-        if (!cancelled) {
-          setZonasFueraState((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
-            return data;
-          });
-        }
-      } catch {
-        // Server not available — silently retry next poll
-      }
-    }
-
-    // Delay first poll so Express has time to start (avoids ECONNREFUSED proxy noise)
-    const initialTimer = setTimeout(loadZonasFuera, 2000);
-    const interval = setInterval(loadZonasFuera, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-      clearTimeout(initialTimer);
-    };
-  }, []);
-
-  // ── Polling: sync state from server every 5s (multi-PC support) ──
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        if (reconciledRef.current) return; // reconciliación reciente — no pisar
-        const res = await fetch("/api/state");
-        if (!res.ok) return;
-        const { state: serverState } = await res.json();
-        if (!serverState) return;
-
-        setEstado((prev) => {
-          // Only update if tvs changed (avoids unnecessary re-renders)
-          if (JSON.stringify(prev.tvs) === JSON.stringify(serverState.tvs)) {
-            return prev;
-          }
-          return { ...serverState };
-        });
-      } catch {
-        // Server not available — ignore
-      }
-    }, POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // ── Polling: sync TVRACK state from server every 5s ──
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        if (reconciledRef.current) return; // reconciliación reciente — no pisar
-        const res = await fetch("/api/tvrack/state");
-        if (!res.ok) return;
-        const tvrack = await res.json();
-        setTvrackState((prev) => {
-          if (
-            prev.video === tvrack.video &&
-            prev.audio === tvrack.audio &&
-            prev.link === tvrack.link
-          ) {
-            return prev;
-          }
-          return tvrack;
-        });
-      } catch {
-        // Server not available
-      }
-    }, POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleChangeEstadoDecos = (decos) => {
+  // Persistencia app-only: localStorage (backup local) + broker (merge parcial).
+  const persistAppState = useCallback((patch) => {
     setEstado((prev) => {
-      const dispositivos = { ...prev.dispositivos };
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem(ESTADO_APP_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage lleno/indisponible — el broker es la fuente
+      }
+      return next;
+    });
+    setAppState(patch).catch((err) => {
+      console.warn("[app-state] No se pudo persistir al broker:", err?.message);
+    });
+  }, []);
+
+  const handleChangeEstadoDecos = useCallback(
+    (decos) => {
+      const dispositivos = { ...estado.dispositivos };
       decos.forEach((deco) => {
         if (dispositivos[deco.nombreDeco]) {
           dispositivos[deco.nombreDeco] = {
@@ -364,154 +109,117 @@ const App = () => {
           };
         }
       });
-      return { ...prev, decos, dispositivos };
-    });
-  };
+      persistAppState({ decos, dispositivos });
+    },
+    [estado.dispositivos, persistAppState],
+  );
 
-  const handleUpdateDispositivo = (id, updates) => {
-    setEstado((prev) => ({
-      ...prev,
-      dispositivos: {
-        ...prev.dispositivos,
-        [id]: {
-          ...prev.dispositivos[id],
-          ...updates,
-        },
-      },
+  const handleUpdateDispositivo = useCallback(
+    (id, updates) => {
+      const dispositivos = {
+        ...estado.dispositivos,
+        [id]: { ...estado.dispositivos[id], ...updates },
+      };
+      persistAppState({ dispositivos });
+    },
+    [estado.dispositivos, persistAppState],
+  );
+
+  const handleChangeEstadoAudio = useCallback((audio) => {
+    persistAppState({ audio });
+  }, [persistAppState]);
+
+  const handleChangeEstadoPreset = useCallback((descripcionPreset) => {
+    persistAppState({ descripcionPreset });
+  }, [persistAppState]);
+
+  // TVRACK: escrituras write-through confirmadas (POST /api/tvrack/*); la
+  // respuesta del broker ES el estado confirmado (video/audio/link).
+  const handleChangeTvrack = useCallback((newTvrack) => {
+    setTvrackState((prev) => ({
+      video: newTvrack.video ?? prev.video,
+      audio: newTvrack.audio ?? prev.audio,
+      link: newTvrack.link ?? prev.link,
     }));
-  };
-  const handleChangeEstadoAudio = (audio) => {
-    setEstado((estado) => {
-      return {
-        ...estado,
-        audio,
-      };
-    });
-  };
-  const handleChangeEstadoVideo = (tvs) => {
-    setEstado((estado) => {
-      return {
-        ...estado,
-        tvs,
-      };
-    });
-    //Actualiza los colores del estado delos TVs en el ASIDE
-    // Get the root element
-    //let r = document.querySelector(":root");
-    // Create a function for setting a variable value
-    // r.style.setProperty('--VWC', 'blue');
-  };
-  const handleChangeEstadoPreset = (descripcionPreset) => {
-    setEstado((estado) => {
-      return {
-        ...estado,
-        descripcionPreset,
-      };
-    });
-  };
-  const handleChangeTvrack = (newTvrack) => {
-    setTvrackState(newTvrack);
-  };
+  }, []);
 
-  const reintentarDecos = async () => {
-    setErrorDecos(false);
-    try {
-      const res = await fetch("/api/state");
-      if (res.ok) {
-        const { state } = await res.json();
-        if (state) {
-          setEstado(state);
-          setEstadoLoaded(true);
-          return;
-        }
-      }
-    } catch {
-      // Server still not available
-      setErrorDecos(true);
-    }
-
-    // Fallback to localStorage
-    const saved = localStorage.getItem("estadoApp");
-    if (saved) {
+  // Zonas fuera: escrituras write-through confirmadas vía broker (con link,
+  // el server encadena video+audio). Sin joins directos al Arranger.
+  const handleZonasFueraChange = useCallback(
+    async (zoneId, type, deviceId) => {
       try {
-        const parsed = JSON.parse(saved);
-        const data = !parsed._version || parsed._version < 1
-          ? migrarEstado(parsed)
-          : parsed;
-        setEstado(data);
-        setEstadoLoaded(true);
-        return;
-      } catch {
-        // corrupted
-      }
-    }
-
-    // Ultimate fallback
-    setEstado(estadoInicial);
-    setEstadoLoaded(true);
-  };
-
-  const handleZonasFueraChange = async (zoneId, type, deviceId) => {
-    const prev = zonasFueraState[zoneId] || {};
-    let response;
-
-    try {
-      if (type === "video" || type === "audio") {
-        if (prev.link) {
-          // Vinculado: join av en un solo comando, mismo patrón que TVRACK
-          await assignSourceToDestination(deviceId, zoneId);
-          response = type === "video"
-            ? await setZonasFueraVideo(zoneId, deviceId)
-            : await setZonasFueraAudio(zoneId, deviceId);
-          toast.success(`${deviceId} → VIDEO + AUDIO ${zoneId}`);
-        } else {
-          // Desvinculado: comandos separados
-          if (type === "video") {
-            await assignVideoSource(deviceId, zoneId);
-            response = await setZonasFueraVideo(zoneId, deviceId);
-          } else {
-            await assignAudioSource(deviceId, zoneId);
-            response = await setZonasFueraAudio(zoneId, deviceId);
-          }
+        if (type === "video" || type === "audio") {
+          const response =
+            type === "video"
+              ? await setZonasFueraVideo(zoneId, deviceId)
+              : await setZonasFueraAudio(zoneId, deviceId);
+          setZonasFueraState((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], ...response } }));
           toast.success(`${deviceId} → ${type.toUpperCase()} ${zoneId}`);
+        } else if (type === "link") {
+          const response = await setZonasFueraLink(zoneId, deviceId);
+          setZonasFueraState((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], ...response } }));
         }
-      } else if (type === "link") {
-        response = await setZonasFueraLink(zoneId, deviceId);
+      } catch (err) {
+        console.error(`[zonas-fuera] Error en ${type} para ${zoneId}:`, err);
+        toast.error(`Error al cambiar ${type} en ${zoneId}`);
       }
+    },
+    [toast],
+  );
 
-      if (response) {
-        setZonasFueraState((prevState) => ({
-          ...prevState,
-          [zoneId]: response,
-        }));
-      }
-    } catch (err) {
-      console.error(`[zonas-fuera] Error en ${type} para ${zoneId}:`, err);
-      toast.error(`Error al cambiar ${type} en ${zoneId}`);
-    }
-  };
+  const reintentarDecos = useCallback(() => {
+    // El broker reconecta solo (SSE/poll). Reintentar = limpiar el error y
+    // confiar en el snapshot; si no hay conexión, el hook sigue reintentando.
+    setErrorDecos(false);
+    if (snapshot) setEstadoLoaded(true);
+  }, [snapshot]);
+
+  // syncStatus estable (mismo objeto entre renders si status/lastSync no cambian).
+  const contextValue = useMemo(
+    () => ({
+      estado: estadoConTvs,
+      estadoLoaded,
+      errorDecos,
+      tvrackState,
+      zonasFueraState,
+      syncStatus,
+      syncMode: mode,
+      syncConnected: connected,
+      syncError: lastError,
+      handleChangeEstadoDecos,
+      handleChangeEstadoAudio,
+      handleChangeEstadoPreset,
+      handleUpdateDispositivo,
+      handleChangeTvrack,
+      handleZonasFueraChange,
+      reintentarDecos,
+      syncDiffs: buildDiffsInfo(snapshot),
+    }),
+    [
+      estadoConTvs,
+      estadoLoaded,
+      errorDecos,
+      tvrackState,
+      zonasFueraState,
+      syncStatus,
+      mode,
+      connected,
+      lastError,
+      snapshot,
+      handleChangeEstadoDecos,
+      handleChangeEstadoAudio,
+      handleChangeEstadoPreset,
+      handleUpdateDispositivo,
+      handleChangeTvrack,
+      handleZonasFueraChange,
+      reintentarDecos,
+    ],
+  );
 
   return (
     <Router>
       <ThemeProvider>
-          <ProviderUser
-            value={{
-              estado,
-              estadoLoaded,
-              errorDecos,
-              tvrackState,
-              zonasFueraState,
-              handleChangeEstadoDecos,
-            handleChangeEstadoAudio,
-            handleChangeEstadoVideo,
-            handleChangeEstadoPreset,
-            handleUpdateDispositivo,
-            handleChangeTvrack,
-            handleZonasFueraChange,
-            reintentarDecos,
-            reconciliationStatus: { status: reconciliationStatus, progress, diffs, elapsedMs, lastSync, cachedDiffs, cachedAt, retryCount, partial, reconcile, clearDiffs },
-          }}
-        >
+        <ProviderUser value={contextValue}>
           <Body />
         </ProviderUser>
       </ThemeProvider>

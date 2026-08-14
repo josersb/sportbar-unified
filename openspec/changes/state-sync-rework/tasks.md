@@ -34,10 +34,10 @@ Chain strategy: stacked-to-main
 - [x] 1.6 Verify PR 1: migración sobre fixture v2 genera backup; fresh-start reconstruye; gate `pnpm run sportbar:build`.
 
 ## Phase 2: Broker composition (PR 2)
-- [ ] 2.1 `server/broker/writeQueue.js` — FIFO por destino (`Map<key,Promise>`), máx 1 join/destino. Verify: doble POST TV01 en serie, última intención gana.
-- [ ] 2.2 `server/broker/reconciler.js` — scan batch 4, buildDiffs (del hook), auto-adopt solo lectura confirmada (null/blip no pisa), single-flight; intervalo `RECONCILER_INTERVAL_MS` (default 300000).
-- [ ] 2.3 `server/server.js` — composition root: token único `VITE_ARRANGER_TOKEN || ARRANGER_TOKEN` fail-fast (gap 2); limiters reads 300/writes 240/15min, stream y proxy sin limiter; endpoints `GET /api/stream`, `GET /api/broker/state?since=`, `POST /api/app-state`, `POST /api/tvs/:id/source`, `POST /api/presets/:n/load`; POSTs tvrack/zonas-fuera/presets write-through+await+broadcast; endpoints legacy conservados.
-- [ ] 2.4 Verify PR 2: POST respondido con reported confirmado; SSE <1s; 2 clientes SSE sin 429; cliente actual operativo.
+- [x] 2.1 `server/broker/writeQueue.js` — FIFO por destino (`Map<key,Promise>`), máx 1 join/destino. Verify: doble POST TV01 en serie, última intención gana.
+- [x] 2.2 `server/broker/reconciler.js` — scan batch 4, buildDiffs (del hook), auto-adopt solo lectura confirmada (null/blip no pisa), single-flight; intervalo `RECONCILER_INTERVAL_MS` (default 300000).
+- [x] 2.3 `server/server.js` — composition root: token único `VITE_ARRANGER_TOKEN || ARRANGER_TOKEN` fail-fast (gap 2); limiters reads 300/writes 240/15min, stream y proxy sin limiter; endpoints `GET /api/stream`, `GET /api/broker/state?since=`, `POST /api/app-state`, `POST /api/tvs/:id/source`, `POST /api/presets/:n/load`; POSTs tvrack/zonas-fuera/presets write-through+await+broadcast; endpoints legacy conservados.
+- [x] 2.4 Verify PR 2: POST respondido con reported confirmado; SSE <1s; 2 clientes SSE sin 429; cliente actual operativo.
 
 ## Phase 3: Cliente broker (PR 3)
 - [ ] 3.1 `src/hooks/useBrokerState.js` — SSE + snapshot + delta por dominio, reconexión auto, fallback poll versionado vs broker (5s→30s backoff), enum `synced|stale|out_of_sync|offline`.

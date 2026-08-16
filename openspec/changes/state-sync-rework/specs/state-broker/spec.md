@@ -105,3 +105,82 @@ El presupuesto del rate limiter MUST rediseñarse para el nuevo patrón de tráf
 - GIVEN 2 navegadores conectados vía SSE
 - WHEN operan la matriz normalmente
 - THEN no hay 429 por presupuesto agotado
+
+## ADDED Requirements
+
+### Requirement: WR-2 — Dispatch por dominio, sub y link
+
+La escritura del broker MUST resolver dentro de la cola, usando `(domain, sub, link)`: `tvs` siempre usa un `join av`; TVRACK y zonas-fuera con `link=false` usan `join video` o `join audio`; con `link=true` usan un único `join av`. Cambiar `link` por sí solo MUST NOT hacer re-join.
+
+#### Scenario: Escrituras según política
+
+- GIVEN una escritura de video en TVRACK o zona-fuera
+- WHEN `link=false`, `link=true` o el dominio es `tvs`
+- THEN emite respectivamente `join video`, un `join av` o `join av`
+- AND el toggle de link sin cambio de stream no emite comando
+
+### Requirement: WR-3 — Confirmación combinada
+
+Con `link=true`, el broker MUST emitir exactamente un `join av`, actualizar ambos streams y confirmar `reported.video` y `reported.audio` mediante lecturas válidas.
+
+#### Scenario: TVRACK vinculado
+
+- GIVEN TVRACK tiene `link=true` y recibe fuente DTV3
+- WHEN la escritura termina
+- THEN hay un solo `join av` y ambos valores reportados son DTV3
+
+### Requirement: WR-4 — Independencia de streams
+
+Con `link=false`, una escritura de un sub MUST NOT modificar el sub opuesto en el hardware ni en el estado confirmado.
+
+#### Scenario: Audio no pisa video
+
+- GIVEN una zona tiene video DTV1 y audio DTV2
+- WHEN se escribe audio DTV3 con `link=false`
+- THEN queda video DTV1, audio DTV3 y no se emite `join av`
+
+### Requirement: WR-5 — Dispatch de TVRACK y presets
+
+Los endpoints de TVRACK y `/api/presets/:n/load` MUST usar la misma política de dispatch. Un preset con `link=false` MUST preservar `video !== audio` y restaurar ambos sub-índices independientemente.
+
+#### Scenario: Preset con streams distintos
+
+- GIVEN el snapshot contiene video DTV1, audio DTV3 y `link=false`
+- WHEN se carga el preset
+- THEN restaura ambos streams sin que el segundo write cambie el primero
+
+#### Scenario: Endpoint TVRACK
+
+- GIVEN `/api/tvrack/audio` recibe DTV3 con `link=false`
+- WHEN el broker procesa la solicitud
+- THEN emite `join audio`, confirma solo audio y conserva el video reportado
+
+### Requirement: WR-6 — Validación de snapshot vinculado
+
+Un snapshot con `link=true` y `video !== audio` MUST rechazarse con un error de validación antes de ejecutar comandos; MUST NOT producir una adopción silenciosa.
+
+#### Scenario: Snapshot inconsistente
+
+- GIVEN un preset trae `link=true`, video DTV1 y audio DTV3
+- WHEN se solicita su carga
+- THEN el broker rechaza el snapshot con error de validación y no ejecuta comandos
+
+### Requirement: WR-7 — Mock con streams independientes
+
+El mock MUST modelar video y audio como streams independientes: `join video` cambia solo video y `join audio` solo audio. Los modos offline y blip MUST continuar devolviendo `null` donde corresponda.
+
+#### Scenario: Mock reproduce aislamiento y fallo
+
+- GIVEN el mock contiene video DTV1 y audio DTV2
+- WHEN recibe `join video DTV3` y luego opera en modo offline o blip
+- THEN conserva audio DTV2 y los modos de fallo devuelven `null`
+
+### Requirement: WR-9 — Prohibición de AV en writes single-stream
+
+Ningún camino del broker MUST emitir `join av` cuando el intento sea de un solo stream con `link=false`.
+
+#### Scenario: Guardia anti-regresión
+
+- GIVEN un write de video o audio para TVRACK o zona-fuera con `link=false`
+- WHEN se inspeccionan los comandos emitidos
+- THEN no aparece `join av`

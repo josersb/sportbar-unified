@@ -26,13 +26,14 @@ Los cambios en `zonasFuera` MUST emitirse como eventos incrementales SSE. El sna
 
 ### Requirement: REST API Endpoints
 
-Express MUST exponer endpoints write-through con `await`: el POST SHALL confirmar la escritura al Arranger (o persistir) y responder con el estado confirmado, no fire-and-forget.
+Express MUST exponer endpoints write-through con `await`: el POST SHALL confirmar la escritura al Arranger (o persistir) y responder con el estado confirmado, no fire-and-forget. Para `link=false`, video y audio MUST usar su join independiente; para `link=true`, cualquiera de los dos MUST usar un único `join av` y confirmar ambos streams. El toggle de link MUST no hacer re-join.
+(Previously: los endpoints documentaban `join video`/`join audio` sin expresar la política link ni la confirmación combinada.)
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/api/zonas-fuera/state` | Return full `zonasFueraState` |
-| POST | `/api/zonas-fuera/:id/video` | Set video + `join video` (await, confirmado) |
-| POST | `/api/zonas-fuera/:id/audio` | Set audio + `join audio` (await, confirmado) |
+| POST | `/api/zonas-fuera/:id/video` | Set video: `join video` o un `join av` según link |
+| POST | `/api/zonas-fuera/:id/audio` | Set audio: `join audio` o un `join av` según link |
 | POST | `/api/zonas-fuera/:id/link` | Toggle link (sin Arranger, persistido) |
 
 (Previously: POSTs devolvían 200 sin confirmación de la escritura al Arranger)
@@ -41,7 +42,13 @@ Express MUST exponer endpoints write-through con `await`: el POST SHALL confirma
 
 - GIVEN POST `/api/zonas-fuera/aVip-Barra-Centro/video` body `{ source: "DTV3" }`
 - WHEN el server procesa
-- THEN ejecuta `join video DTV3 aVip-Barra-Centro`, persiste y responde con el estado confirmado tras la lectura
+- THEN con `link=false` ejecuta `join video DTV3 aVip-Barra-Centro`, no modifica audio y responde con el estado confirmado
+
+#### Scenario: Zona vinculada
+
+- GIVEN POST `/api/zonas-fuera/aVip-Barra-Centro/audio` con `{ source: "DTV3" }` y `link=true`
+- WHEN el server procesa
+- THEN ejecuta un único `join av`, confirma video y audio, y responde ambos valores reportados
 
 #### Scenario: Zona inexistente 404
 

@@ -298,3 +298,251 @@ Exploración completa: el terreno está mapeado con precisión quirúrgica. Reco
 ### Síntesis para el proposal
 
 El rediseño target = **Enfoque 1 (State Broker)** con estos elementos del Enfoque 2 absorbidos: versionado por dominio (`version`/`lastUpdated` en lowdb) y guards post-await donde haya asincronía residual. La reconciliación Arranger pasa de "auto-apply que pisa" a "actualiza `reportedState` + señala divergencia", con apply explícito del operador (o política configurable). El broadcast multi-PC via SSE con snapshot inicial + reconciliación periódica como respaldo.
+
+---
+
+## Command Surface Gap (2026-08-16)
+
+> Alcance: revisión del fix para `state-sync-rework` usando tres baselines divergentes. La fuente legacy es el working tree de `v2` (solo lectura); la implementación candidata y el artifact viven en este worktree.
+
+### Baselines verificados
+
+| Baseline | Evidencia | Uso en esta revisión |
+|---|---|---|
+| `v2` committed `f8ab1e5` | `git branch --show-current`, `git worktree list` | Base histórica del worktree de la feature |
+| `v2` working tree | 156 entradas en `git status --short`; incluye fixes de producción y `assignVideoSource`/`assignAudioSource` | **Legacy truth**; no se modificó |
+| `feat/state-sync-rework` `4a14961` | Worktree limpio `sportbar-unified-worktrees/state-sync-rework` | Broker nuevo y artifact del addendum |
+
+### Inventario exhaustivo de la API legacy
+
+| Función | Comando / camino que emite | Call sites de producción | Estado | Dominio |
+|---|---|---|---|---|
+| `sendArrangerCommand` (`:27`) | GET vía `/api/command/:command/:token` | Todos los wrappers directos | LIVE, base | proxy Arranger |
+| `assignSourceToDestination` (`:75`) | `join av SOURCE DEST` | `MatrizVideo.jsx:434`, `App.jsx:517`, `joinMultipleTVs:204` | LIVE | TVs, TVRACK/zona vinculados |
+| `assignVideoSource` (`:80`) | `join video SOURCE DEST` | `MatrizVideo.jsx:69`, `App.jsx:525`, `SyncPanel.jsx:215` | LIVE | TVRACK/zonas desvinculados; reconciliación legacy |
+| `assignAudioSource` (`:85`) | `join audio SOURCE DEST` | `MatrizVideo.jsx:74`, `App.jsx:528`, `SyncPanel.jsx:216` | LIVE | TVRACK/zonas desvinculados; reconciliación legacy |
+| `joinIr` (`:90`) | `join ir ENCODER DECODER` | Sin consumidor fuera de tests | DEAD | routing IR |
+| `joinSerial` (`:95`) | `join serial ENCODER DECODER` | Sin consumidor fuera de tests | DEAD | routing serial |
+| `getDevices` (`:100`) | `get devices [target]` | Sin consumidor fuera de tests | DEAD | discovery |
+| `getEncoder` (`:117`) | `get encoder DECODER SUB` | `reconstructMatrixState`; helper de desarrollo en `main.jsx`, no flujo UI | DEV-ONLY / no producción | lectura de matriz |
+| `reconstructMatrixState` (`:141`) | batches de `get encoder` | `main.jsx` expone helper de consola | DEV-ONLY | lectura de matriz |
+| `getStatus` (`:171`) | `get status DEVICE [SUB]` | Sin consumidor; además FW-LOCKED | DEAD / FW-LOCKED | diagnóstico |
+| `getMatrix` (`:176`) | `get matrix [SUB]` | Sin consumidor; FW-LOCKED | DEAD / FW-LOCKED | diagnóstico |
+| `getJoins` (`:180`) | `get joins DECODER [SUB]` | Sin consumidor; FW-LOCKED | DEAD / FW-LOCKED | diagnóstico |
+| `leaveAv` (`:185`) | `leave av DECODER` | Sin consumidor fuera de tests | DEAD | routing |
+| `joinMultipleTVs` (`:195`) | varios `join av`, batches de 8 | `usePreset.js:66` | LIVE legacy; sustituido en PR3 | presets / TVs |
+| `sendSerialCommand` (`:226`) | `send serial DTV1 "...\x0A"` vía proxy | `Audio.jsx:50-67` | LIVE, BYPASS-OK | Tesira / audio zonas |
+| `loadChannelPreset` (`:238`) | `preset load decoNcanalCHANNEL` vía proxy | `sendChannelDigits:311` cuando el dígito es `2` | LIVE indirecto, BYPASS-OK | canales / decos |
+| `loadMatrixPreset` (`:249`) | `preset load NAME` vía proxy | Sin consumidor fuera de tests | DEAD | preset hardware |
+| `addPreset` (`:259`) | `preset add NAME COMMAND` vía proxy | Sin consumidor fuera de tests | DEAD | preset hardware |
+| `deletePreset` (`:268`) | `preset delete NAME` vía proxy | Sin consumidor fuera de tests | DEAD | preset hardware |
+| `getPresets` (`:276`) | `get presets` vía proxy | Sin consumidor fuera de tests | DEAD | preset hardware |
+| `sendIrCommand` (`:286`) | `send ir DEVICE HEX` vía proxy | `sendChannelDigits:317` | LIVE indirecto, BYPASS-OK | IR / canales |
+| `sendChannelDigits` (`:300`) | secuencia `send ir` + fallback `preset load` para `2` | `Canales.jsx:43` | LIVE, BYPASS-OK | canales / decos |
+| `buildArrangerCommand` (`:332`) | helper de composición | wrappers legacy | LIVE interno | utilitario |
+| `getDeviceStatus` (`:348`) | `/api/device/:id/status` → proxy `get status` | Sin consumidor | DEAD / FW-LOCKED | diagnóstico |
+| `fetchTvrackState` (`:360`) | GET `/api/tvrack/state` | `MatrizVideo.jsx:44` | LIVE legacy; eliminado en PR3 | TVRACK |
+| `setTvrackVideo` (`:366`) | POST `/api/tvrack/video` | `MatrizVideo`, batch de `App.jsx` | LIVE legacy; endpoint conservado en PR3 | TVRACK video |
+| `setTvrackAudio` (`:376`) | POST `/api/tvrack/audio` | `MatrizVideo`, batch de `App.jsx` | LIVE legacy; endpoint conservado en PR3 | TVRACK audio |
+| `setTvrackLink` (`:386`) | POST `/api/tvrack/link` | `MatrizVideo.jsx:91` | LIVE | política link |
+| `fetchZonasFueraState` (`:404`) | GET `/api/zonas-fuera/state` | polling de `App.jsx:336` | LIVE legacy; eliminado en PR3 | zonas-fuera |
+| `setZonasFueraVideo` (`:416`) | POST `/api/zonas-fuera/:id/video` | `App.jsx:519`, batch de reconciliación | LIVE | zonas video |
+| `setZonasFueraAudio` (`:432`) | POST `/api/zonas-fuera/:id/audio` | `App.jsx:520`, batch de reconciliación | LIVE | zonas audio |
+| `setZonasFueraLink` (`:448`) | POST `/api/zonas-fuera/:id/link` | `App.jsx:534` | LIVE | política link |
+| `fetchMatrixState` (`:465`) | GET `/api/matrix/state?subscription=` | `useArrangerReconciliation.js:250-254` | LIVE legacy; eliminado en PR3 | reconciliación |
+
+**Conclusión del inventario:** `join video` y `join audio` no son wrappers huérfanos ni una hipótesis documental: son caminos LIVE del working tree de producción. El nuevo cliente PR3 eliminó correctamente los joins del navegador, pero el reemplazo server-side no conservó todavía esa superficie.
+
+### Semántica legacy por dominio
+
+#### TVRACK
+
+`MatrizVideo.jsx:54-85` implementa la política completa:
+
+- `link=true`: tanto el botón de video como el de audio emite **un `join av SOURCE TVRACK`**. Luego solo persiste el campo que el usuario tocó (`setTvrackVideo` o `setTvrackAudio`); el hardware cambia ambos streams.
+- `link=false` + video: emite `join video SOURCE TVRACK`.
+- `link=false` + audio: emite `join audio SOURCE TVRACK`.
+- Toggle en `handleLinkToggle` (`:87-95`) solo persiste `link`; **no hace re-join ni iguala video/audio inmediatamente**. El link cambia la semántica de las escrituras futuras.
+
+El server legacy copia el campo opuesto en lowdb cuando `link=true` (`server/server.js:263-283`), pero esa copia de estado no sustituye al comando Arranger: el handler UI ya había emitido `join av`.
+
+#### Zonas-fuera
+
+`App.jsx:509-547` aplica exactamente la misma semántica por cada `zoneId`:
+
+- `link=true`: `join av SOURCE zoneId`, después persiste solo video o audio según el control tocado.
+- `link=false`: video usa `join video`; audio usa `join audio`.
+- Toggle de link (`type === "link"`) solo hace POST de estado app-only; **no re-join**.
+
+La lista de zonas es la de `destinations.js`: 10 destinos. El working tree de producción valida además que el endpoint actualice el campo opuesto cuando link está activo (`server/server.js:310-349`).
+
+#### TVs principales y video walls
+
+El submit de `MatrizVideo.jsx:420-444` del legacy construye mappings y manda `assignSourceToDestination` en lotes; cada destino real recibe `join av`. No hay semántica de audio independiente para estos destinos en la UI. El PR3 conserva esa intención mediante `POST /api/tvs/:id/source` (`state-sync-rework/src/componentes/MatrizVideo.jsx:412-423`) y el server debe seguir usando `join av` siempre para este dominio.
+
+#### Presets
+
+El legacy `usePreset.js:44-70` carga un snapshot de TVs y manda `joinMultipleTVs`, es decir, `join av` para cada TV. El PR3 reemplaza el batch cliente por `POST /api/presets/:n/load` (`server/server.js:360-400`) y agrega zonas/TVRACK. Esa ampliación es correcta en arquitectura, pero hoy el branch usa `executeWrite(..., "audio")` y luego `client.joinAv` sin importar `sub`; si `audio !== video`, el segundo `join av` vuelve a pisar el video.
+
+#### Canales, IR y audio Tesira
+
+- `Canales.jsx:27-54` usa `sendChannelDigits`, que manda IR por el proxy y usa `preset load decoNcanal0002` solo para el dígito `2`.
+- `Audio.jsx:38-73` manda nueve `send serial` a `DTV1` para mute, volumen y selección de fuente de las tres zonas Tesira. Esto **no es routing de la matriz** y debe seguir fuera del broker de estado.
+- En consecuencia, `send ir`, `send serial` y `preset load deco...` son **BYPASS-OK** por `/api/command`; no deben transformarse en `join` del broker.
+
+### Superficie actual del broker nuevo
+
+| Camino | Implementación actual | Resultado |
+|---|---|---|
+| `writeQueue.enqueue(dest, () => executeWrite(...))` | `server.js:340`, `:372-384`, `:413`, `:465` | Serializa por destino, pero `executeWrite` (`:188-227`) siempre llama `client.joinAv` (`:204`) e ignora el sub al seleccionar el comando |
+| `arrangerClient.joinAv` | `arrangerClient.js:96-108` | Único write real del adapter; genera `join av SOURCE DEST` |
+| `arrangerClient.getEncoder` | `arrangerClient.js:78-90` | Lectura post-write por `sub`; la lectura sí distingue video/audio |
+| `mockArranger.joinAv` | `mockArranger.js:49-63` | `matrix[dest] = { video: source, audio: source }`; no existen joins independientes |
+| `/api/tvs/:id/source` | `server.js:328-355` | Correcto conceptualmente: TV siempre AV; no es la regresión |
+| `/api/tvrack/{video,audio}` | `server.js:407-431` | Lee link, pero primero siempre manda AV; con link además manda un segundo AV (`:417-419`). Con link false, el sub se ignora |
+| `/api/zonas-fuera/:id/{video,audio}` | `server.js:457-477` | Misma falla: `sub` llega a `executeWrite`, pero termina en `joinAv`; con link se duplica el AV (`:468-470`) |
+| `/api/presets/:n/load` | `server.js:360-400` | Manda AV para video y también AV para audio distinto; no puede restaurar video/audio independiente |
+| `/api/command/:command/:token` | `server.js:536-550` | Proxy directo conservado para IR/serial/preset-deco; en mock solo simula explícitamente `join av` (`:265-283`) |
+
+El bug es, por lo tanto, de dispatch de comando, no de `getEncoder`: el broker puede leer ambos streams, pero escribe solo el comando combinado.
+
+### Sintaxis V210826 relevante
+
+La wiki del working tree principal confirma para firmware v1.3.4/API V210826:
+
+| Comando | Sintaxis usada | Efecto relevante |
+|---|---|---|
+| `join av` | `join av SOURCE DEST` | Cambia video + audio juntos (`wiki/API/JoinAv.md:5-9`) |
+| `join video` | `join video SOURCE DEST` | Cambia solo video (`wiki/API/JoinVideo.md:5-9`) |
+| `join audio` | `join audio SOURCE DEST` | Cambia solo audio (`wiki/API/JoinAudio.md:5-9`) |
+| `leave av` | `leave av DEST` (`wiki/API/LeaveAv.md:5-9`) | Documentado pero no LIVE; el wrapper legacy es DEAD |
+| `send ir` | `send ir DEVICE HEX` (`wiki/API/SendIr.md:7-9`) | Control IR; bypass aceptable |
+| `send serial` | `send serial DEVICE "DATA"` (`wiki/API/SendSerial.md:7-9`) | RS-232/Tesira; bypass aceptable |
+| `get encoder` | `get encoder DEST SUB` | Única lectura de routing disponible en v1.3.4; `get matrix`, `get joins` y `get status` quedan FW-LOCKED |
+
+La documentación de `ArrangerApi.md:205-227` lista además comandos futuros (`mute audio`, `volume audio`, `leave video/audio`, etc.). No existe un consumidor LIVE ni wrapper operativo para esos comandos. El mute/volumen que sí usa la aplicación es serial Tesira, una capacidad distinta.
+
+### Matriz de brechas A × B × C
+
+| Capability | Legacy LIVE | Broker PR1-4 | Clasificación | Acción |
+|---|---:|---:|---|---|
+| TV principal/video wall → video+audio | Sí | `join av` | OK | Mantener `executeWrite` AV para dominio `tvs` |
+| TVRACK link=false → solo video | Sí | `join av` | **REGRESIÓN** | Agregar `joinVideo` y dispatch por `sub` |
+| TVRACK link=false → solo audio | Sí | `join av` | **REGRESIÓN** | Agregar `joinAudio` y dispatch por `sub` |
+| TVRACK link=true → ambos | Sí | Dos `join av` | REGRESIÓN de eficiencia/semántica | Un solo `join av`; actualizar/confirmar ambos subs |
+| Zona link=false → solo video | Sí | `join av` | **REGRESIÓN** | Dispatch `joinVideo` |
+| Zona link=false → solo audio | Sí | `join av` | **REGRESIÓN** | Dispatch `joinAudio` |
+| Zona link=true → ambos | Sí | Dos `join av` | REGRESIÓN de eficiencia/semántica | Un solo `join av`; confirmar ambos |
+| Preset TV con `join av` | Sí | `join av` | OK | Mantener |
+| Preset zona/TVRACK con `video !== audio` | Nueva capacidad PR3, requerida por snapshot | Dos AV que pisan video | **REGRESIÓN** | Cargar por sub independiente cuando link=false |
+| Reconciliación de video/audio después de preset | Sí, como intención del diseño | Lecturas separadas, estado mock combinado | **REGRESIÓN derivada** | Mock independiente + verify de cero adopciones espurias |
+| `send ir` / `sendChannelDigits` | Sí | Proxy directo | **BYPASS-OK** | No migrar al broker de routing |
+| `send serial` Tesira mute/volume/source | Sí | Proxy directo | **BYPASS-OK** | No modelar como routing de matriz |
+| `preset load deco...` para dígito 2 | Sí indirecto | Proxy directo | **BYPASS-OK** | Mantener |
+| `joinIr`, `joinSerial` | No | No adapter broker | **DEAD** | No incluir en PR5 |
+| `getDevices` | No | No adapter broker | **DEAD** | No incluir en PR5 |
+| `getStatus`, `getMatrix`, `getJoins` | No; además FW-LOCKED | Getters FW-LOCKED conservados | **DEAD/FW-LOCKED** | No desbloquear |
+| `leaveAv` | No; wrapper legacy sin consumidores | Ausente | **DEAD** | No incluir en PR5 |
+| `addPreset`, `deletePreset`, `getPresets`, `loadMatrixPreset` | No | No broker | **DEAD** | No confundir con presets app del broker |
+| `mute audio`, `unmute audio`, `volume audio` Arranger | No | No | **NUNCA-IMPLEMENTADO** | Futuro separado; la UI usa Tesira serial |
+| `leave video/audio/all`, `join all/kvm/wall`, CEC/TCP/GC | No | No | **NUNCA-IMPLEMENTADO** | Futuro, fuera del fix |
+
+### Decisión de diseño propuesta: dónde vive `link`
+
+Se compararon dos opciones:
+
+1. **Cliente manda el comando (`join av`/`join video`/`join audio`)**.
+   - Pros: replica literalmente el legacy; server más simple.
+   - Contras: contradice el objetivo PR3 de que el cliente no conozca ni arbitre el hardware; permite que un cliente viejo o malicioso ignore el `link` persistido; la decisión puede quedar obsoleta mientras la escritura espera en `writeQueue`.
+
+2. **Server decide por destino + sub + link app-only, dentro de la cola** (**recomendada**).
+   - Pros: el broker sigue siendo el único dueño; la decisión es atómica respecto de la escritura encolada; `link` permanece app-only y no se infiere desde una lectura del Arranger; el cliente solo expresa intención `video` o `audio`.
+   - Contras: `executeWrite` debe actualizar dos sub-keys y hacer dos lecturas cuando link=true; los presets deben definir cómo transportar/restaurar la política link.
+
+Contrato recomendado para `executeWrite(dest, source, sub)`:
+
+- dominio `tvs`: siempre `joinAv`; actualiza/confirma solo el stream video del modelo de TVs.
+- dominio `tvrack` o `zonasFuera`, `link=false`: `sub=video` → `joinVideo`; `sub=audio` → `joinAudio`; actualiza/confirma únicamente ese stream.
+- dominio `tvrack` o `zonasFuera`, `link=true`: un único `joinAv`; actualiza `desired.video` y `desired.audio` al mismo source y confirma ambos con `getEncoder`.
+- `link` se consulta **dentro de la función ejecutada por `writeQueue`**, no antes de encolar. El toggle no hace re-join; solo afecta la próxima escritura.
+
+Para presets, el snapshot debe tratar `link` como política app-only. El caso verificable de PR5 es `link=false` + `video !== audio`, que debe preservar ambos streams. Si el snapshot trae `link=true`, debe exigir `video === audio` o devolver un error de validación; no se debe elegir silenciosamente un stream y generar una adopción falsa. Si se decide no ampliar el schema de presets en PR5, el endpoint debe documentar que usa el `link` app-only actual y agregar un guard explícito para snapshots incompatibles.
+
+### Plan de fix ordenado
+
+#### Fase 0 — Delta de contrato y trazabilidad
+
+- Amend de `openspec/changes/state-sync-rework/specs/state-broker/spec.md`: dispatch por sub, semántica link server-side, un AV para link=true y no re-join al togglear.
+- Amend de `specs/zonas-fuera-state/spec.md`: reemplazar la lectura implícita “POST video = join video” por la matriz link=false/link=true.
+- Amend de `specs/preset-complete-snapshot/spec.md`: escenario `video !== audio` y preservación de ambos streams.
+- Amend de `specs/arranger-reconciliation/spec.md`: después de preset load, lecturas video/audio separadas no producen adopciones espurias.
+- Revisar `specs/arranger-api-centralized/spec.md` para declarar `joinVideo`/`joinAudio` como adapter server-side, no API de UI.
+
+#### Fase 1 — Adapter Arranger y mock
+
+- `server/broker/arrangerClient.js`: extraer helper de join y agregar `joinVideo(source, dest)` y `joinAudio(source, dest)`, con el mismo contrato `{ ok, text, status/error }` que `joinAv`.
+- `server/broker/mockArranger.js`: conservar `matrix[dest] = {video, audio}`; `joinAv` actualiza ambos, `joinVideo` solo video y `joinAudio` solo audio. Mantener modos `normal`, `blip` y `offline`.
+- `server/broker/verify/verify-arranger-client.cjs`: asserts de comando/resultado para ambos nuevos métodos.
+- `server/broker/verify/verify-mock.cjs`: secuencia `joinAv(DTV2)`, `joinVideo(DTV3)`, `joinAudio(DTV4)` y asserts `video=DTV3`, `audio=DTV4`.
+
+#### Fase 2 — Dispatch y política link en el broker
+
+- `server/server.js`, principalmente `executeWrite`, `tvrackWrite` y `zonaFueraWrite`:
+  - resolver dominio y link dentro de la operación serializada;
+  - seleccionar `joinAv`/`joinVideo`/`joinAudio` según el contrato;
+  - eliminar el segundo `executeWrite` AV de `:417-419` y `:468-470`;
+  - cuando link=true, persistir/confirmar ambos streams sin duplicar comandos;
+  - mantener TVs principales en AV siempre.
+- Preservar respuestas compatibles `{ video, audio, link, lastUpdated }` para TVRACK y `{ zoneId, video, audio, link, lastUpdated }` para zonas.
+
+#### Fase 3 — Preset load y reconciliación
+
+- `server/server.js` `POST /api/presets/:n/load`: despachar video/audio según la política link; nunca usar `joinAv` para el segundo stream cuando están separados.
+- Si se incluye `link` en snapshot: restaurar la política app-only antes de escribir y validar el invariante `link=true ⇒ video===audio`. Si no se incluye en PR5, usar la política app-only vigente y rechazar estados incompatibles de forma explícita.
+- `server/broker/verify/verify-composition.cjs`: agregar preset con zona y/o TVRACK `video=DTV3`, `audio=DTV4`, `link=false`; verificar mock y `reported` separados.
+- `server/broker/verify/verify-reconciler.cjs`: después del load, ejecutar `scanOnce()` y afirmar `desired===reported` por sub, `adopted===0` para el estado ya confirmado y ningún video adoptado desde audio.
+- No modificar la lógica correcta de `reconciler.js` que ya llama `getEncoder(dest, "video")` y `getEncoder(dest, "audio")`; la prueba debe demostrar que el adapter/mock ahora le entregan una matriz coherente.
+
+#### Fase 4 — Gates de verificación
+
+- Ejecutar verificaciones node-based existentes: `node server/broker/verify/run-all.cjs`.
+- Ejecutar los nuevos asserts de superficie de comandos y composición contra mock; no requiere test runner UI ni hardware real.
+- Ejecutar `pnpm run sportbar:build` como gate de producción (según AGENTS), sin modificar configuración del worktree.
+- Inspeccionar con `git grep` que ningún componente PR3 vuelva a importar `assignVideoSource`, `assignAudioSource` o `joinMultipleTVs`; el cliente debe seguir usando endpoints broker.
+
+### Estimación y encaje en PR 5
+
+Estimación orientativa, sin reescribir UI:
+
+| Área | Líneas nuevas/modificadas |
+|---|---:|
+| Adapter + mock | 60–100 |
+| `server.js` dispatch/endpoints/preset | 100–170 |
+| Verificaciones node-based | 100–160 |
+| Delta specs/tasks amendment | 60–100 |
+| **Total** | **320–530** |
+
+Cabe como **PR 5** si se mantiene acotado al adapter, broker, mock, verifies y delta specs, apuntando a ~350–400 líneas. Si además se cambia el schema de presets para capturar/restaurar `tvrack.link` y se agregan migraciones amplias, conviene dividir en PR5a (surface gap + dispatch) y PR5b (link dentro de snapshots), porque el total supera el límite de revisión del chain.
+
+### Gaps encontrados
+
+1. **Confirmado — `join video` ausente del broker**: todas las escrituras independientes terminan en `join av`.
+2. **Confirmado — `join audio` ausente del broker**: el audio independiente pisa el video.
+3. **Confirmado — mock falso para este caso**: modela solo `join av`, por lo que no puede detectar aislamiento de streams.
+4. **Confirmado — link duplicado**: los endpoints write-through ejecutan dos `join av` cuando link=true, en lugar de un solo comando combinado.
+5. **Confirmado — preset load incorrecto con `audio !== video`**: el segundo AV pisa el primer stream.
+6. **Confirmado — cobertura de verify insuficiente**: las verificaciones actuales solo asertan `joinAv`; no existe un caso de video/audio independiente.
+7. **No gap de routing — IR/serial/preset-deco**: siguen por proxy directo y son LIVE/BYPASS-OK.
+8. **No gap LIVE — wrappers dead/FW-locked**: `joinIr`, `joinSerial`, `getDevices`, getters FW-LOCKED, `leaveAv` y CRUD de presets Arranger no deben entrar en este fix.
+
+### Risks específicos
+
+- Un cambio de link durante una escritura encolada puede producir decisiones stale si se lee antes de `writeQueue`; por eso la resolución debe vivir dentro de `executeWrite`.
+- Un snapshot con `link=true` y fuentes distintas es semánticamente inconsistente; debe validarse, no resolverse con una elección silenciosa.
+- El mock debe mantener el mismo conteo de llamadas que el hardware lógico; los modos blip/offline pueden hacer que una lectura post-write sea null y no deben convertir eso en adopción.
+- La reconciliación ya adopta `reported` sobre `desired`; el verify post-preset es obligatorio para probar que la causa raíz no es un falso diff, no para cambiar la política Arranger-gana.
+- La fuente legacy principal tiene 156 cambios sin commitear; cualquier implementación debe continuar aislada en este worktree y no usar `stash`, `checkout` ni escritura sobre `v2`.
+
+### Recommendation
+
+Avanzar con **PR 5 acotado al State Broker**: el server debe conservar la semántica de link y decidir el comando; `joinVideo`/`joinAudio` deben existir únicamente en el adapter interno; el mock y las verificaciones deben modelar streams independientes. El fix corrige una regresión real de producción sin reabrir el diseño de polling/SSE ni migrar IR/serial al broker. Tratar el link de snapshots como una decisión explícita en la propuesta/tareas; como mínimo, PR5 debe cubrir y verificar `link=false` con `video !== audio`.

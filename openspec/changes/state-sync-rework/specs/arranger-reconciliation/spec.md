@@ -144,6 +144,18 @@ Si lecturas individuales de `get encoder` hacen timeout, el broker MUST continua
 - WHEN el ciclo de reconciliación completa
 - THEN los 37 destinos confirmados se adoptan, los 3 sin lectura conservan su estado previo (sin pisar con null)
 
+## ADDED Requirements
+
+### Requirement: WR-8 — Sin adopciones espurias tras writes
+
+El reconciler MUST reconocer como convergente una escritura confirmada, incluyendo cargas de preset, y MUST NOT auto-adoptar una divergencia causada por haber usado el comando equivocado o por pisar el stream opuesto.
+
+#### Scenario: Preset confirmado sin drift
+
+- GIVEN un preset restaura video DTV1 y audio DTV3 con `link=false`
+- WHEN ambas lecturas post-write confirman esos streams y corre reconciliación
+- THEN no genera adopciones espurias ni diffs para los destinos restaurados
+
 ## REMOVED Requirements
 
 ### Requirement: Double-Call Prevention

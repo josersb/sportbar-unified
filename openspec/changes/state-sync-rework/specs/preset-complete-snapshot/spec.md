@@ -8,7 +8,8 @@ Los presets dejan de guardar solo `tvs` y pasan a ser snapshot completo del esta
 
 ### Requirement: Snapshot completo
 
-Cada preset MUST persistir `{ tvs, zonasFuera, tvrack }` como snapshot completo. La restauración MUST reconstruir los tres dominios.
+Cada preset MUST persistir `{ tvs, zonasFuera, tvrack }` como snapshot completo. La restauración MUST reconstruir los tres dominios, conservar `video !== audio` cuando `link=false` y rechazar la combinación inconsistente `link=true` con streams distintos.
+(Previously: el snapshot completo restauraba los tres dominios, pero no fijaba la independencia de streams ni la validación de link.)
 
 #### Scenario: Preset guarda los 3 dominios
 
@@ -21,6 +22,18 @@ Cada preset MUST persistir `{ tvs, zonasFuera, tvrack }` como snapshot completo.
 - GIVEN un preset con tvs+zonasFuera+tvrack guardados
 - WHEN se aplica el preset
 - THEN tvs, zonasFuera y tvrack se restauran al estado guardado
+
+#### Scenario: Preset con streams independientes
+
+- GIVEN un preset contiene video DTV1, audio DTV3 y `link=false`
+- WHEN se aplica
+- THEN ambos valores se restauran sin colapsar uno sobre el otro
+
+#### Scenario: Preset vinculado inconsistente
+
+- GIVEN un preset contiene `link=true` con video DTV1 y audio DTV3
+- WHEN se valida
+- THEN se rechaza con error de validación antes de escribir al Arranger
 
 ### Requirement: Migración de formato viejo
 

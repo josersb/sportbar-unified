@@ -12,6 +12,17 @@ Toda comunicación con el Arranger MUST pasar por el proxy del server (`/api/com
 - WHEN se ejecuta
 - THEN la request va al server (proxy/broker), nunca directo a `192.168.2.254`
 
+### Requirement: WR-1 — Joins independientes en el adapter
+
+El adapter del broker MUST exponer `joinVideo(source, dest)` y `joinAudio(source, dest)`. Ambos MUST usar la misma semántica de retry, timeout y respuesta que `joinAv`, emitiendo sus comandos respectivos de API V210826.
+
+#### Scenario: Retry uniforme por stream
+
+- GIVEN el primer intento de `joinVideo("DTV3", "TVRACK")` falla transitoriamente
+- WHEN el adapter reintenta y confirma el comando
+- THEN retorna el mismo contrato de éxito que `joinAv` y solo emite `join video`
+- AND `joinAudio` aplica idéntica semántica con `join audio`
+
 ## MODIFIED Requirements
 
 ### Requirement: Capability-Gated IR Validation

@@ -1,0 +1,48 @@
+# ── Docker: archivos a excluir del contexto de build ──
+
+node_modules/
+server/node_modules/
+
+# Código fuente (no necesario en producción)
+src/
+public/
+
+# Configuración de desarrollo
+worktree.config.json
+.env
+.env-shared
+
+# Git
+.git/
+.gitignore
+
+# Testing
+*.test.js
+*.test.jsx
+*.spec.js
+__tests__/
+
+# Build artifacts que no son dist/
+node_modules/
+server/state.json
+
+# Documentación pesada
+wiki/
+Docs/
+*.md
+!scripts/deploy/docker/*.md
+
+# Lockfiles de otros gestores
+package-lock.json
+yarn.lock
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Scripts (solo docker/ se copia explícitamente)
+scripts/deploy/Diagnostico-Sistema.ps1
+scripts/deploy/*.bat
+scripts/deploy/*.ps1
+scripts/deploy/hardening/
+scripts/deploy/DEPLOY.md

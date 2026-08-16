@@ -56,8 +56,18 @@ const migrarEstado = (oldData) => {
 
 const App = () => {
   const [estado, setEstado] = useState(estadoInicial);
-  const [tvrackState, setTvrackState] = useState({ video: "DTV1", audio: "DTV1", link: false });
-  const [zonasFueraState, setZonasFueraState] = useState({});
+  const [tvrackState, setTvrackState] = useState(() => {
+    try {
+      const saved = localStorage.getItem("tvrackState");
+      return saved ? JSON.parse(saved) : { video: "DTV1", audio: "DTV1", link: false };
+    } catch { return { video: "DTV1", audio: "DTV1", link: false }; }
+  });
+  const [zonasFueraState, setZonasFueraState] = useState(() => {
+    try {
+      const saved = localStorage.getItem("zonasFueraState");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
   const toast = useToast();
   const [estadoLoaded, setEstadoLoaded] = useState(false);
   const [errorDecos, setErrorDecos] = useState(false);
@@ -147,19 +157,39 @@ const App = () => {
     };
   }, []);
 
-  // ── Reconciliación con Arranger al iniciar (diferida 500ms, no bloqueante) ──
+  // ── Reconciliación con Arranger al iniciar (una sola vez) ──
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; });
   useEffect(() => {
-    if (!estadoLoaded) return;
-    const timer = setTimeout(() => reconcile(), 500);
+    const timer = setTimeout(() => {
+      toastRef.current.info("🔄 Sincronizando con Arranger...", { autoClose: 3000 });
+      reconcile();
+    }, 1000);
     return () => clearTimeout(timer);
-  }, [estadoLoaded, reconcile]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — solo una vez al montar
 
   // ── Aplicar diffs en un único batch al terminar la reconciliación ──
   // PR3 4.4: tras aplicar el batch se notifica con toast y se limpian los diffs
   // (ya no representan el estado real — el Arranger pasó a ser la fuente).
   const appliedDiffsRef = useRef(null);
   const toastSuccessRef = useRef();
-  const reconciledRef = useRef(false); // evita que el polling pise el estado recién reconciliado
+
+  // ── Polling: suspendido durante reconciliación + hasta que los POSTs al server terminen ──
+  // reconcileSavedRef: TRUE = bloquea polling (POSTs pendientes). FALSE = datos ya en server.
+  // Se activa cuando arranca reconciliación, se desactiva cuando los POSTs del batchApply terminan.
+  const reconcileSavedRef = useRef(true); // arranca bloqueado — no hay datos reales aún
+
+  // Al iniciar reconciliación: bloquear polling
+  useEffect(() => {
+    if (reconciliationStatus === "fetching") {
+      reconcileSavedRef.current = true;
+    }
+  }, [reconciliationStatus]);
+
+  const pollingBlocked =
+    reconciliationStatus === "fetching" ||
+    reconciliationStatus === "comparing" ||
+    reconcileSavedRef.current;
   useEffect(() => {
     toastSuccessRef.current = toast.success;
   });
@@ -197,11 +227,14 @@ const App = () => {
           applied += 1;
           break;
         case "zona-video":
+          // Inicializar zona con defaults si no existe (deploy fresco)
+          if (!newZonas[diff.dest]) newZonas[diff.dest] = { video: "DTV1", audio: "DTV1", link: false };
           newZonas[diff.dest] = { ...newZonas[diff.dest], video: diff.arranger };
           zonasChanged = true;
           applied += 1;
           break;
         case "zona-audio":
+          if (!newZonas[diff.dest]) newZonas[diff.dest] = { video: "DTV1", audio: "DTV1", link: false };
           newZonas[diff.dest] = { ...newZonas[diff.dest], audio: diff.arranger };
           zonasChanged = true;
           applied += 1;
@@ -212,39 +245,58 @@ const App = () => {
     }
 
     if (tvsChanged) setEstado((prev) => ({ ...prev, tvs: newTvs }));
-    if (zonasChanged) setZonasFueraState(newZonas);
-    if (tvrackChanged) setTvrackState(newTvrack);
+    if (zonasChanged) {
+      setZonasFueraState(newZonas);
+      localStorage.setItem("zonasFueraState", JSON.stringify(newZonas));
+    }
+    if (tvrackChanged) {
+      setTvrackState(newTvrack);
+      localStorage.setItem("tvrackState", JSON.stringify(newTvrack));
+    }
 
-    // Persistir al server para que el polling no pise con datos viejos
+    // Persistir al server como batch atómico y SOLTAR el bloqueo de polling
+    // cuando TODOS los POSTs hayan terminado (éxito o error).
+    const serverPosts = [];
     if (zonasChanged) {
       for (const [id, data] of Object.entries(newZonas)) {
-        fetch(`/api/zonas-fuera/${id}/video`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId: data.video }),
-        }).catch(() => {});
-        fetch(`/api/zonas-fuera/${id}/audio`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId: data.audio }),
-        }).catch(() => {});
+        serverPosts.push(
+          fetch(`/api/zonas-fuera/${id}/video`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId: data.video }),
+          }).catch(() => {}),
+          fetch(`/api/zonas-fuera/${id}/audio`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId: data.audio }),
+          }).catch(() => {})
+        );
       }
     }
     if (tvrackChanged) {
-      fetch("/api/tvrack/video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId: newTvrack.video }),
-      }).catch(() => {});
-      fetch("/api/tvrack/audio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId: newTvrack.audio }),
-      }).catch(() => {});
+      serverPosts.push(
+        fetch("/api/tvrack/video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: newTvrack.video }),
+        }).catch(() => {}),
+        fetch("/api/tvrack/audio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: newTvrack.audio }),
+        }).catch(() => {})
+      );
     }
 
-    reconciledRef.current = true;
-    setTimeout(() => { reconciledRef.current = false; }, 2000);
+    // Cuando todos los POSTs terminan → soltar bloqueo → polling arranca
+    // con los datos YA guardados en el server.
+    if (serverPosts.length > 0) {
+      Promise.allSettled(serverPosts).finally(() => {
+        reconcileSavedRef.current = false;
+      });
+    } else {
+      reconcileSavedRef.current = false;
+    }
 
     // Notificación + limpieza: los diffs ya se aplicaron automáticamente.
     if (applied > 0) {
@@ -275,11 +327,12 @@ const App = () => {
 
   // ── Polling: sync zonas fuera state from server every 5s ──
   useEffect(() => {
+    if (pollingBlocked) return; // reconciliación corriendo — polling suspendido
+
     let cancelled = false;
 
     async function loadZonasFuera() {
       try {
-        if (reconciledRef.current) return; // reconciliación reciente — no pisar
         const data = await fetchZonasFueraState();
         if (!cancelled) {
           setZonasFueraState((prev) => {
@@ -292,7 +345,7 @@ const App = () => {
       }
     }
 
-    // Delay first poll so Express has time to start (avoids ECONNREFUSED proxy noise)
+    // Delay first poll so Express has time to start
     const initialTimer = setTimeout(loadZonasFuera, 2000);
     const interval = setInterval(loadZonasFuera, POLL_INTERVAL_MS);
     return () => {
@@ -300,20 +353,20 @@ const App = () => {
       clearInterval(interval);
       clearTimeout(initialTimer);
     };
-  }, []);
+  }, [pollingBlocked]);
 
   // ── Polling: sync state from server every 5s (multi-PC support) ──
   useEffect(() => {
+    if (pollingBlocked) return; // reconciliación corriendo — polling suspendido
+
     const interval = setInterval(async () => {
       try {
-        if (reconciledRef.current) return; // reconciliación reciente — no pisar
         const res = await fetch("/api/state");
         if (!res.ok) return;
         const { state: serverState } = await res.json();
         if (!serverState) return;
 
         setEstado((prev) => {
-          // Only update if tvs changed (avoids unnecessary re-renders)
           if (JSON.stringify(prev.tvs) === JSON.stringify(serverState.tvs)) {
             return prev;
           }
@@ -325,13 +378,14 @@ const App = () => {
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [pollingBlocked]);
 
   // ── Polling: sync TVRACK state from server every 5s ──
   useEffect(() => {
+    if (pollingBlocked) return; // reconciliación corriendo — polling suspendido
+
     const interval = setInterval(async () => {
       try {
-        if (reconciledRef.current) return; // reconciliación reciente — no pisar
         const res = await fetch("/api/tvrack/state");
         if (!res.ok) return;
         const tvrack = await res.json();
@@ -351,7 +405,7 @@ const App = () => {
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [pollingBlocked]);
 
   const handleChangeEstadoDecos = (decos) => {
     setEstado((prev) => {
@@ -411,6 +465,7 @@ const App = () => {
   };
   const handleChangeTvrack = (newTvrack) => {
     setTvrackState(newTvrack);
+    localStorage.setItem("tvrackState", JSON.stringify(newTvrack));
   };
 
   const reintentarDecos = async () => {

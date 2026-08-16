@@ -22,6 +22,8 @@ const ARRANGER_TOKEN = process.env.VITE_ARRANGER_TOKEN;
 // ── Security: Helmet (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, etc.) ──
 app.use(
   helmet({
+    // Deshabilitar HSTS y upgrade-insecure-requests: la red 192.168.2.x es HTTP-only
+    strictTransportSecurity: false,
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
@@ -37,7 +39,10 @@ app.use(
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
         frameSrc: ["'self'", ARRANGER_BASE],
+        // ⚠ NO upgrade-insecure-requests — red 192.168.2.x es solo HTTP
+        upgradeInsecureRequests: null,
       },
+      useDefaults: false,  // No inyectar directivas automáticas de Helmet
     },
     crossOriginEmbedderPolicy: false,       // Allow Arranger iframe embeds
   }),

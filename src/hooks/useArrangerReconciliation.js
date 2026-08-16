@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import { fetchMatrixState } from "../api/arrangerApi";
 
+// IDs de zonas fuera — deben coincidir con server.js y MatrizVideo.jsx
+const ZONAS_FUERA_IDS = [
+  "aVip-Barra-Centro", "aVip-Lobby-Batacazo", "aVip-Bar-Boveda",
+  "RACK-VIP-PANTALLABATACA", "aMas-15-Barra", "a-Menos1-Escenario",
+  "a-Menos1-Escenario2", "a-QMR75-Menos1-TV1", "a-QMR75-Menos1-TV2",
+  "a-QMC65-Menos1-TV2",
+];
+
 // Clave del cache en localStorage (PR3: read en mount + badge de stale)
 const CACHE_KEY = "arrangerSyncCache";
 
@@ -123,19 +131,23 @@ function buildDiffs(videoData, audioData, tvs, tvrackState, zonasFueraState) {
 
   // Dominio 4: zonas-fuera video
   for (const [dest, encoder] of Object.entries(videoData)) {
-    if (!zonasFueraState[dest]) continue;
+    // Si la zona no está en el estado actual (deploy fresco), asumir que
+    // debería existir y generar diff con app:undefined para que se cree.
+    if (!zonasFueraState[dest] && !ZONAS_FUERA_IDS.includes(dest)) continue;
     const enc = encoder ?? null;
-    if (zonasFueraState[dest].video !== enc) {
-      diffs.push({ dest, type: "zona-video", app: zonasFueraState[dest].video, arranger: enc });
+    const appValue = zonasFueraState[dest]?.video;
+    if (appValue !== enc) {
+      diffs.push({ dest, type: "zona-video", app: appValue, arranger: enc });
     }
   }
 
   // Dominio 5: zonas-fuera audio
   for (const [dest, encoder] of Object.entries(audioData)) {
-    if (!zonasFueraState[dest]) continue;
+    if (!zonasFueraState[dest] && !ZONAS_FUERA_IDS.includes(dest)) continue;
     const enc = encoder ?? null;
-    if (zonasFueraState[dest].audio !== enc) {
-      diffs.push({ dest, type: "zona-audio", app: zonasFueraState[dest].audio, arranger: enc });
+    const appValue = zonasFueraState[dest]?.audio;
+    if (appValue !== enc) {
+      diffs.push({ dest, type: "zona-audio", app: appValue, arranger: enc });
     }
   }
 

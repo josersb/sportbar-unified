@@ -1,0 +1,32 @@
+# ═══════════════════════════════════════════════════════════════
+# .npmrc — Producción blindada contra supply chain attacks
+# ═══════════════════════════════════════════════════════════════
+# Copiar este archivo como .npmrc en server/ antes de npm install
+# ═══════════════════════════════════════════════════════════════
+
+# ── SCRIPTS:kill switch total ──────────────────────────────────
+# Bloquea preinstall, install, postinstall, prepare y todos los
+# scripts del ciclo de vida. Ningún paquete ejecuta código en prod.
+ignore-scripts=true
+
+# ── DEPENDENCIAS: solo producción, nada opcional ──────────────
+omit=optional
+production=true
+
+# ── AUDITORÍA: bloquear si hay vulnerabilidades ───────────────
+audit-level=high
+
+# ── INTEGRIDAD: versiones exactas y lockfile ──────────────────
+save-exact=true
+package-lock=true
+
+# ── LIMPIEZA: sin ruido ───────────────────────────────────────
+fund=false
+loglevel=warn
+
+# ── REGISTRO: solo npm oficial ────────────────────────────────
+registry=https://registry.npmjs.org/
+
+# ── NETWORK: timeout agresivo (no debería necesitar red masiva) ─
+fetch-timeout=30000
+fetch-retries=2

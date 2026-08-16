@@ -8,6 +8,7 @@
  * verdad del mock) y responde a los mismos comandos que el Arranger físico:
  *
  *   join av <SOURCE> <DEST>   — vincula fuente a destino (video + audio)
+ *   join video/audio <SOURCE> <DEST> — actualiza solo un stream
  *   get encoder <DEST> <SUB>  — lee la fuente actual de un destino
  *
  * Modos (deterministas, mismo input → mismo output):
@@ -37,6 +38,7 @@ function createMockArranger(options = {}) {
   const blipEvery = options.blipEvery || 3; // blip: falla 1 de cada N llamadas
   let callCount = 0;
   let currentMode = mode;
+  const commandLog = [];
 
   function isOffline() {
     return currentMode === "offline";
@@ -46,9 +48,10 @@ function createMockArranger(options = {}) {
     return currentMode === "blip" && callCount % blipEvery === 0;
   }
 
-  /** join av <SOURCE> <DEST> → { ok, text }. Determinista. */
-  async function joinAv(source, dest) {
+  /** Ejecuta un join y actualiza solo los streams indicados. Determinista. */
+  async function join(source, dest, streams, command) {
     callCount += 1;
+    commandLog.push(`${command} ${source} ${dest}`);
     if (isOffline()) {
       throw new Error("[mockArranger] offline: Arranger inalcanzable");
     }
@@ -58,8 +61,21 @@ function createMockArranger(options = {}) {
     if (!(dest in matrix)) {
       throw new Error(`[mockArranger] destino inválido: ${dest}`);
     }
-    matrix[dest] = { video: source, audio: source };
-    return { ok: true, text: `join av success ${source} ${dest}` };
+    for (const stream of streams) matrix[dest][stream] = source;
+    return { ok: true, text: `${command} success ${source} ${dest}` };
+  }
+
+  /** join av <SOURCE> <DEST> → { ok, text }. Determinista. */
+  async function joinAv(source, dest) {
+    return join(source, dest, ["video", "audio"], "join av");
+  }
+
+  async function joinVideo(source, dest) {
+    return join(source, dest, ["video"], "join video");
+  }
+
+  async function joinAudio(source, dest) {
+    return join(source, dest, ["audio"], "join audio");
   }
 
   /**
@@ -84,6 +100,10 @@ function createMockArranger(options = {}) {
     return JSON.parse(JSON.stringify(matrix));
   }
 
+  function getCommandLog() {
+    return [...commandLog];
+  }
+
   /** Cambia el modo en caliente (útil en verificación y E2E manual). */
   function setMode(nextMode) {
     if (!MOCK_MODES.includes(nextMode)) {
@@ -92,7 +112,7 @@ function createMockArranger(options = {}) {
     currentMode = nextMode;
   }
 
-  return { joinAv, getEncoder, getMatrixState, setMode, get mode() { return currentMode; } };
+  return { joinAv, joinVideo, joinAudio, getEncoder, getMatrixState, getCommandLog, setMode, get mode() { return currentMode; } };
 }
 
 module.exports = { createMockArranger, MOCK_MODES };

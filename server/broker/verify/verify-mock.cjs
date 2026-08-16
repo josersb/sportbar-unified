@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * Verify 1.2 — mockArranger: modos normal/blip/offline, comandos deterministas.
+ * Verify 5.2 — mockArranger: streams independientes, modos normal/blip/offline.
  */
 const { createMockArranger } = require("../mockArranger.js");
 
@@ -20,6 +20,11 @@ function check(name, cond) {
   check("join av determinista", join1.text === join2.text);
   check("get encoder refleja join (video)", (await m.getEncoder("TV01", "video")) === "DTV3");
   check("get encoder refleja join (audio)", (await m.getEncoder("TV01", "audio")) === "DTV3");
+  await m.joinVideo("DTV4", "TV01");
+  check("join video aísla audio", (await m.getEncoder("TV01", "video")) === "DTV4" && (await m.getEncoder("TV01", "audio")) === "DTV3");
+  await m.joinAudio("DTV5", "TV01");
+  check("join audio aísla video", (await m.getEncoder("TV01", "video")) === "DTV4" && (await m.getEncoder("TV01", "audio")) === "DTV5");
+  check("command log distingue joins", JSON.stringify(m.getCommandLog().slice(-2)) === JSON.stringify(["join video DTV4 TV01", "join audio DTV5 TV01"]));
   check("get encoder default DTV1", (await m.getEncoder("VW-Norte", "video")) === "DTV1");
 
   // offline: get encoder null, join lanza
@@ -46,7 +51,7 @@ function check(name, cond) {
   // getMatrixState no muta el interno
   const state = m.getMatrixState();
   state.TV01.video = "MUTADO";
-  check("getMatrixState es copia", (await m.getEncoder("TV01", "video")) === "DTV3");
+  check("getMatrixState es copia", (await m.getEncoder("TV01", "video")) === "DTV4");
 
   const failed = checks.filter((c) => !c.ok).length;
   process.exit(failed === 0 ? 0 : 1);

@@ -6,7 +6,8 @@
  * Único punto de comunicación con la matriz Liberty AV DigiIP IPEXCB
  * (firmware v1.3.4, API V210826). Comandos soportados por el broker:
  *   - getEncoder(dest, sub)  → lectura confirmada del hardware
- *   - joinAv(source, dest)   → escritura de intención
+ *   - joinAv(source, dest)   → escritura de intención video + audio
+ *   - joinVideo(source, dest) / joinAudio(source, dest) → stream independiente
  *
  * Retry con exponential backoff para fallos de red (no para 4xx).
  * Switch mock: si VITE_MOCK_ARRANGER=1 (o mock: true), delega en mockArranger
@@ -107,6 +108,29 @@ function createArrangerClient(options = {}) {
     return { ok: result.response.ok, text: result.text, status: result.response.status };
   }
 
+  /** Ejecuta un join independiente manteniendo el mismo contrato/retry que joinAv. */
+  async function joinStream(stream, source, dest) {
+    if (mock) {
+      try {
+        return await mock[stream === "video" ? "joinVideo" : "joinAudio"](source, dest);
+      } catch (error) {
+        return { ok: false, error: error.message };
+      }
+    }
+    const command = `join ${stream} ${source} ${dest}`;
+    const result = await requestArranger(command);
+    if (result.error) return { ok: false, error: result.error.message };
+    return { ok: result.response.ok, text: result.text, status: result.response.status };
+  }
+
+  async function joinVideo(source, dest) {
+    return joinStream("video", source, dest);
+  }
+
+  async function joinAudio(source, dest) {
+    return joinStream("audio", source, dest);
+  }
+
   // ── FW-LOCKED getters: conservados con banner, no usados por el broker ──
   function fwLocked(name) {
     log.warn(`${FW_LOCKED_BANNER} [${name}]`);
@@ -116,6 +140,9 @@ function createArrangerClient(options = {}) {
   return {
     getEncoder,
     joinAv,
+    joinVideo,
+    joinAudio,
+    getCommandLog: () => (mock && typeof mock.getCommandLog === "function" ? mock.getCommandLog() : []),
     isMock: useMock,
     get baseUrl() { return baseUrl; },
     // Conservados con banner (futura compatibilidad firmware >=1.4.0.0):

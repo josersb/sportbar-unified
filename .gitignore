@@ -304,3 +304,6 @@ arranger-state-*.json
 # Snapshot exclusions: heavy installer + tool cache (kept on disk, not in git)
 .playwright-cli/
 Docs/equipaments/Tvs Samsung/MagicInfo_Express_2_Setup_for_Windows_-_3.1_1014.1.exe
+Docs/**/*.exe
+Docs/**/*.zip
+Docs/**/*.apk

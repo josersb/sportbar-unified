@@ -117,8 +117,25 @@ function tmpDbPath(label) {
   if (prevEnv === undefined) delete process.env.RECONCILER_INTERVAL_MS;
   else process.env.RECONCILER_INTERVAL_MS = prevEnv;
 
+  // ── Escenario F: preset confirmado con video != audio, sin adopciones ──
+  const tF = tmpDbPath("preset-independent");
+  const clientF = createArrangerClient({ mock: true, mockMode: "normal" });
+  const storeF = await createStore({ dbPath: tF.db, readEncoder: (d, s) => clientF.getEncoder(d, s), log: silent });
+  await clientF.joinVideo("DTV2", "TVRACK");
+  await clientF.joinAudio("DTV3", "TVRACK");
+  storeF.setDesired("tvrack", "video", "DTV2");
+  storeF.setDesired("tvrack", "audio", "DTV3");
+  storeF.setReported("tvrack", "video", "DTV2");
+  storeF.setReported("tvrack", "audio", "DTV3");
+  await storeF.write();
+  const reconF = createReconciler({ client: clientF, store: storeF, log: silent });
+  const resF = await reconF.scanOnce();
+  check("preset video!=audio confirmado: scan sin adopciones", resF.adopted === 0);
+  check("preset video!=audio confirmado: sin diffs", reconF.buildDiffs("tvrack").length === 0);
+  check("preset video!=audio conserva ambos desired", storeF.getDomain("tvrack").desired.video === "DTV2" && storeF.getDomain("tvrack").desired.audio === "DTV3");
+
   // Limpieza temporal
-  for (const t of [tA, tB, tC, tD]) fs.rmSync(t.dir, { recursive: true, force: true });
+  for (const t of [tA, tB, tC, tD, tF]) fs.rmSync(t.dir, { recursive: true, force: true });
 
   const failed = checks.filter((c) => !c.ok).length;
   console.log(`\n${failed === 0 ? "✓ RECONCILER OK" : `✗ ${failed} chequeos fallaron`}`);

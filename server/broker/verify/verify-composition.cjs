@@ -98,6 +98,34 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     });
     body = await res.json();
     check("POST /api/tvrack/video write-through confirmado", res.status === 200 && body.video === "DTV5");
+    const commandCountBeforeAudio = broker.client.getCommandLog().length;
+    res = await fetch(`${base}/api/tvrack/audio`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId: "DTV6" }),
+    });
+    body = await res.json();
+    check("POST /api/tvrack/audio independiente", res.status === 200 && body.video === "DTV5" && body.audio === "DTV6");
+    check("TVRACK audio no emite join av con link=false", broker.client.getCommandLog().length === commandCountBeforeAudio + 1 && broker.client.getCommandLog().at(-1) === "join audio DTV6 TVRACK");
+    res = await fetch(`${base}/api/tvrack/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linked: true }),
+    });
+    check("activar link TVRACK no re-joinea", res.status === 200);
+    res = await fetch(`${base}/api/tvrack/audio`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId: "DTV7" }),
+    });
+    body = await res.json();
+    check("TVRACK link=true usa un AV y confirma ambos", res.status === 200 && body.video === "DTV7" && body.audio === "DTV7" && broker.client.getCommandLog().at(-1) === "join av DTV7 TVRACK");
+    res = await fetch(`${base}/api/tvrack/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linked: false }),
+    });
+    check("desactivar link TVRACK no re-joinea", res.status === 200);
 
     // ── Legacy: zonas-fuera (body legacy deviceId, shape legacy) ──
     res = await fetch(`${base}/api/zonas-fuera/aVip-Barra-Centro/video`, {
@@ -107,6 +135,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     });
     body = await res.json();
     check("POST zonas-fuera video write-through (deviceId legacy)", res.status === 200 && body.zoneId === "aVip-Barra-Centro" && body.video === "DTV6" && "link" in body && "lastUpdated" in body);
+    res = await fetch(`${base}/api/zonas-fuera/aVip-Barra-Centro/audio`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId: "DTV7" }),
+    });
+    body = await res.json();
+    check("zona audio independiente conserva video", res.status === 200 && body.video === "DTV6" && body.audio === "DTV7");
     res = await fetch(`${base}/api/zonas-fuera/INEXISTENTE/video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -118,7 +153,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     res = await fetch(`${base}/api/presets/1`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tvs: { TV02: "DTV7" }, zonasFuera: { "aVip-Bar-Boveda": { video: "DTV8", audio: "DTV8" } }, tvrack: { video: "DTV9", audio: "DTV9" } }),
+      body: JSON.stringify({ tvs: { TV02: "DTV7" }, zonasFuera: { "aVip-Bar-Boveda": { video: "DTV8", audio: "DTV6", link: false } }, tvrack: { video: "DTV9", audio: "DTV8" } }),
     });
     check("POST /api/presets/1 → ok", res.status === 200);
     res = await fetch(`${base}/api/presets/1`);
@@ -126,15 +161,29 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     check("GET /api/presets/1 snapshot guardado", res.status === 200 && body.preset && body.preset.tvs.TV02 === "DTV7");
     res = await fetch(`${base}/api/presets/1/load`, { method: "POST" });
     body = await res.json();
-    check("POST /api/presets/1/load restaura 3 dominios", res.status === 200 && body.ok === true && body.applied >= 4);
+    check("POST /api/presets/1/load restaura 3 dominios", res.status === 200 && body.ok === true && body.applied >= 5);
     res = await fetch(`${base}/api/broker/state`);
     body = await res.json();
     check(
-      "preset load propagó a desired (TV02=DTV7, zona=DTV8, tvrack=DTV9)",
+      "preset load preserva video!=audio en zona y TVRACK",
       body.domains.tvs.desired.TV02 === "DTV7" &&
         body.domains.zonasFuera.desired["aVip-Bar-Boveda"].video === "DTV8" &&
-        body.domains.tvrack.desired.video === "DTV9",
+        body.domains.zonasFuera.desired["aVip-Bar-Boveda"].audio === "DTV6" &&
+        body.domains.tvrack.desired.video === "DTV9" &&
+        body.domains.tvrack.desired.audio === "DTV8",
     );
+    const afterPresetScan = await broker.reconciler.scanOnce();
+    check("scan posterior a preset distinto no adopta drift espurio", afterPresetScan.adopted === 0 && broker.reconciler.buildDiffs("tvrack").length === 0 && broker.reconciler.buildDiffs("zonasFuera").length === 0);
+
+    const commandCountBeforeInvalidPreset = broker.client.getCommandLog().length;
+    res = await fetch(`${base}/api/presets/2`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tvs: {}, zonasFuera: {}, tvrack: { video: "DTV1", audio: "DTV2", link: true } }),
+    });
+    body = await res.json();
+    check("snapshot vinculado inconsistente → 400 claro", res.status === 400 && body.error.includes("link=true"));
+    check("snapshot inválido no emite comandos", broker.client.getCommandLog().length === commandCountBeforeInvalidPreset);
 
     // ── Proxy /api/command mock-aware ──
     res = await fetch(`${base}/api/command/join%20av%20DTV7%20TV03/verify-token`);

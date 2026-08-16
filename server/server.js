@@ -181,7 +181,7 @@ async function createServer(options = {}) {
 
   /**
    * Flujo de escritura confirmada (spec state-broker):
-   * desired → join av → get encoder → reported → persistir.
+   * desired → join (según domain/sub/link) → get encoder → reported → persistir.
    * Debe ejecutarse DENTRO de writeQueue.enqueue(dest, ...) para serializar
    * por destino. Devuelve { ok, dest, source, sub, reported, error? }.
    */
@@ -189,29 +189,69 @@ async function createServer(options = {}) {
     const domain = dest === TVRACK_ID ? "tvrack" : ZONA_FUERA_IDS.includes(dest) ? "zonasFuera" : "tvs";
     const key = domain === "tvs" ? toApp(dest) : dest;
     const d = store.getDomain(domain);
+    // Leer link aquí, dentro de la tarea encolada: nunca capturar una versión
+    // obsoleta antes de que la cola FIFO procese la escritura.
+    const appOnly = store.getAppOnly();
+    const link =
+      domain === "tvrack"
+        ? !!appOnly.tvrack?.link
+        : domain === "zonasFuera"
+          ? !!appOnly.zonasFuera?.[dest]?.link
+          : false;
+    const linked = domain !== "tvs" && link;
 
     // 1. Intención del operador
     if (domain === "tvs") {
       store.setDesired(domain, key, source);
+    } else if (linked && domain === "tvrack") {
+      store.setDesired(domain, "video", source);
+      store.setDesired(domain, "audio", source);
     } else if (domain === "tvrack") {
       store.setDesired(domain, sub, source);
+    } else if (linked) {
+      d.desired[key] = { ...(d.desired[key] || {}), video: source, audio: source };
+      store.bumpVersion(domain);
     } else {
       d.desired[key] = { ...(d.desired[key] || {}), [sub]: source };
       store.bumpVersion(domain);
     }
 
     // 2. Comando al Arranger
-    const joinResult = await client.joinAv(source, dest);
+    const joinResult =
+      domain === "tvs" || linked
+        ? await client.joinAv(source, dest)
+        : sub === "audio"
+          ? await client.joinAudio(source, dest)
+          : await client.joinVideo(source, dest);
     if (!joinResult.ok) {
       await store.write();
-      return { ok: false, dest, source, sub, error: joinResult.error || "join av falló" };
+      return { ok: false, dest, source, sub, error: joinResult.error || "join falló" };
     }
 
     // 3. Lectura post-comando (confirmación)
-    const reported = await client.getEncoder(dest, sub);
+    const reported = linked
+      ? {
+          video: await client.getEncoder(dest, "video"),
+          audio: await client.getEncoder(dest, "audio"),
+        }
+      : await client.getEncoder(dest, sub);
 
-    // 4. reported ← solo lectura confirmada válida (null nunca pisa)
-    if (reported != null) {
+    // 4. reported ← solo lecturas confirmadas válidas (null nunca pisa)
+    if (linked) {
+      if (domain === "tvrack") {
+        if (reported.video != null) store.setReported(domain, "video", reported.video);
+        if (reported.audio != null) store.setReported(domain, "audio", reported.audio);
+      } else {
+        if (reported.video != null || reported.audio != null) {
+          d.reported[key] = {
+            ...(d.reported[key] || {}),
+            ...(reported.video != null ? { video: reported.video } : {}),
+            ...(reported.audio != null ? { audio: reported.audio } : {}),
+          };
+          store.bumpVersion(domain);
+        }
+      }
+    } else if (reported != null) {
       if (domain === "tvs") {
         store.setReported(domain, key, reported);
       } else if (domain === "tvrack") {
@@ -223,7 +263,35 @@ async function createServer(options = {}) {
     }
 
     await store.write();
-    return { ok: true, dest, source, sub, reported };
+    return { ok: true, dest, source, sub, link, reported };
+  }
+
+  function validateLinkedSnapshot(snapshot) {
+    const errors = [];
+    const tvrack = snapshot && typeof snapshot.tvrack === "object" ? snapshot.tvrack : null;
+    if (tvrack?.link === true && tvrack.video !== tvrack.audio) {
+      errors.push("tvrack.link=true requiere video y audio iguales");
+    }
+    const zones = snapshot && typeof snapshot.zonasFuera === "object" ? snapshot.zonasFuera : {};
+    for (const [zoneId, zone] of Object.entries(zones)) {
+      if (zone?.link === true && zone.video !== zone.audio) {
+        errors.push(`zonasFuera.${zoneId}.link=true requiere video y audio iguales`);
+      }
+    }
+    return errors.length > 0 ? `Snapshot inconsistente: ${errors.join("; ")}` : null;
+  }
+
+  function applySnapshotLinks(snapshot) {
+    if (snapshot?.tvrack && typeof snapshot.tvrack === "object") {
+      // Los snapshots anteriores no persistían tvrack.link: se interpretan
+      // como independientes para no dejar que un toggle previo colapse audio.
+      store.setAppOnly("tvrack", "link", snapshot.tvrack.link === true);
+    }
+    for (const [zoneId, zone] of Object.entries(snapshot?.zonasFuera || {})) {
+      if (ZONA_FUERA_IDS.includes(zoneId) && zone && typeof zone === "object") {
+        store.setAppOnly("zonasFuera", zoneId, { link: zone.link === true });
+      }
+    }
   }
 
   /** Broadcast del estado de un dominio (payload = reported para matriz). */
@@ -364,6 +432,13 @@ async function createServer(options = {}) {
     if (!preset) {
       return res.status(404).json({ error: `Preset ${n} vacío` });
     }
+    const validationError = validateLinkedSnapshot(preset);
+    if (validationError) return res.status(400).json({ error: validationError });
+
+    // El snapshot puede transportar el link app-only. Se persiste antes de
+    // encolar, mientras executeWrite vuelve a leerlo dentro de cada tarea.
+    applySnapshotLinks(preset);
+    await store.write();
 
     const writes = [];
     for (const [tvKey, source] of Object.entries(preset.tvs || {})) {
@@ -408,15 +483,9 @@ async function createServer(options = {}) {
     const { deviceId, source } = req.body || {};
     const src = source || deviceId;
     if (!src) return res.status(400).json({ error: "deviceId required" });
-    const link = !!(store.getAppOnly().tvrack && store.getAppOnly().tvrack.link);
-
     const result = await writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, src, sub));
     if (!result.ok) return res.status(502).json({ ok: false, error: result.error });
-
-    // Con link, video y audio viajan juntos (comportamiento legacy conservado)
-    if (link) {
-      await writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, src, sub === "video" ? "audio" : "video"));
-    }
+    const link = !!store.getAppOnly().tvrack?.link;
     broadcastDomain("tvrack");
     const d = store.getDomain("tvrack");
     res.json({
@@ -459,15 +528,9 @@ async function createServer(options = {}) {
     const { deviceId, source } = req.body || {};
     const src = source || deviceId;
     if (!src) return res.status(400).json({ error: "deviceId required" });
-    const appOnly = store.getAppOnly().zonasFuera || {};
-    const link = !!(appOnly[id] && appOnly[id].link);
-
     const result = await writeQueue.enqueue(id, () => executeWrite(id, src, sub));
     if (!result.ok) return res.status(502).json({ ok: false, error: result.error });
-
-    if (link) {
-      await writeQueue.enqueue(id, () => executeWrite(id, src, sub === "video" ? "audio" : "video"));
-    }
+    const link = !!store.getAppOnly().zonasFuera?.[id]?.link;
     broadcastDomain("zonasFuera");
     const d = store.getDomain("zonasFuera");
     res.json({ zoneId: id, ...d.desired[id], link, lastUpdated: d.lastUpdated });
@@ -497,6 +560,8 @@ async function createServer(options = {}) {
   app.post("/api/presets/:n", writesLimiter, async (req, res) => {
     const n = parseInt(req.params.n, 10);
     if (n < 1 || n > 5) return res.status(400).json({ error: "Invalid preset number" });
+    const validationError = validateLinkedSnapshot(req.body);
+    if (validationError) return res.status(400).json({ error: validationError });
     store.setPreset(n, req.body);
     await store.write();
     broadcastDomain("presets");

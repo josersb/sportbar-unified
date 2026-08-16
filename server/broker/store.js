@@ -116,7 +116,11 @@ function migratePreset(preset) {
   }
   const tvrack =
     preset.tvrack && typeof preset.tvrack === "object" && preset.tvrack.video
-      ? { video: preset.tvrack.video, audio: preset.tvrack.audio || preset.tvrack.video }
+      ? {
+          video: preset.tvrack.video,
+          audio: preset.tvrack.audio || preset.tvrack.video,
+          ...(typeof preset.tvrack.link === "boolean" ? { link: preset.tvrack.link } : {}),
+        }
       : { video: DEFAULT_SOURCE, audio: DEFAULT_SOURCE };
   return { tvs, zonasFuera, tvrack, _version: 3 };
 }

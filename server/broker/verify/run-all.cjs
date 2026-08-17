@@ -14,6 +14,7 @@ const { spawnSync } = require("child_process");
 const path = require("path");
 
 const steps = [
+  ["verify-vite-proxy", "proxy Vite /api/tvrack hacia Express del worktree"],
   ["verify-destinations", "destinos canónicos (40, sin duplicados, mapa VW)"],
   ["verify-mock", "mockArranger modos normal/blip/offline deterministas"],
   ["verify-arranger-client", "arrangerClient getEncoder/joinAv + retry + FW-LOCKED"],

@@ -38,6 +38,10 @@ export default defineConfig({
         target: EXPRESS_URL,
         changeOrigin: true,
       },
+      "/api/tvrack": {
+        target: EXPRESS_URL,
+        changeOrigin: true,
+      },
       "/api/app-state": {
         target: EXPRESS_URL,
         changeOrigin: true,

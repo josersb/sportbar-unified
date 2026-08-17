@@ -128,12 +128,38 @@ export function applyStateEvent(prev, evt) {
   const domain = evt.domain;
   const cur = prev.domains?.[domain] || { desired: {}, reported: {}, version: 0, lastUpdated: null };
   const key = domain === "presets" ? "desired" : "reported";
+  const payload = evt.payload && typeof evt.payload === "object" ? evt.payload : {};
+  const nextAppOnly = { ...(prev.appOnly || {}) };
+  let cleanPayload = payload;
+
+  // Link is app-only, but travels in the incremental domain payload so a
+  // toggle is reflected immediately without waiting for a snapshot/poll.
+  if (domain === "tvrack" && Object.prototype.hasOwnProperty.call(payload, "link")) {
+    const { link, ...reported } = payload;
+    cleanPayload = reported;
+    nextAppOnly.tvrack = { ...(nextAppOnly.tvrack || {}), link: !!link };
+  } else if (domain === "zonasFuera") {
+    const zonasFuera = { ...(nextAppOnly.zonasFuera || {}) };
+    cleanPayload = {};
+    for (const [zoneId, zonePayload] of Object.entries(payload)) {
+      if (zonePayload && typeof zonePayload === "object" && Object.prototype.hasOwnProperty.call(zonePayload, "link")) {
+        const { link, ...reported } = zonePayload;
+        cleanPayload[zoneId] = reported;
+        zonasFuera[zoneId] = { ...(zonasFuera[zoneId] || {}), link: !!link };
+      } else {
+        cleanPayload[zoneId] = zonePayload;
+      }
+    }
+    nextAppOnly.zonasFuera = zonasFuera;
+  }
+
   return {
     ...prev,
     domains: {
       ...prev.domains,
-      [domain]: { ...cur, [key]: evt.payload, version: evt.version, lastUpdated: evt.lastUpdated },
+      [domain]: { ...cur, [key]: cleanPayload, version: evt.version, lastUpdated: evt.lastUpdated },
     },
+    appOnly: nextAppOnly,
   };
 }
 

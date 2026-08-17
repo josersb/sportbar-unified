@@ -35,6 +35,39 @@ function check(name, cond) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+async function readUntil(reader, marker) {
+  let text = "";
+  const decoder = new TextDecoder();
+  while (!text.includes(marker)) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+  }
+  return text;
+}
+
+async function readUntilStateLink(reader, domain, linked, zoneId = null) {
+  let buffer = "";
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) return null;
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() || "";
+    for (const block of blocks) {
+      if (!block.includes("event: state")) continue;
+      const dataLine = block.split("\n").find((line) => line.startsWith("data: "));
+      if (!dataLine) continue;
+      try {
+        const event = JSON.parse(dataLine.slice(6));
+        const payload = zoneId ? event.payload?.[zoneId] : event.payload;
+        if (event.domain === domain && payload?.link === linked) return event;
+      } catch {}
+    }
+  }
+}
+
 (async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sbr-composition-"));
   const dbPath = path.join(tmpDir, "state.json");
@@ -47,6 +80,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const server = app.listen(0);
   const port = server.address().port;
   const base = `http://127.0.0.1:${port}`;
+  let linkSseController;
+  let linkSseReader;
 
   try {
     // ── Broker state inicial (stale, persistido servido) ──
@@ -107,12 +142,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     body = await res.json();
     check("POST /api/tvrack/audio independiente", res.status === 200 && body.video === "DTV5" && body.audio === "DTV6");
     check("TVRACK audio no emite join av con link=false", broker.client.getCommandLog().length === commandCountBeforeAudio + 1 && broker.client.getCommandLog().at(-1) === "join audio DTV6 TVRACK");
+
+    linkSseController = new AbortController();
+    const linkSse = await fetch(`${base}/api/stream`, { signal: linkSseController.signal });
+    linkSseReader = linkSse.body.getReader();
+    const initialLinkSse = await readUntil(linkSseReader, "event: snapshot");
+    check("SSE para toggles → snapshot inicial", linkSse.status === 200 && initialLinkSse.includes("event: snapshot"));
+
     res = await fetch(`${base}/api/tvrack/link`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ linked: true }),
     });
-    check("activar link TVRACK no re-joinea", res.status === 200);
+    const tvrackLinkEvent = await readUntilStateLink(linkSseReader, "tvrack", true);
+    check("activar link TVRACK no re-joinea y publica link=true por SSE", res.status === 200 && !!tvrackLinkEvent);
     res = await fetch(`${base}/api/tvrack/audio`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -125,7 +168,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ linked: false }),
     });
-    check("desactivar link TVRACK no re-joinea", res.status === 200);
+    const tvrackUnlinkEvent = await readUntilStateLink(linkSseReader, "tvrack", false);
+    check("desactivar link TVRACK publica link=false por SSE", res.status === 200 && !!tvrackUnlinkEvent);
+    const commandCountAfterUnlink = broker.client.getCommandLog().length;
+    res = await fetch(`${base}/api/tvrack/video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId: "DTV8" }),
+    });
+    body = await res.json();
+    check(
+      "TVRACK link=false vuelve a dispatch solo-video",
+      res.status === 200 && body.video === "DTV8" && body.audio === "DTV7" &&
+        broker.client.getCommandLog().length === commandCountAfterUnlink + 1 &&
+        broker.client.getCommandLog().at(-1) === "join video DTV8 TVRACK",
+    );
 
     // ── Legacy: zonas-fuera (body legacy deviceId, shape legacy) ──
     res = await fetch(`${base}/api/zonas-fuera/aVip-Barra-Centro/video`, {
@@ -142,6 +199,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     });
     body = await res.json();
     check("zona audio independiente conserva video", res.status === 200 && body.video === "DTV6" && body.audio === "DTV7");
+    res = await fetch(`${base}/api/zonas-fuera/aVip-Barra-Centro/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linked: true }),
+    });
+    const zonaLinkEvent = await readUntilStateLink(linkSseReader, "zonasFuera", true, "aVip-Barra-Centro");
+    check("activar link zona publica link=true por SSE", res.status === 200 && !!zonaLinkEvent?.payload?.["aVip-Barra-Centro"] && zonaLinkEvent.payload["aVip-Barra-Centro"].link === true);
+    res = await fetch(`${base}/api/zonas-fuera/aVip-Barra-Centro/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linked: false }),
+    });
+    const zonaUnlinkEvent = await readUntilStateLink(linkSseReader, "zonasFuera", false, "aVip-Barra-Centro");
+    check("desactivar link zona publica link=false por SSE", res.status === 200 && !!zonaUnlinkEvent?.payload?.["aVip-Barra-Centro"] && zonaUnlinkEvent.payload["aVip-Barra-Centro"].link === false);
     res = await fetch(`${base}/api/zonas-fuera/INEXISTENTE/video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -224,8 +295,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // Cerrar SSE + server
     ctrl1.abort();
     ctrl2.abort();
+    linkSseController?.abort();
     try { reader1.cancel(); } catch {}
     try { reader2.cancel(); } catch {}
+    try { linkSseReader?.cancel(); } catch {}
   } finally {
     if (typeof server.closeAllConnections === "function") server.closeAllConnections();
     server.close();

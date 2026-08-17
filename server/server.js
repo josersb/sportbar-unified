@@ -294,11 +294,35 @@ async function createServer(options = {}) {
     }
   }
 
-  /** Broadcast del estado de un dominio (payload = reported para matriz). */
+  /** Broadcast del estado de un dominio (payload = reported + link app-only). */
   function broadcastDomain(domain) {
     const d = store.getDomain(domain);
     if (!d) return;
-    const payload = domain === "presets" ? d.desired : d.reported || {};
+    let payload;
+    if (domain === "presets") {
+      payload = d.desired;
+    } else if (domain === "tvrack") {
+      payload = {
+        ...(d.reported || {}),
+        link: !!store.getAppOnly().tvrack?.link,
+      };
+    } else if (domain === "zonasFuera") {
+      const reported = d.reported || {};
+      const desired = d.desired || {};
+      const zoneIds = new Set([...Object.keys(desired), ...Object.keys(reported)]);
+      const links = store.getAppOnly().zonasFuera || {};
+      payload = Object.fromEntries(
+        [...zoneIds].map((zoneId) => [
+          zoneId,
+          {
+            ...(reported[zoneId] || {}),
+            link: !!links[zoneId]?.link,
+          },
+        ]),
+      );
+    } else {
+      payload = d.reported || {};
+    }
     bus.publish(domain, payload, d.version, d.lastUpdated);
   }
 

@@ -99,6 +99,28 @@ function check(name, cond) {
   st = applyStateEvent(st, { domain: "presets", payload: { preset1: { tvs: {} } }, version: 2, lastUpdated: "z" });
   check("state: presets actualizan desired", st.domains.presets.desired.preset1?.tvs !== undefined);
 
+  let linkState = applySnapshot({}, {
+    schemaVersion: 3,
+    domains: {
+      tvrack: { desired: { video: "DTV1", audio: "DTV1" }, reported: {} },
+      zonasFuera: { desired: { Z1: { video: "DTV1", audio: "DTV1" } }, reported: {} },
+    },
+    appOnly: { tvrack: { link: false }, zonasFuera: { Z1: { link: false } } },
+  });
+  linkState = applyStateEvent(linkState, {
+    domain: "tvrack",
+    payload: { video: "DTV2", audio: "DTV3", link: true },
+    version: 2,
+  });
+  linkState = applyStateEvent(linkState, {
+    domain: "zonasFuera",
+    payload: { Z1: { video: "DTV4", audio: "DTV5", link: true } },
+    version: 2,
+  });
+  const linkUi = deriveUiState(linkState);
+  check("state: TVRACK link incremental migra a appOnly y UI", linkUi.tvrackState.link === true && linkState.domains.tvrack.reported.link === undefined);
+  check("state: zona link incremental migra a appOnly y UI", linkUi.zonasFueraState.Z1.link === true && linkState.domains.zonasFuera.reported.Z1.link === undefined);
+
   // dominio inválido se ignora
   const before = st.domains;
   const after = applyStateEvent(st, { domain: "bogus", payload: {} });

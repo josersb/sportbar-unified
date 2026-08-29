@@ -36,14 +36,18 @@ Chain strategy: stacked-to-main
 - [x] 2.3 `server/server.js` — composition, auth/limits, SSE, writes.
 - [x] 2.4 Verify POST, SSE, two clients without 429.
 
-## Phase 3: Broker client (PR 3) ✅
-- [x] 3.1 `src/hooks/useBrokerState.js`, `brokerClientCore.js` — SSE/fallback/sync.
-- [x] 3.2 `src/App.jsx`, `src/contexto/Contexto.jsx` — snapshot; remove legacy polls/keys.
-- [x] 3.3 `src/api/arrangerApi.js` — broker writes; retain command bypass.
-- [x] 3.4 `src/componentes/MatrizVideo.jsx`, `SyncPanel.jsx`, `Header.jsx` — writes/status.
-- [x] 3.5 `src/hooks/usePreset.js`, `src/componentes/MatrizPreset.jsx` — snapshot/load.
-- [x] 3.6 `src/main.jsx`; delete `src/hooks/useArrangerReconciliation.js`.
-- [x] 3.7 Verify 179 tests, broker suite, build, propagation, offline.
+## Phase 3: Cliente broker (PR 3) ✅ COMPLETO (apply batch 2026-08-14; numeración restaurada al archivar — ver archive-report)
+- [x] 3.1 `src/hooks/useBrokerState.js` — SSE + snapshot + delta por dominio, reconexión auto, fallback poll versionado vs broker (5s→30s backoff), enum `synced|stale|out_of_sync|offline`. → core puro `src/hooks/brokerClientCore.js` + `verify-broker-core.mjs` 43/43 + `verify-broker-client.mjs` 15/15 (contra server real mock)
+- [x] 3.2 `src/App.jsx` — elimina 3 polls (~L297/307/332), persist effect, refs de parcheo; sin join cliente. → reescrito sobre snapshot SSE; escrituras confirmed-only via broker
+- [x] 3.3 `src/contexto/Contexto.jsx` — quita keys legacy; `syncStatus`+`lastSync` estables. → sin TvsBarra*/TvsEscalera*/tvs.TVRACK; `syncStatus` memo estable + `syncDiffs` informativos
+- [x] 3.4 `src/api/arrangerApi.js` — reduce a cliente del broker; elimina `getDeviceStatus` (L348), `reconstructMatrixState` (L141), getters directos; setters → POSTs broker. → nuevo `setTvSource`/`fetchBrokerState`/`setAppState`/presets snapshot; proxy `/api/command` conservado (IR/serial/preset-deco)
+- [x] 3.5 `src/componentes/MatrizVideo.jsx` — sin 4º fetch tvrack; escrituras confirmed-only vía broker. → grupos derivados con `collapseGroup` (sin keys legacy); submit → `POST /api/tvs/:id/source` batch
+- [x] 3.6 `src/componentes/SyncPanel.jsx` → indicador; elimina `applyDiff` + Apply/Ignore (bug e muerto, sin reintroducir diff tvrack). → drawer indicador + diffs informativos sin acciones
+- [x] 3.7 `src/componentes/Header.jsx` — tab con enum sync. → icono ✅/⏳/⚠️/❌ según `syncStatus`
+- [x] 3.8 `src/main.jsx` — elimina dev helper `reconstructMatrixState`. → quitado
+- [x] 3.9 `usePreset.js`+`MatrizPreset.jsx` — snapshot `{tvs, zonasFuera, tvrack}` + migración de viejos; load vía `POST /api/presets/:n/load` (sin BATCH 8 cliente). → `migrarPreset` cliente + savePreset/loadPreset/deletePresetServer
+- [x] 3.10 Delete `src/hooks/useArrangerReconciliation.js` (reemplazado por reconciler server-side). → eliminado + VideoMatrix lee TVRACK de tvrackState
+- [x] 3.11 Verify PR 3: propagación PC-A→PC-B <1s; tvrack no reaparece tras recarga; offline → indicador + persistido. → verify node 43/43 + 15/15 + `pnpm run build` ✓ 4.25s + `pnpm test` 179/179; checklist manual en apply-progress
 
 ## Phase 4: Cleanup + E2E (PR 4) ✅
 - [x] 4.1 `server/server.js` — remove legacy reads; retain writes/proxy.

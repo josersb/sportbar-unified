@@ -70,19 +70,6 @@ Every exported function MUST catch errors and `console.error` which command fail
 - WHEN `assignSourceToDestination("DTV1","TV01")` fails
 - THEN logs `[ArrangerAPI] Error enviando comando "join av DTV1 TV01"`
 
-### Requirement: getDeviceStatus — device capability detection
-`arrangerApi.js` MUST export `getDeviceStatus(deviceId)` calling `get status {deviceId}` to parse active streams into capability flags.
-
-#### Scenario: IR-capable device detected
-- GIVEN Arranger responds with streams `VIDEO, IR` for DTV1
-- WHEN `getDeviceStatus("DTV1")` called
-- THEN returns `{videoSource:true, channelControl:true}`
-
-#### Scenario: Encoder (no IR) detected
-- GIVEN Arranger reports `VIDEO, AUDIO` only for DTV7
-- WHEN `getDeviceStatus("DTV7")` called
-- THEN returns `{videoSource:true, audioSource:true, channelControl:false}`
-
 ### Requirement: Test Coverage — capability-based model
 All affected test files MUST reflect the capability-based device model and pass.
 
@@ -129,17 +116,18 @@ All affected test files MUST reflect the capability-based device model and pass.
 - THEN sends `send ir DTV5 "0000 006C ..."` to Arranger
 
 ### Requirement: Capability-Gated IR Validation
-`sendChannelDigits` MUST validate that the target device has `channelControl` capability before sending any IR command. Devices without `channelControl` MUST be rejected with an error.
+`sendChannelDigits` MUST validar que el dispositivo destino tiene capability `channelControl` antes de enviar IR. Las capabilities SHALL provenir del registro manual `dispositivos.js` (no de detección por `get status`).
+(Previously: capabilities derivadas de detección automática vía `getDeviceStatus`)
 
-#### Scenario: DTV7 rejected (no channelControl)
-- GIVEN DTV7 has channelControl: false
-- WHEN sendChannelDigits("DTV7", 1603) is called
-- THEN throws before sending any IR command
+#### Scenario: DTV7 rechazado (no channelControl)
+- GIVEN `dispositivos.js` declara DTV7 con channelControl false
+- WHEN sendChannelDigits("DTV7", 1603) es llamado
+- THEN lanza error antes de enviar cualquier comando IR
 
-#### Scenario: DTV1 passes gate
-- GIVEN DTV1 has channelControl: true
-- WHEN sendChannelDigits("DTV1", 1603) is called
-- THEN IR commands are sent normally
+#### Scenario: DTV1 pasa el gate
+- GIVEN `dispositivos.js` declara DTV1 con channelControl true
+- WHEN sendChannelDigits("DTV1", 1603) es llamado
+- THEN los comandos IR se envían normalmente
 
 ## MODIFIED Requirements
 
@@ -195,6 +183,10 @@ All affected test files MUST reflect the capability-based device model and pass.
 
 ## REMOVED Requirements
 
+### Requirement: getDeviceStatus — device capability detection
+(Reason: `getDeviceStatus` es código muerto (sin consumidores) y el comando `get status` está FW-locked en v1.3.4 (no disponible en hardware real). `reconstructMatrixState` (dev helper) también se elimina. La detección de capabilities pasa a ser manual vía `dispositivos.js`.)
+(Migration: eliminar `getDeviceStatus` y `reconstructMatrixState` de `arrangerApi.js`; `registro-dispositivos` declara capabilities manual-only.)
+
 ### Requirement: Inline myInit definitions
 (Reason: Duplicated across 4 components — `arrangerApi.js` handles `method/mode/cache` internally)
 (Migration: Delete `const myInit = {...}` from MatrizPreset line 19, MatrizVideo line 14, Audio line 50, Canales line 38)
@@ -204,6 +196,27 @@ All affected test files MUST reflect the capability-based device model and pass.
 (Migration: Components import functions instead of constructing URLs — no consumer action needed)
 
 ## ADDED Requirements
+
+### Requirement: Proxy único camino
+
+Toda comunicación con el Arranger MUST pasar por el proxy del server (`/api/command/:command/:token`). Ningún cliente SHALL construir URLs directas al Arranger. Las funciones de `arrangerApi.js` que requieran el Arranger SHALL delegar al proxy/broker, no al hardware.
+
+#### Scenario: Comando vía proxy
+
+- GIVEN un componente invoca una función de arrangerApi que cambia estado
+- WHEN se ejecuta
+- THEN la request va al server (proxy/broker), nunca directo a `192.168.2.254`
+
+### Requirement: WR-1 — Joins independientes en el adapter
+
+El adapter del broker MUST exponer `joinVideo(source, dest)` y `joinAudio(source, dest)`. Ambos MUST usar la misma semántica de retry, timeout y respuesta que `joinAv`, emitiendo sus comandos respectivos de API V210826.
+
+#### Scenario: Retry uniforme por stream
+
+- GIVEN el primer intento de `joinVideo("DTV3", "TVRACK")` falla transitoriamente
+- WHEN el adapter reintenta y confirma el comando
+- THEN retorna el mismo contrato de éxito que `joinAv` y solo emite `join video`
+- AND `joinAudio` aplica idéntica semántica con `join audio`
 
 ### Requirement: Zonas Fuera API Functions
 `src/api/arrangerApi.js` MUST export 4 functions for zone control. Video/audio functions SHALL use `join video`/`join audio` (existing TVRACK command pattern). All SHALL log errors per existing convention.

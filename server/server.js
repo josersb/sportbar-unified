@@ -179,6 +179,33 @@ async function createServer(options = {}) {
   // HELPERS DEL BROKER
   // ══════════════════════════════════════════════════════════════════════
 
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Confirmación post-join con retry (fix real-hardware, Arranger v1.3.4).
+   *
+   * El firmware necesita settling time entre `join` y `get encoder`: la
+   * lectura INMEDIATA puede devolver el valor ANTERIOR aunque el comando ya
+   * se aplicó físicamente (el TV cambia, pero el routing table aún no
+   * refleja el join). Hasta 3 lecturas con backoff 250/500/750ms; corta
+   * apenas `reported` coincide con `source`. Si agota intentos devuelve el
+   * último valor leído (stale): el scan del reconciler corregirá después
+   * (status quo previo, la UI converge en el próximo scan).
+   *
+   * Total max wait ~1.5s por stream.
+   */
+  async function confirmEncoder(dest, sub, source) {
+    let reported = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      reported = await client.getEncoder(dest, sub);
+      if (reported === source) break; // asentó
+      await sleep(250 * (attempt + 1)); // 250ms, 500ms, 750ms
+    }
+    return reported;
+  }
+
   /**
    * Flujo de escritura confirmada (spec state-broker):
    * desired → join (según domain/sub/link) → get encoder → reported → persistir.
@@ -228,13 +255,15 @@ async function createServer(options = {}) {
       return { ok: false, dest, source, sub, error: joinResult.error || "join falló" };
     }
 
-    // 3. Lectura post-comando (confirmación)
+    // 3. Lectura post-comando (confirmación) — retry con backoff por el
+    //    settling time del firmware v1.3.4 (la lectura inmediata puede ser
+    //    stale; ver confirmEncoder). En linked, ambos streams en paralelo.
     const reported = linked
-      ? {
-          video: await client.getEncoder(dest, "video"),
-          audio: await client.getEncoder(dest, "audio"),
-        }
-      : await client.getEncoder(dest, sub);
+      ? await Promise.all([
+          confirmEncoder(dest, "video", source),
+          confirmEncoder(dest, "audio", source),
+        ]).then(([video, audio]) => ({ video, audio }))
+      : await confirmEncoder(dest, sub, source);
 
     // 4. reported ← solo lecturas confirmadas válidas (null nunca pisa)
     if (linked) {

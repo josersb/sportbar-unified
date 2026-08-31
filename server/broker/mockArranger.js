@@ -16,11 +16,15 @@
  *   blip    — falla periódicamente (cada `blipEvery` llamadas) simulando
  *             lecturas intermitentes: get encoder devuelve null, join lanza.
  *   offline — Arranger inalcanzable: get encoder devuelve null, join lanza.
+ *   settle  — simula el settling time del firmware v1.3.4: tras un join, la
+ *             PRIMERA lectura get encoder del destino devuelve el valor
+ *             ANTERIOR (stale) y las siguientes el nuevo — el hardware físico
+ *             ya aplicó el join pero el routing table tarda en reflejarlo.
  */
 
 const { MATRIX_DESTINATIONS, DEFAULT_SOURCE } = require("./destinations");
 
-const MOCK_MODES = ["normal", "blip", "offline"];
+const MOCK_MODES = ["normal", "blip", "offline", "settle"];
 
 /** Crea un mock arranger con estado de matriz inicializado a DEFAULT_SOURCE. */
 function createMockArranger(options = {}) {
@@ -39,6 +43,9 @@ function createMockArranger(options = {}) {
   let callCount = 0;
   let currentMode = mode;
   const commandLog = [];
+  // settle: dest:sub → valor ANTERIOR que debe devolver la primera lectura
+  // post-join (simula el routing table que tarda en reflejar el join).
+  const settlePending = new Map();
 
   function isOffline() {
     return currentMode === "offline";
@@ -60,6 +67,12 @@ function createMockArranger(options = {}) {
     }
     if (!(dest in matrix)) {
       throw new Error(`[mockArranger] destino inválido: ${dest}`);
+    }
+    // settle: registrar el valor previo de cada stream para devolverlo una vez
+    if (currentMode === "settle") {
+      for (const stream of streams) {
+        settlePending.set(`${dest}:${stream}`, matrix[dest][stream]);
+      }
     }
     for (const stream of streams) matrix[dest][stream] = source;
     return { ok: true, text: `${command} success ${source} ${dest}` };
@@ -88,6 +101,16 @@ function createMockArranger(options = {}) {
     callCount += 1;
     if (isOffline() || isBlipCall()) {
       return null;
+    }
+    // settle: la PRIMERA lectura post-join devuelve el valor ANTERIOR (stale)
+    // y se consume la entrada; las siguientes devuelven el valor nuevo.
+    if (currentMode === "settle") {
+      const pendingKey = `${dest}:${subscription}`;
+      if (settlePending.has(pendingKey)) {
+        const stale = settlePending.get(pendingKey);
+        settlePending.delete(pendingKey);
+        return stale || null;
+      }
     }
     const entry = matrix[dest];
     if (!entry) return null;

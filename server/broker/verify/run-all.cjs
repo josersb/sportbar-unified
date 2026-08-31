@@ -21,7 +21,7 @@ const steps = [
   ["verify-store", "store v3: migración v2→v3 + backup + fresh-start"],
   ["verify-eventbus", "eventBus hub SSE: snapshot, incremental, heartbeat, máx 10"],
   ["verify-writequeue", "writeQueue FIFO por destino: serie, última intención gana"],
-  ["verify-reconciler", "reconciler: auto-adopt, null no pisa, single-flight, intervalo"],
+  ["verify-reconciler", "reconciler: auto-adopt, null no pisa, single-flight, intervalo, sync-status post-scan"],
   ["verify-write-confirm", "write-confirm: retry getEncoder post-join (settle) → reported correcto"],
   ["verify-composition", "composition server.js: endpoints nuevos + legacy + SSE + stale→synced"],
 ];

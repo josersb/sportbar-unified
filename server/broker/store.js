@@ -354,14 +354,34 @@ async function createStore(options = {}) {
     bumpVersion(domain);
   }
 
-  /** Reemplaza reported completo de un dominio con un objeto de lecturas válidas. */
+  /**
+   * Reemplaza reported de un dominio con un objeto de lecturas válidas.
+   * Para valores objeto (zonasFuera: {video, audio}) hace MERGE por sub-stream:
+   * una lectura parcial (ej. solo video; audio dio null/blip en el scan) NUNCA
+   * borra sub-streams confirmados previamente — consistente con "null no pisa".
+   * Si el resultado es idéntico al reported actual, NO bumpa versión (evita
+   * inflar versiones en scans sin novedades).
+   */
   function setReportedAll(domain, readings) {
     const d = db.data.domains[domain];
     if (!d) throw new Error(`[store] Dominio inválido: ${domain}`);
     const next = {};
     for (const [key, value] of Object.entries(readings)) {
-      if (value != null) next[key] = value;
+      if (value == null) continue;
+      if (typeof value === "object" && !Array.isArray(value)) {
+        const prev = d.reported[key] && typeof d.reported[key] === "object" ? d.reported[key] : {};
+        const merged = { ...prev };
+        for (const [sub, subVal] of Object.entries(value)) {
+          if (subVal != null) merged[sub] = subVal;
+        }
+        next[key] = merged;
+      } else {
+        next[key] = value;
+      }
     }
+    const prevJson = JSON.stringify(d.reported || {});
+    const nextJson = JSON.stringify(next);
+    if (nextJson === prevJson) return d; // sin cambios reales: no bump
     d.reported = next;
     bumpVersion(domain);
   }

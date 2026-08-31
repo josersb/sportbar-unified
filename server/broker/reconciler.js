@@ -62,6 +62,11 @@ function createReconciler({ client, store, bus = null, log = console, batchSize 
    * buildDiffs — primitiva desired↔reported (conservada del hook cliente,
    * spec arranger-reconciliation): lista los destinos donde desired difiere de
    * reported CONFIRMADO. Sin lectura confirmada (reported ausente) NO es diff.
+   *
+   * Para objetos (zonasFuera: {video, audio}) compara por SUB-STREAM: un
+   * sub-stream sin lectura confirmada (ausente/null en reported) NO es diff —
+   * el audio que un scan no pudo leer (blip/desconectado) no mantiene el
+   * dominio en out_of_sync para siempre (fix sync-status real-hardware).
    */
   function buildDiffs(domain) {
     const d = store.getDomain(domain);
@@ -70,7 +75,17 @@ function createReconciler({ client, store, bus = null, log = console, batchSize 
     for (const [key, value] of Object.entries(d.desired || {})) {
       if (value == null) continue;
       const r = d.reported[key];
-      if (r == null || valuesEqual(r, value)) continue;
+      if (r == null) continue; // sin lectura confirmada → no diff
+      if (typeof value === "object" && typeof r === "object" && value !== null && r !== null) {
+        for (const [sub, desiredSub] of Object.entries(value)) {
+          if (desiredSub == null) continue;
+          const reportedSub = r[sub];
+          if (reportedSub == null || valuesEqual(reportedSub, desiredSub)) continue;
+          diffs.push({ domain, key, sub, desired: desiredSub, reported: reportedSub });
+        }
+        continue;
+      }
+      if (valuesEqual(r, value)) continue;
       diffs.push({ domain, key, desired: value, reported: r });
     }
     return diffs;
@@ -185,12 +200,19 @@ function createReconciler({ client, store, bus = null, log = console, batchSize 
 
       const diffTotal = ["tvs", "tvrack", "zonasFuera"].reduce((n, d) => n + countDiffs(d), 0);
       const nextStatus = !anyConfirmed ? "offline" : diffTotal > 0 ? "out_of_sync" : "synced";
-      if (nextStatus !== lastStatus) {
-        const now = new Date().toISOString();
+      const now = new Date().toISOString();
+      const statusChanged = nextStatus !== lastStatus;
+      // Fix sync-status: un scan convergido (synced) SIEMPRE refresca lastSync,
+      // aunque el status ya fuera synced — el estado fue re-verificado contra el
+      // Arranger en este scan. (Antes: solo se persistía en transiciones →
+      // lastSync quedaba congelado del boot en scans post-boot synced→synced,
+      // y el status podía quedar pegado en out_of_sync con diffs espurios.)
+      const convergedScan = nextStatus === "synced";
+      if (statusChanged || convergedScan) {
         store.setSync(nextStatus, now);
         await store.write();
         if (bus) bus.publishSync(nextStatus, now);
-        log.info(`[reconciler] sync → ${nextStatus}`);
+        log.info(statusChanged ? `[reconciler] sync → ${nextStatus} @ ${now}` : `[reconciler] sync re-confirmado ${nextStatus} @ ${now}`);
         lastStatus = nextStatus;
       }
 

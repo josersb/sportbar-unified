@@ -134,8 +134,43 @@ function tmpDbPath(label) {
   check("preset video!=audio confirmado: sin diffs", reconF.buildDiffs("tvrack").length === 0);
   check("preset video!=audio conserva ambos desired", storeF.getDomain("tvrack").desired.video === "DTV2" && storeF.getDomain("tvrack").desired.audio === "DTV3");
 
+  // ── Escenario G: sub-stream sin lectura NO es diff (fix sync-status) ──
+  // Un scan que no puede leer el audio de una zona (blip/desconectado) NO
+  // debe mantener el dominio en out_of_sync: el audio ausente en reported no
+  // es divergencia (no hay lectura confirmada que contradiga desired).
+  const tG = tmpDbPath("substream-no-diff");
+  const stubPartial = {
+    getEncoder: async (dest, sub) => (dest === "aVip-Barra-Centro" && sub === "audio" ? null : "DTV3"),
+    joinAv: async () => ({ ok: true, text: "" }),
+  };
+  const storeG = await createStore({ dbPath: tG.db, readEncoder: async () => "DTV1", log: silent });
+  storeG.setDesired("zonasFuera", "aVip-Barra-Centro", { video: "DTV3", audio: "DTV1" });
+  storeG.setReported("zonasFuera", "aVip-Barra-Centro", { video: "DTV3", audio: "DTV1" });
+  await storeG.write();
+  const reconG = createReconciler({ client: stubPartial, store: storeG, log: silent });
+  const resG = await reconG.scanOnce();
+  check("sub-stream audio no leído: sin diff en zonasFuera", reconG.buildDiffs("zonasFuera").length === 0);
+  check("sub-stream audio no leído: reported conserva audio previo", storeG.getDomain("zonasFuera").reported["aVip-Barra-Centro"].audio === "DTV1");
+  check("scan sin divergencias → sync synced", storeG.getSync().status === "synced");
+  check("lastSync actualizado tras scan", !!storeG.getSync().lastSync);
+
+  // ── Escenario H: scan post-boot synced→synced refresca lastSync ──
+  // Antes del fix, un scan que terminaba synced cuando YA estaba synced no
+  // persistía (nextStatus === lastStatus) → lastSync quedaba congelado del
+  // boot. Ahora un scan convergido SIEMPRE actualiza lastSync.
+  const tH = tmpDbPath("lastsync-refresh");
+  const clientH = createArrangerClient({ mock: true, mockMode: "normal" });
+  const storeH = await createStore({ dbPath: tH.db, readEncoder: (d, s) => clientH.getEncoder(d, s), log: silent });
+  const reconH = createReconciler({ client: clientH, store: storeH, log: silent });
+  await reconH.scanOnce();
+  const firstLastSync = storeH.getSync().lastSync;
+  check("primer scan synced con lastSync", storeH.getSync().status === "synced" && !!firstLastSync);
+  await sleep(25);
+  await reconH.scanOnce(); // mismo estado convergido, sin cambios
+  check("scan synced→synced refresca lastSync", storeH.getSync().status === "synced" && storeH.getSync().lastSync > firstLastSync);
+
   // Limpieza temporal
-  for (const t of [tA, tB, tC, tD, tF]) fs.rmSync(t.dir, { recursive: true, force: true });
+  for (const t of [tA, tB, tC, tD, tF, tG, tH]) fs.rmSync(t.dir, { recursive: true, force: true });
 
   const failed = checks.filter((c) => !c.ok).length;
   console.log(`\n${failed === 0 ? "✓ RECONCILER OK" : `✗ ${failed} chequeos fallaron`}`);

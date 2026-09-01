@@ -93,16 +93,28 @@ async function readUntilStateLink(reader, domain, linked, zoneId = null) {
     const syncStale = body.sync.status === "stale" || body.sync.status === "synced";
     check("sync arranca stale (o ya synced por scan rápido)", syncStale);
 
-    // ── Escritura confirmada vía writeQueue ──
+    // ── Escritura confirmada vía writeQueue (background confirmation) ──
+    // POST retorna INMEDIATO con reported=null; el join + confirmEncoder
+    // corren en background. El desired se broadcastea inmediato; el reported
+    // converge unos ms después vía SSE/poll.
     res = await fetch(`${base}/api/tvs/TV01/source`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ source: "DTV3" }),
     });
     body = await res.json();
-    check("POST /api/tvs/TV01/source → 200 confirmado", res.status === 200 && body.ok === true);
-    check("respuesta con reported confirmado DTV3", body.reported === "DTV3");
+    check("POST /api/tvs/TV01/source → 200 confirmado (background)", res.status === 200 && body.ok === true && body.accepted === true);
+    check("respuesta con reported=null (asentará en background)", body.reported === null);
     check("respuesta con version y sync", typeof body.version === "number" && !!body.sync);
+    // Esperar convergencia del reported
+    let conv = false;
+    for (let i = 0; i < 30 && !conv; i++) {
+      const pollRes = await fetch(`${base}/api/broker/state`);
+      const pollBody = await pollRes.json();
+      if (pollBody.domains.tvs.reported.TV01 === "DTV3") conv = true;
+      else await sleep(50);
+    }
+    check("convergence: reported TV01 = DTV3 (background)", conv);
 
     // ── Doble POST en serie: última intención gana ──
     res = await fetch(`${base}/api/tvs/TV01/source`, {
@@ -111,10 +123,15 @@ async function readUntilStateLink(reader, domain, linked, zoneId = null) {
       body: JSON.stringify({ source: "DTV4" }),
     });
     body = await res.json();
-    check("2º POST TV01 DTV4 → 200 confirmado", res.status === 200 && body.reported === "DTV4");
-    res = await fetch(`${base}/api/broker/state`);
-    body = await res.json();
-    check("última intención gana: desired y reported TV01 = DTV4", body.domains.tvs.desired.TV01 === "DTV4" && body.domains.tvs.reported.TV01 === "DTV4");
+    check("2º POST TV01 DTV4 → 200 confirmado (background)", res.status === 200 && body.accepted === true && body.reported === null);
+    conv = false;
+    for (let i = 0; i < 30 && !conv; i++) {
+      const pollRes = await fetch(`${base}/api/broker/state`);
+      const pollBody = await pollRes.json();
+      if (pollBody.domains.tvs.reported.TV01 === "DTV4" && pollBody.domains.tvs.desired.TV01 === "DTV4") conv = true;
+      else await sleep(50);
+    }
+    check("última intención gana: desired y reported TV01 = DTV4", conv);
 
     // ── app-state (merge parcial app-only) ──
     res = await fetch(`${base}/api/app-state`, {
@@ -125,14 +142,22 @@ async function readUntilStateLink(reader, domain, linked, zoneId = null) {
     body = await res.json();
     check("POST /api/app-state → ok + merge", res.status === 200 && body.ok && body.appState.descripcionPreset === "Futbol");
 
-    // ── Escrituras write-through vivas: TVRACK ──
+    // ── Escrituras write-through vivas: TVRACK (background) ──
     res = await fetch(`${base}/api/tvrack/video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deviceId: "DTV5" }),
     });
     body = await res.json();
-    check("POST /api/tvrack/video write-through confirmado", res.status === 200 && body.video === "DTV5");
+    check("POST /api/tvrack/video write-through (background accepted)", res.status === 200 && body.accepted === true);
+    conv = false;
+    for (let i = 0; i < 30 && !conv; i++) {
+      const pollRes = await fetch(`${base}/api/broker/state`);
+      const pollBody = await pollRes.json();
+      if (pollBody.domains.tvrack.desired.video === "DTV5") conv = true;
+      else await sleep(50);
+    }
+    check("TVRACK desired video = DTV5 (post convergence)", conv);
     const commandCountBeforeAudio = broker.client.getCommandLog().length;
     res = await fetch(`${base}/api/tvrack/audio`, {
       method: "POST",
@@ -140,8 +165,15 @@ async function readUntilStateLink(reader, domain, linked, zoneId = null) {
       body: JSON.stringify({ deviceId: "DTV6" }),
     });
     body = await res.json();
-    check("POST /api/tvrack/audio independiente", res.status === 200 && body.video === "DTV5" && body.audio === "DTV6");
-    check("TVRACK audio no emite join av con link=false", broker.client.getCommandLog().length === commandCountBeforeAudio + 1 && broker.client.getCommandLog().at(-1) === "join audio DTV6 TVRACK");
+    check("POST /api/tvrack/audio independiente (background accepted)", res.status === 200 && body.accepted === true);
+    // Esperar que el join audio se emita (writeQueue FIFO)
+    let audioCmdEmitted = false;
+    for (let i = 0; i < 30 && !audioCmdEmitted; i++) {
+      const log = broker.client.getCommandLog();
+      if (log.length === commandCountBeforeAudio + 1 && log.at(-1) === "join audio DTV6 TVRACK") audioCmdEmitted = true;
+      else await sleep(50);
+    }
+    check("TVRACK audio no emite join av con link=false", audioCmdEmitted);
 
     linkSseController = new AbortController();
     const linkSse = await fetch(`${base}/api/stream`, { signal: linkSseController.signal });
@@ -162,7 +194,21 @@ async function readUntilStateLink(reader, domain, linked, zoneId = null) {
       body: JSON.stringify({ deviceId: "DTV7" }),
     });
     body = await res.json();
-    check("TVRACK link=true usa un AV y confirma ambos", res.status === 200 && body.video === "DTV7" && body.audio === "DTV7" && broker.client.getCommandLog().at(-1) === "join av DTV7 TVRACK");
+    check("TVRACK link=true POST background accepted", res.status === 200 && body.accepted === true);
+    // Esperar que se emita el join av (link=true) y reported converja
+    let linkJoinCmd = false;
+    for (let i = 0; i < 30 && !linkJoinCmd; i++) {
+      if (broker.client.getCommandLog().at(-1) === "join av DTV7 TVRACK") linkJoinCmd = true;
+      else await sleep(50);
+    }
+    let tvrackLinkConv = false;
+    for (let i = 0; i < 30 && !tvrackLinkConv; i++) {
+      const pollRes = await fetch(`${base}/api/broker/state`);
+      const pollBody = await pollRes.json();
+      if (pollBody.domains.tvrack.desired.video === "DTV7" && pollBody.domains.tvrack.desired.audio === "DTV7") tvrackLinkConv = true;
+      else await sleep(50);
+    }
+    check("TVRACK link=true: desired video+audio = DTV7 tras convergence", linkJoinCmd && tvrackLinkConv);
     res = await fetch(`${base}/api/tvrack/link`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -177,28 +223,48 @@ async function readUntilStateLink(reader, domain, linked, zoneId = null) {
       body: JSON.stringify({ deviceId: "DTV8" }),
     });
     body = await res.json();
-    check(
-      "TVRACK link=false vuelve a dispatch solo-video",
-      res.status === 200 && body.video === "DTV8" && body.audio === "DTV7" &&
-        broker.client.getCommandLog().length === commandCountAfterUnlink + 1 &&
-        broker.client.getCommandLog().at(-1) === "join video DTV8 TVRACK",
-    );
+    check("TVRACK link=false POST background accepted", res.status === 200 && body.accepted === true);
+    // Esperar que el join video se emita (NO join av)
+    let unlinkJoinCmd = false;
+    for (let i = 0; i < 30 && !unlinkJoinCmd; i++) {
+      const log = broker.client.getCommandLog();
+      if (log.length === commandCountAfterUnlink + 1 && log.at(-1) === "join video DTV8 TVRACK") unlinkJoinCmd = true;
+      else await sleep(50);
+    }
+    check("TVRACK link=false vuelve a dispatch solo-video", unlinkJoinCmd);
 
-    // ── Legacy: zonas-fuera (body legacy deviceId, shape legacy) ──
+    // ── Legacy: zonas-fuera (background) ──
     res = await fetch(`${base}/api/zonas-fuera/aVip-Barra-Centro/video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deviceId: "DTV6" }),
     });
     body = await res.json();
-    check("POST zonas-fuera video write-through (deviceId legacy)", res.status === 200 && body.zoneId === "aVip-Barra-Centro" && body.video === "DTV6" && "link" in body && "lastUpdated" in body);
+    check("POST zonas-fuera video write-through (background accepted)", res.status === 200 && body.accepted === true && body.zoneId === "aVip-Barra-Centro");
+    conv = false;
+    for (let i = 0; i < 30 && !conv; i++) {
+      const pollRes = await fetch(`${base}/api/broker/state`);
+      const pollBody = await pollRes.json();
+      if (pollBody.domains.zonasFuera.desired["aVip-Barra-Centro"]?.video === "DTV6") conv = true;
+      else await sleep(50);
+    }
+    check("zona desired video = DTV6 (post convergence)", conv);
     res = await fetch(`${base}/api/zonas-fuera/aVip-Barra-Centro/audio`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deviceId: "DTV7" }),
     });
     body = await res.json();
-    check("zona audio independiente conserva video", res.status === 200 && body.video === "DTV6" && body.audio === "DTV7");
+    check("zona audio independiente POST background accepted", res.status === 200 && body.accepted === true);
+    // Esperar convergencia: video=DTV6, audio=DTV7
+    conv = false;
+    for (let i = 0; i < 30 && !conv; i++) {
+      const pollRes = await fetch(`${base}/api/broker/state`);
+      const pollBody = await pollRes.json();
+      if (pollBody.domains.zonasFuera.desired["aVip-Barra-Centro"]?.video === "DTV6" && pollBody.domains.zonasFuera.desired["aVip-Barra-Centro"]?.audio === "DTV7") conv = true;
+      else await sleep(50);
+    }
+    check("zona audio independiente conserva video", conv);
     res = await fetch(`${base}/api/zonas-fuera/aVip-Barra-Centro/link`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

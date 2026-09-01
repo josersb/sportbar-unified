@@ -403,6 +403,72 @@ async function createServer(options = {}) {
     return `mock: comando no simulado (${command})`;
   }
 
+  /**
+   * Background confirmation: el POST retorna INMEDIATAMENTE con
+   * `{ok: true, confirmed: false, reported: null, accepted: true}` mientras
+   * el comando real (joinAv/joinVideo/joinAudio) y la confirmación
+   * (confirmEncoder con retry) corren en background. El broadcast del
+   * desired (sin reported) sale también inmediato, para que el cliente con
+   * optimistic vea la intención YA; cuando el join asienta y el confirmEncoder
+   * confirma, se emite el broadcast del reported que el SSE entrega.
+   *
+   * Si el join FALLA en background: log warn, el scan del reconciler
+   * detecta la divergencia desired≠reported y corrige en el próximo ciclo.
+   * El cliente con optimistic overlay puede mostrar toast de error si la
+   * versión SSE no llega en un timeout, pero el patrón es self-healing.
+   *
+   * El writeQueue sigue serializando por destino: si llegan 5 POSTs al mismo
+   * destino, los 5 encolan serializados en background. La cola NO se libera
+   * para el siguiente POST hasta que la confirmación del anterior termina
+   * (es interno al `executeWrite` que la cola sigue consumiendo FIFO).
+   *
+   * Activación: env `BROKER_BACKGROUND_CONFIRM=1` (default ON en este hotfix
+   * porque el problema medido son POSTs de 2-22s). Para volver al modo
+   * síncrono previo, setear `BROKER_BACKGROUND_CONFIRM=0`.
+   */
+  const BACKGROUND_CONFIRM = String(process.env.BROKER_BACKGROUND_CONFIRM || "1") !== "0";
+
+  /**
+   * Helper: encola una escritura en background, broadcastea el desired
+   * inmediato, captura errores para que no queden promesas flotantes, y
+   * al asentar el reported broadcastea el dominio.
+   *
+   * @param {string} dest - destino Arranger
+   * @param {string} domain - tvs | tvrack | zonasFuera
+   * @param {string} source - source DTV
+   * @param {string} sub - video | audio
+   * @returns {Promise<{ok, confirmed, reported}>} - siempre se resuelve
+   */
+  function writeInBackground(dest, domain, source, sub) {
+    if (!BACKGROUND_CONFIRM) {
+      // Modo síncrono (compat): se mantiene para rollback o tests E2E
+      return writeQueue.enqueue(dest, () => executeWrite(dest, source, sub));
+    }
+    // Fire-and-forget: la cola FIFO del writeQueue garantiza orden; el
+    // broadcast del desired sale inmediato para que el cliente vea la
+    // intención YA (no necesita esperar el join físico).
+    const task = writeQueue.enqueue(dest, () => executeWrite(dest, source, sub));
+    // Broadcast desired inmediato: el cliente con optimistic overlay o el
+    // polling ven la intención sin esperar el join.
+    broadcastDomain(domain);
+    task
+      .then((result) => {
+        if (!result || !result.ok) {
+          log.warn(
+            `[background-confirm] write ${dest}/${sub}=${source} falló: ${result && result.error}`,
+          );
+          return;
+        }
+        // Confirmación asienta: re-broadcast con el reported confirmado.
+        // El SSE event del broker llega al cliente que ya tenía el optimistic.
+        broadcastDomain(domain);
+      })
+      .catch((err) => {
+        log.error(`[background-confirm] error inesperado en ${dest}/${sub}: ${err && err.message}`);
+      });
+    return Promise.resolve({ ok: true, confirmed: false, reported: null, accepted: true });
+  }
+
   // ══════════════════════════════════════════════════════════════════════
   // ENDPOINTS NUEVOS DEL BROKER
   // ══════════════════════════════════════════════════════════════════════
@@ -456,6 +522,27 @@ async function createServer(options = {}) {
     }
     if (!src || typeof src !== "string") {
       return res.status(400).json({ error: "source requerido" });
+    }
+
+    if (BACKGROUND_CONFIRM) {
+      // Background confirmation (fix real-hardware C): respondemos rápido
+      // con confirmed=false; el join + confirmEncoder + broadcast del
+      // reported corren en background. El cliente con optimistic overlay ve
+      // el desired YA por el broadcast inmediato que dispara writeInBackground.
+      writeInBackground(dest, "tvs", src, "video");
+      const d = store.getDomain("tvs");
+      return res.json({
+        ok: true,
+        accepted: true,
+        confirmed: false,
+        id,
+        source: src,
+        dest,
+        reported: null,
+        version: d.version,
+        lastUpdated: d.lastUpdated,
+        sync: store.getSync(),
+      });
     }
 
     const result = await writeQueue.enqueue(dest, () => executeWrite(dest, src, "video"));
@@ -536,6 +623,25 @@ async function createServer(options = {}) {
     const { deviceId, source } = req.body || {};
     const src = source || deviceId;
     if (!src) return res.status(400).json({ error: "deviceId required" });
+    if (BACKGROUND_CONFIRM) {
+      // Background confirmation: respondemos rápido; el join + confirmEncoder
+      // + broadcast del reported corren en background. El broadcast del
+      // desired sale inmediato vía writeInBackground (link toggle-aware:
+      // executeWrite lee appOnly.tvrack.link dentro de la tarea encolada).
+      writeInBackground(TVRACK_ID, "tvrack", src, sub);
+      const link = !!store.getAppOnly().tvrack?.link;
+      const d = store.getDomain("tvrack");
+      return res.json({
+        ok: true,
+        accepted: true,
+        confirmed: false,
+        video: d.desired.video,
+        audio: d.desired.audio,
+        link,
+        reported: null,
+        lastUpdated: d.lastUpdated,
+      });
+    }
     const result = await writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, src, sub));
     if (!result.ok) return res.status(502).json({ ok: false, error: result.error });
     const link = !!store.getAppOnly().tvrack?.link;
@@ -581,6 +687,23 @@ async function createServer(options = {}) {
     const { deviceId, source } = req.body || {};
     const src = source || deviceId;
     if (!src) return res.status(400).json({ error: "deviceId required" });
+    if (BACKGROUND_CONFIRM) {
+      // Background confirmation: link toggle-aware (executeWrite lee
+      // appOnly.zonasFuera[id].link dentro de la tarea encolada).
+      writeInBackground(id, "zonasFuera", src, sub);
+      const link = !!store.getAppOnly().zonasFuera?.[id]?.link;
+      const d = store.getDomain("zonasFuera");
+      return res.json({
+        ok: true,
+        accepted: true,
+        confirmed: false,
+        zoneId: id,
+        ...(d.desired[id] || {}),
+        link,
+        reported: null,
+        lastUpdated: d.lastUpdated,
+      });
+    }
     const result = await writeQueue.enqueue(id, () => executeWrite(id, src, sub));
     if (!result.ok) return res.status(502).json({ ok: false, error: result.error });
     const link = !!store.getAppOnly().zonasFuera?.[id]?.link;

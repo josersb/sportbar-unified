@@ -9,6 +9,7 @@ import {
   applyPollBody,
   deriveVersions,
   nextPollDelay,
+  isBrokerLoggingEnabled,
 } from "./brokerClientCore";
 
 const STREAM_URL = "/api/stream";
@@ -95,6 +96,11 @@ export function useBrokerState() {
   const degradeToPoll = useCallback(
     (reason) => {
       if (disposedRef.current || modeRef.current === "poll") return;
+      // Hotfix 3 observability: loggear la transición SSE→poll con motivo
+      if (isBrokerLoggingEnabled()) {
+        // eslint-disable-next-line no-console
+        console.debug("[BROKER-CLIENT] SSE→poll:", reason);
+      }
       stopStream();
       modeRef.current = "poll";
       setMode("poll");
@@ -133,13 +139,17 @@ export function useBrokerState() {
           stopStream();
           connectSse(true);
         }, SSE_RETRY_AFTER_POLL_MS);
-      } catch (err) {
-        if (disposedRef.current || modeRef.current !== "poll") return;
-        setConnected(false);
-        connectedRef.current = false;
-        setLastError(err?.message || "Polling falló");
-        pollTimerRef.current = setTimeout(() => runPoll(attempt + 1), nextPollDelay(attempt, POLL_BASE_MS, POLL_MAX_MS));
+} catch (err) {
+      if (disposedRef.current || modeRef.current !== "poll") return;
+      setConnected(false);
+      connectedRef.current = false;
+      setLastError(err?.message || "Polling falló");
+      if (isBrokerLoggingEnabled()) {
+        // eslint-disable-next-line no-console
+        console.debug("[BROKER-CLIENT] poll fail attempt=", attempt, "err=", err?.message);
       }
+      pollTimerRef.current = setTimeout(() => runPoll(attempt + 1), nextPollDelay(attempt, POLL_BASE_MS, POLL_MAX_MS));
+    }
     },
     [stopStream],
   );
@@ -208,6 +218,10 @@ export function useBrokerState() {
           setConnected(true);
           connectedRef.current = true;
           setLastError(null);
+          if (isBrokerLoggingEnabled()) {
+            // eslint-disable-next-line no-console
+            console.debug("[BROKER-CLIENT] SSE conectado (fromPoll=", fromPoll, ")");
+          }
 
           const parser = createSseParser({
             onEvent,

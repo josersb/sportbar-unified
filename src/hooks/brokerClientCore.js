@@ -8,11 +8,66 @@
  * Contrato del broker (server PR 2):
  *   GET  /api/broker/state?since=tvs:12,...  → { schemaVersion, sync, versions, domains, appOnly }
  *   GET  /api/stream                         → SSE: `snapshot` | `state` {domain,payload,version,lastUpdated} | `sync` {status,lastSync} | heartbeat 25s
+ *
+ * ── Hotfix 3 instrumentación ──────────────────────────────────────────────
+ * Logger opcional activado por `import.meta.env.DEV` (default en dev) o por
+ * `localStorage.sportbarLog === "1"` (toggle manual sin rebuild). Expone un
+ * ring buffer en `window.__brokerLog` (últimos 50 eventos SSE y operaciones
+ * optimistic) para inspección desde DevTools console sin scroll.
  */
 
 export const SYNC_STATES = ["synced", "stale", "out_of_sync", "offline"];
 
 export const DOMAIN_KEYS = ["tvs", "tvrack", "zonasFuera", "presets"];
+
+/** Ring buffer de los últimos N eventos SSE + operaciones optimistic. */
+const LOG_BUFFER_SIZE = 50;
+const logBuffer = { events: [], optimistic: [] };
+
+function isLoggingEnabled() {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.localStorage && window.localStorage.getItem("sportbarLog") === "1") return true;
+  } catch {
+    // localStorage puede tirar en modo privado o SSR
+  }
+  // Vite expone import.meta.env.DEV; en runtime está en window.__vite_dev
+  // o derivable de la URL. Default ON en dev para que el bug sea visible
+  // apenas el developer abre DevTools console.
+  try {
+    if (typeof __DEV__ !== "undefined" && __DEV__) return true;
+  } catch {
+    /* noop */
+  }
+  // Heurística final: si el bundle tiene el flag de Vite lo respeta.
+  // (El bundle de prod lo trae en false.)
+  if (typeof process !== "undefined" && process.env && process.env.NODE_ENV !== "production") return true;
+  return false;
+}
+
+/** Empuja una entrada al ring buffer y lo expone en window para inspección. */
+function pushLog(buffer, entry) {
+  buffer.push({ ts: Date.now(), ...entry });
+  if (buffer.length > LOG_BUFFER_SIZE) buffer.shift();
+  if (typeof window !== "undefined") {
+    window.__brokerLog = window.__brokerLog || { lastEvents: [], lastOptimistic: [] };
+    if (buffer === logBuffer.events) {
+      window.__brokerLog.lastEvents = buffer.slice();
+    } else {
+      window.__brokerLog.lastOptimistic = buffer.slice();
+    }
+  }
+}
+
+function clientLog(...args) {
+  // eslint-disable-next-line no-console
+  if (isLoggingEnabled()) console.debug("[BROKER-CLIENT]", ...args);
+}
+
+/** Helper exportado para módulos que quieran loggear con la misma política. */
+export function isBrokerLoggingEnabled() {
+  return isLoggingEnabled();
+}
 
 /**
  * Parser SSE incremental, puro (sin EventSource): permite ver comentarios
@@ -97,6 +152,17 @@ export function buildSinceQuery(versions = {}) {
 export function applySnapshot(prev, snapshot) {
   if (!snapshot || typeof snapshot !== "object") return prev;
   const versions = snapshot.versions || deriveVersions(snapshot.domains) || {};
+  // Hotfix 3 observability: log del snapshot entrante (llega del SSE connect
+  // inicial o de un poll versionado). Resumen del payload por dominio.
+  if (isLoggingEnabled()) {
+    const domainSummary = {};
+    for (const [d, v] of Object.entries(snapshot.domains || {})) {
+      const repKeys = v && v.reported ? Object.keys(v.reported).length : 0;
+      domainSummary[d] = `v${v?.version ?? "?"} (${repKeys} keys)`;
+    }
+    pushLog(logBuffer.events, { kind: "snapshot", versions, domains: domainSummary });
+    clientLog("snapshot", domainSummary);
+  }
   return {
     ...prev,
     schemaVersion: snapshot.schemaVersion ?? prev.schemaVersion,
@@ -142,6 +208,23 @@ export function applyStateEvent(prev, evt) {
   const nextAppOnly = { ...(prev.appOnly || {}) };
   const optimistic = { ...(prev.optimistic || {}) };
   const domainOpt = { ...(optimistic[domain] || {}) };
+
+  // Hotfix 3 observability: log de cada evento SSE `state` recibido.
+  // Comparamos cada clave del payload contra el optimistic actual: si coincide
+  // es confirmación (se limpia del overlay); si difiere es retención (el server
+  // trae un valor stale o parcial distinto al optimistic local).
+  if (isLoggingEnabled()) {
+    const eventLog = {
+      kind: "state",
+      domain,
+      version: evt.version,
+      payloadKeys: Object.keys(payload),
+      optimisticBefore: domainOpt,
+    };
+    pushLog(logBuffer.events, eventLog);
+    const payloadPreview = Object.keys(payload).length > 15 ? `(${Object.keys(payload).length} keys)` : JSON.stringify(payload);
+    clientLog(`evento ${domain} v${evt.version}`, payloadPreview);
+  }
 
   // Link app-only: se extrae a appOnly y se limpia del overlay optimista.
   let cleanPayload = {};
@@ -195,6 +278,49 @@ export function applyStateEvent(prev, evt) {
   if (Object.keys(domainOpt).length > 0) optimistic[domain] = domainOpt;
   else delete optimistic[domain];
 
+  // Hotfix 3 observability: log de limpieza/retención del overlay optimista.
+  // Comparamos cada clave del evento contra el optimistic ANTES del merge
+  // (prev.optimistic?.[domain]). Si la clave del payload coincide con el
+  // optimistic, se limpia. Si difiere, se RETIENE — exactamente donde
+  // sospechamos el bug de oscilación.
+  if (isLoggingEnabled()) {
+    const optBefore = prev.optimistic?.[domain];
+    if (optBefore && (domain === "tvs" || domain === "tvrack" || domain === "zonasFuera")) {
+      const compareKeys = (optValue, payloadValue, k) => {
+        if (optValue === payloadValue) return { action: "limpiar", k, opt: optValue, evt: payloadValue };
+        if (optValue != null && payloadValue != null && optValue !== payloadValue) {
+          return { action: "RETENER", k, opt: optValue, evt: payloadValue };
+        }
+        return null;
+      };
+      const comparisons = [];
+      if (domain === "zonasFuera") {
+        for (const [zoneId, zoneOpt] of Object.entries(optBefore)) {
+          const evtZone = cleanPayload?.[zoneId];
+          if (evtZone && typeof evtZone === "object") {
+            for (const [k, v] of Object.entries(zoneOpt)) {
+              const c = compareKeys(v, evtZone[k], `${zoneId}.${k}`);
+              if (c) comparisons.push(c);
+            }
+          }
+        }
+      } else {
+        for (const [k, v] of Object.entries(optBefore)) {
+          const c = compareKeys(v, cleanPayload?.[k], k);
+          if (c) comparisons.push(c);
+        }
+      }
+      for (const c of comparisons) {
+        if (c.action === "limpiar") {
+          clientLog(`OPTIMISTIC limpiar ${domain}.${c.k} (confirmado por v${evt.version})`);
+        } else {
+          clientLog(`OPTIMISTIC RETENER ${domain}.${c.k} (evento trae "${c.evt}" ≠ optimistic "${c.opt}")`);
+        }
+      }
+      pushLog(logBuffer.optimistic, { domain, version: evt.version, comparisons });
+    }
+  }
+
   return {
     ...prev,
     domains: {
@@ -245,6 +371,15 @@ export function applyOptimistic(prev, domain, patch) {
     if (Object.keys(domainOpt).length > 0) optimistic[domain] = domainOpt;
     else delete optimistic[domain];
   }
+  // Hotfix 3 observability: log de cada applyOptimistic.
+  if (isLoggingEnabled()) {
+    const overlay = optimistic[domain] || {};
+    const overlayKeys = domain === "zonasFuera"
+      ? Object.keys(optimistic.zonasFuera || {}).reduce((acc, z) => acc + Object.keys(optimistic.zonasFuera[z] || {}).length, 0)
+      : Object.keys(overlay).length;
+    pushLog(logBuffer.optimistic, { kind: "apply", domain, patch, overlayKeys });
+    clientLog(`OPTIMISTIC aplicar ${domain}=${JSON.stringify(patch)} (overlay: ${overlayKeys} claves)`);
+  }
   return { ...prev, optimistic };
 }
 
@@ -262,6 +397,15 @@ export function applyPollBody(prev, body) {
     const optimistic = { ...(prev.optimistic || {}) };
     for (const domain of Object.keys(body.domains)) delete optimistic[domain];
     next.optimistic = optimistic;
+    // Hotfix 3 observability: poll trae la verdad del server → descarta
+    // overlay de los dominios presentes.
+    if (isLoggingEnabled()) {
+      const cleared = Object.keys(body.domains).filter((d) => prev.optimistic?.[d]);
+      if (cleared.length > 0) {
+        clientLog(`OPTIMISTIC limpiar (poll) ${cleared.join(", ")}`);
+        pushLog(logBuffer.optimistic, { kind: "poll-clear", domains: cleared });
+      }
+    }
   }
   return next;
 }

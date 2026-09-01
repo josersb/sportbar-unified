@@ -47,6 +47,7 @@ const MatrizVideo = () => {
     zonasFueraState,
     handleZonasFueraChange,
     syncStatus,
+    applyOptimistic,
   } = useContext(ContextoUser);
 
   const tvs = estado.tvs || {};
@@ -58,10 +59,18 @@ const MatrizVideo = () => {
 
   // TVRACK: write-through confirmado vía broker (POST /api/tvrack/*). Con link
   // activo el server encadena video+audio (executeWrite), sin joins cliente.
+  // Overlay optimista ANTES del POST (fix real-hardware A): feedback visual
+  // inmediato. El SSE event del broker confirma/corrige y lo limpia.
   const handleTvrackBtn = (type, deviceId) => async () => {
     const isVideo = type === "video";
     if (isVideo) setLoadingVideoBtn(deviceId);
     else setLoadingAudioBtn(deviceId);
+
+    // Optimistic: video con link=true encadena audio; audio solo cambia audio.
+    const optimisticPatch = isVideo
+      ? { video: deviceId, ...(tvrackState.link ? { audio: deviceId } : {}) }
+      : { audio: deviceId };
+    applyOptimistic("tvrack", optimisticPatch);
 
     try {
       const newState = isVideo
@@ -83,6 +92,9 @@ const MatrizVideo = () => {
 
   const handleLinkToggle = async (e) => {
     const linked = e.target.checked;
+    // Optimistic del link (app-only): el server lo persiste y broadcastea
+    // como event de appOnly; el SSE confirma/corrige.
+    applyOptimistic("tvrack", { link: linked });
     try {
       const newState = await setTvrackLink(linked);
       handleChangeTvrack(newState);
@@ -411,9 +423,22 @@ const MatrizVideo = () => {
 
             // Escrituras confirmed-only vía broker (writeQueue serializa por
             // destino): POST /api/tvs/:id/source por cada TV real, en batches.
-            // Sin estado local optimista — el snapshot SSE actualiza la UI.
+            // Overlay optimista ANTES del POST (fix real-hardware A): feedback
+            // visual inmediato. El SSE event del broker confirma/corrige y lo
+            // limpia. Sin estado local optimista en setEstado — el snapshot
+            // SSE es la fuente de verdad.
             const mappings = DESTINOS_TV.map((tv) => ({ dest: tv, source: newTvs[tv] }));
             try {
+              // Aplicar optimistic de TODAS las TVs del submit en una sola
+              // pasada (UI se actualiza instantáneamente con la intención del
+              // operador, sin esperar el batch).
+              const tvsOptimisticPatch = {};
+              for (const { dest, source } of mappings) {
+                if (source) tvsOptimisticPatch[dest] = source;
+              }
+              if (Object.keys(tvsOptimisticPatch).length > 0) {
+                applyOptimistic("tvs", tvsOptimisticPatch);
+              }
               const BATCH_SIZE = 8;
               for (let i = 0; i < mappings.length; i += BATCH_SIZE) {
                 const batch = mappings.slice(i, i + BATCH_SIZE);

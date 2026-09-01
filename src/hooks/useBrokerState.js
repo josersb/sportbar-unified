@@ -5,6 +5,7 @@ import {
   applySnapshot,
   applyStateEvent,
   applySync,
+  applyOptimistic,
   applyPollBody,
   deriveVersions,
   nextPollDelay,
@@ -257,5 +258,16 @@ export function useBrokerState() {
     [sync.status, sync.lastSync],
   );
 
-  return { snapshot, syncStatus, mode, connected, lastError };
+  /**
+   * Overlay optimista del snapshot local (fix real-hardware A): los handlers
+   * lo aplican al disparar un write para feedback visual inmediato. El evento
+   * SSE del broker (confirmación real) o un snapshot/poll lo limpian.
+   * @param {string} domain - tvs | tvrack | zonasFuera
+   * @param {object} patch - parche del dominio (ver brokerClientCore.applyOptimistic)
+   */
+  const applyOptimisticState = useCallback((domain, patch) => {
+    setSnapshot((prev) => applyOptimistic(prev, domain, patch));
+  }, []);
+
+  return { snapshot, syncStatus, mode, connected, lastError, applyOptimistic: applyOptimisticState };
 }

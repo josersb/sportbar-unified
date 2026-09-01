@@ -90,6 +90,9 @@ export function buildSinceQuery(versions = {}) {
  * Reemplaza los dominios; los deltas posteriores se mergean sobre esto.
  * Si el snapshot no trae `versions` top-level (el evento SSE del store raw no
  * la construye), las deriva de los dominios.
+ *
+ * El snapshot ES la verdad del server: descarta el overlay optimista (los
+ * deltas/polls posteriores vuelven a limpiarlo por dominio).
  */
 export function applySnapshot(prev, snapshot) {
   if (!snapshot || typeof snapshot !== "object") return prev;
@@ -101,6 +104,7 @@ export function applySnapshot(prev, snapshot) {
     versions,
     domains: snapshot.domains || prev.domains || {},
     appOnly: snapshot.appOnly || prev.appOnly || {},
+    optimistic: {},
   };
 }
 
@@ -121,7 +125,13 @@ export function deriveVersions(domains) {
 /**
  * Aplica un evento incremental `state` {domain, payload, version, lastUpdated}.
  * El payload del broker es `reported` para dominios de matriz y `desired` para
- * presets — reemplaza esa key del dominio (el snapshot ya trajo el resto).
+ * presets — se hace MERGE por clave sobre el estado existente (nunca replace):
+ * un evento parcial (ej. {video} en tvrack, {Z1} en zonasFuera) no pisa las
+ * claves que no trae (fix real-hardware B: el link toggle no revierte).
+ *
+ * El link es app-only pero viaja en el payload incremental: se extrae a
+ * appOnly (tvrack / por zona). Las claves presentes en el payload SON la
+ * confirmación del server: se limpian del overlay optimista.
  */
 export function applyStateEvent(prev, evt) {
   if (!evt || !evt.domain || !DOMAIN_KEYS.includes(evt.domain)) return prev;
@@ -130,36 +140,69 @@ export function applyStateEvent(prev, evt) {
   const key = domain === "presets" ? "desired" : "reported";
   const payload = evt.payload && typeof evt.payload === "object" ? evt.payload : {};
   const nextAppOnly = { ...(prev.appOnly || {}) };
-  let cleanPayload = payload;
+  const optimistic = { ...(prev.optimistic || {}) };
+  const domainOpt = { ...(optimistic[domain] || {}) };
 
-  // Link is app-only, but travels in the incremental domain payload so a
-  // toggle is reflected immediately without waiting for a snapshot/poll.
+  // Link app-only: se extrae a appOnly y se limpia del overlay optimista.
+  let cleanPayload = {};
   if (domain === "tvrack" && Object.prototype.hasOwnProperty.call(payload, "link")) {
     const { link, ...reported } = payload;
     cleanPayload = reported;
     nextAppOnly.tvrack = { ...(nextAppOnly.tvrack || {}), link: !!link };
+    delete domainOpt.link;
   } else if (domain === "zonasFuera") {
     const zonasFuera = { ...(nextAppOnly.zonasFuera || {}) };
-    cleanPayload = {};
     for (const [zoneId, zonePayload] of Object.entries(payload)) {
-      if (zonePayload && typeof zonePayload === "object" && Object.prototype.hasOwnProperty.call(zonePayload, "link")) {
+      if (zonePayload && typeof zonePayload === "object") {
         const { link, ...reported } = zonePayload;
         cleanPayload[zoneId] = reported;
-        zonasFuera[zoneId] = { ...(zonasFuera[zoneId] || {}), link: !!link };
+        if (Object.prototype.hasOwnProperty.call(zonePayload, "link")) {
+          zonasFuera[zoneId] = { ...(zonasFuera[zoneId] || {}), link: !!link };
+        }
       } else {
         cleanPayload[zoneId] = zonePayload;
       }
     }
     nextAppOnly.zonasFuera = zonasFuera;
+  } else {
+    cleanPayload = payload;
   }
+
+  // Merge por clave (nunca reemplaza el estado completo del dominio)
+  const prevState = cur[key] && typeof cur[key] === "object" ? cur[key] : {};
+  let mergedPayload;
+  if (domain === "zonasFuera") {
+    mergedPayload = { ...prevState };
+    for (const [zoneId, zonePayload] of Object.entries(cleanPayload)) {
+      if (zonePayload && typeof zonePayload === "object") {
+        mergedPayload[zoneId] = { ...(mergedPayload[zoneId] || {}), ...zonePayload };
+        // Las claves de la zona presentes en el evento son confirmación:
+        // limpiarlas del overlay optimista (conserva las no tocadas).
+        const zoneOpt = { ...(domainOpt[zoneId] || {}) };
+        for (const k of Object.keys(zonePayload)) delete zoneOpt[k];
+        if (Object.keys(zoneOpt).length > 0) domainOpt[zoneId] = zoneOpt;
+        else delete domainOpt[zoneId];
+      } else {
+        mergedPayload[zoneId] = zonePayload;
+        delete domainOpt[zoneId];
+      }
+    }
+  } else {
+    mergedPayload = { ...prevState, ...cleanPayload };
+    for (const k of Object.keys(cleanPayload)) delete domainOpt[k];
+  }
+
+  if (Object.keys(domainOpt).length > 0) optimistic[domain] = domainOpt;
+  else delete optimistic[domain];
 
   return {
     ...prev,
     domains: {
       ...prev.domains,
-      [domain]: { ...cur, [key]: cleanPayload, version: evt.version, lastUpdated: evt.lastUpdated },
+      [domain]: { ...cur, [key]: mergedPayload, version: evt.version, lastUpdated: evt.lastUpdated },
     },
     appOnly: nextAppOnly,
+    optimistic,
   };
 }
 
@@ -172,14 +215,53 @@ export function applySync(prev, sync) {
 }
 
 /**
+ * Aplica un overlay optimista al snapshot local (SOLO cliente; no viaja al
+ * server ni a otros clientes). Se usa al disparar un write (fix real-hardware
+ * A: feedback visual INMEDIATO sin esperar el POST ni el SSE). El evento SSE
+ * del broker (confirmación real) o un snapshot/poll posterior lo confirman y
+ * limpian (applyStateEvent/applyPollBody/applySnapshot).
+ *
+ * Parches soportados:
+ *   - tvs:        { TV01: "DTV3" }
+ *   - tvrack:     { video: "DTV3" } | { audio: "DTV3" } | { link: true }
+ *   - zonasFuera: { aVip-Barra-Centro: { video: "DTV3", link: true } }
+ * Un patch vacío ({}) limpia el overlay del dominio.
+ */
+export function applyOptimistic(prev, domain, patch) {
+  if (!domain || !DOMAIN_KEYS.includes(domain)) return prev;
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) return prev;
+  const optimistic = { ...(prev.optimistic || {}) };
+  if (domain === "zonasFuera") {
+    const zoneOpt = { ...(optimistic.zonasFuera || {}) };
+    for (const [zoneId, zonePatch] of Object.entries(patch)) {
+      if (zonePatch && typeof zonePatch === "object" && !Array.isArray(zonePatch)) {
+        zoneOpt[zoneId] = { ...(zoneOpt[zoneId] || {}), ...zonePatch };
+      }
+    }
+    if (Object.keys(zoneOpt).length > 0) optimistic.zonasFuera = zoneOpt;
+    else delete optimistic.zonasFuera;
+  } else {
+    const domainOpt = { ...(optimistic[domain] || {}), ...patch };
+    if (Object.keys(domainOpt).length > 0) optimistic[domain] = domainOpt;
+    else delete optimistic[domain];
+  }
+  return { ...prev, optimistic };
+}
+
+/**
  * Merge de una respuesta de poll versionado: solo trae dominios con version
- * mayor que `since`, más sync/versions/appOnly frescos.
+ * mayor que `since`, más sync/versions/appOnly frescos. El poll trae la verdad
+ * del server: descarta el overlay optimista de los dominios presentes (los no
+ * presentes conservan el suyo).
  */
 export function applyPollBody(prev, body) {
   if (!body || typeof body !== "object") return prev;
   const next = applySnapshot(prev, body);
   if (body.domains) {
     next.domains = { ...prev.domains, ...body.domains };
+    const optimistic = { ...(prev.optimistic || {}) };
+    for (const domain of Object.keys(body.domains)) delete optimistic[domain];
+    next.optimistic = optimistic;
   }
   return next;
 }
@@ -201,35 +283,44 @@ export function nextPollDelay(attempt = 0, baseMs = 5000, maxMs = 30000) {
  * el hardware) con fallback a `desired` (intención) cuando no hay lectura.
  * Links (app-only) viven en appOnly y nunca se arbitran.
  *
+ * El overlay optimista (`snapshot.optimistic`, fix real-hardware A) gana
+ * sobre reported: da feedback inmediato tras un write hasta que el evento SSE
+ * del broker confirma/corrige (y lo limpia).
+ *
  * @returns {{ tvs: object, tvrackState: {video, audio, link}, zonasFueraState: object }}
  */
 export function deriveUiState(snapshot) {
   const domains = snapshot?.domains || {};
   const appOnly = snapshot?.appOnly || {};
+  const optimistic = snapshot?.optimistic || {};
 
-  // tvs: reported gana sobre desired (reportado es lo confirmado)
+  // tvs: reported gana sobre desired; overlay optimista gana sobre ambos
   const tvsDomain = domains.tvs || {};
   const tvs = { ...(tvsDomain.desired || {}) };
   Object.assign(tvs, tvsDomain.reported || {});
+  Object.assign(tvs, optimistic.tvs || {});
 
   // tvrack
   const tvr = domains.tvrack || {};
+  const optTvrack = optimistic.tvrack || {};
   const tvrackState = {
-    video: tvr.reported?.video ?? tvr.desired?.video ?? "DTV1",
-    audio: tvr.reported?.audio ?? tvr.desired?.audio ?? "DTV1",
-    link: !!(appOnly.tvrack && appOnly.tvrack.link),
+    video: optTvrack.video ?? tvr.reported?.video ?? tvr.desired?.video ?? "DTV1",
+    audio: optTvrack.audio ?? tvr.reported?.audio ?? tvr.desired?.audio ?? "DTV1",
+    link: optTvrack.link ?? !!(appOnly.tvrack && appOnly.tvrack.link),
   };
 
   // zonasFuera
   const zf = domains.zonasFuera || {};
   const zfReported = zf.reported || {};
+  const optZonas = optimistic.zonasFuera || {};
   const zonasFueraState = {};
   for (const [zoneId, desired] of Object.entries(zf.desired || {})) {
     const rep = zfReported[zoneId] || {};
+    const opt = optZonas[zoneId] || {};
     zonasFueraState[zoneId] = {
-      video: rep.video ?? desired.video ?? "DTV1",
-      audio: rep.audio ?? desired.audio ?? "DTV1",
-      link: !!(appOnly.zonasFuera && appOnly.zonasFuera[zoneId] && appOnly.zonasFuera[zoneId].link),
+      video: opt.video ?? rep.video ?? desired.video ?? "DTV1",
+      audio: opt.audio ?? rep.audio ?? desired.audio ?? "DTV1",
+      link: opt.link ?? !!(appOnly.zonasFuera && appOnly.zonasFuera[zoneId] && appOnly.zonasFuera[zoneId].link),
     };
   }
 

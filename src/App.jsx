@@ -19,7 +19,7 @@ const ESTADO_APP_KEY = "estadoApp";
 
 const App = () => {
   const toast = useToast();
-  const { snapshot, syncStatus, mode, connected, lastError } = useBrokerState();
+  const { snapshot, syncStatus, mode, connected, lastError, applyOptimistic } = useBrokerState();
 
   // Estado app-only local (decos, dispositivos, audio, favoritos, descripcionPreset).
   // El server es dueño del estado app (appOnly.appState); la UI lo mantiene en
@@ -134,7 +134,10 @@ const App = () => {
   }, [persistAppState]);
 
   // TVRACK: escrituras write-through confirmadas (POST /api/tvrack/*); la
-  // respuesta del broker ES el estado confirmado (video/audio/link).
+  // respuesta del broker ES el estado confirmado (video/audio/link). El
+  // optimistic update lo aplica el componente ANTES del await (ver
+  // MatrizVideo.handleTvrackBtn / handleLinkToggle); aquí solo sincronizamos
+  // el estado local con la respuesta del server.
   const handleChangeTvrack = useCallback((newTvrack) => {
     setTvrackState((prev) => ({
       video: newTvrack.video ?? prev.video,
@@ -145,10 +148,18 @@ const App = () => {
 
   // Zonas fuera: escrituras write-through confirmadas vía broker (con link,
   // el server encadena video+audio). Sin joins directos al Arranger.
+  // Overlay optimista ANTES del POST: feedback visual inmediato (fix
+  // real-hardware A); el SSE event del broker confirma/corrige y lo limpia.
   const handleZonasFueraChange = useCallback(
     async (zoneId, type, deviceId) => {
       try {
         if (type === "video" || type === "audio") {
+          const zoneLink = zonasFueraState[zoneId]?.link;
+          const optimisticPatch =
+            type === "video"
+              ? { video: deviceId, ...(zoneLink ? { audio: deviceId } : {}) }
+              : { audio: deviceId, ...(zoneLink ? { video: deviceId } : {}) };
+          applyOptimistic("zonasFuera", { [zoneId]: optimisticPatch });
           const response =
             type === "video"
               ? await setZonasFueraVideo(zoneId, deviceId)
@@ -156,6 +167,7 @@ const App = () => {
           setZonasFueraState((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], ...response } }));
           toast.success(`${deviceId} → ${type.toUpperCase()} ${zoneId}`);
         } else if (type === "link") {
+          applyOptimistic("zonasFuera", { [zoneId]: { link: deviceId } });
           const response = await setZonasFueraLink(zoneId, deviceId);
           setZonasFueraState((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], ...response } }));
         }
@@ -164,7 +176,7 @@ const App = () => {
         toast.error(`Error al cambiar ${type} en ${zoneId}`);
       }
     },
-    [toast],
+    [toast, zonasFueraState, applyOptimistic],
   );
 
   const reintentarDecos = useCallback(() => {
@@ -193,6 +205,7 @@ const App = () => {
       handleChangeTvrack,
       handleZonasFueraChange,
       reintentarDecos,
+      applyOptimistic,
       syncDiffs: buildDiffsInfo(snapshot),
     }),
     [
@@ -213,6 +226,7 @@ const App = () => {
       handleChangeTvrack,
       handleZonasFueraChange,
       reintentarDecos,
+      applyOptimistic,
     ],
   );
 

@@ -72,6 +72,9 @@ function renderWithContext(overrideValue = {}) {
     handleZonasFueraChange: mockHandleZonasFueraChange,
     syncStatus: { status: "synced", lastSync: null },
     syncDiffs: [],
+    // fix real-hardware A: los handlers aplican optimistic al snapshot del
+    // broker; en los tests es un no-op (no usamos el hook real).
+    applyOptimistic: vi.fn(),
     ...overrideValue,
   };
   return render(

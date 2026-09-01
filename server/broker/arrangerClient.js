@@ -47,15 +47,21 @@ function createArrangerClient(options = {}) {
   }
 
   /** Ejecuta un GET al Arranger con retry exponencial. Nunca lanza por red. */
-  async function requestArranger(command) {
+  async function requestArranger(command, writeId) {
     if (mock) {
       return { mock: true, command };
     }
     const url = `${baseUrl}/api/command/${encodeURIComponent(command)}/${encodeURIComponent(token)}`;
+    const startMs = Date.now();
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         const response = await fetch(url);
         const text = (await response.text()).trim();
+        if (writeId) {
+          console.log(
+            `[ARRANGER ${writeId}] ← "${command}" → ${response.status} (${Date.now() - startMs}ms) ${text.slice(0, 80)}`,
+          );
+        }
         return { response, text };
       } catch (error) {
         if (attempt === retries) {
@@ -76,12 +82,12 @@ function createArrangerClient(options = {}) {
    *   "no encoder connected" | error | invalid → null
    * null = sin lectura confirmada (desconectado / Arranger caído / blip).
    */
-  async function getEncoder(dest, subscription = "video") {
+  async function getEncoder(dest, subscription = "video", writeId) {
     if (mock) {
       return mock.getEncoder(dest, subscription);
     }
     const command = `get encoder ${dest} ${subscription}`;
-    const result = await requestArranger(command);
+    const result = await requestArranger(command, writeId);
     if (result.error) return null;
     const text = result.text.toLowerCase();
     if (text.includes("no encoder connected")) return null;
@@ -94,7 +100,7 @@ function createArrangerClient(options = {}) {
    * join av <SOURCE> <DEST> → { ok: true, text } | { ok: false, error }.
    * Comando de escritura; retry solo para red, no para 4xx.
    */
-  async function joinAv(source, dest) {
+  async function joinAv(source, dest, writeId) {
     if (mock) {
       try {
         return await mock.joinAv(source, dest);
@@ -103,13 +109,14 @@ function createArrangerClient(options = {}) {
       }
     }
     const command = `join av ${source} ${dest}`;
-    const result = await requestArranger(command);
+    if (writeId) console.log(`[ARRANGER ${writeId}] → "${command}"`);
+    const result = await requestArranger(command, writeId);
     if (result.error) return { ok: false, error: result.error.message };
     return { ok: result.response.ok, text: result.text, status: result.response.status };
   }
 
   /** Ejecuta un join independiente manteniendo el mismo contrato/retry que joinAv. */
-  async function joinStream(stream, source, dest) {
+  async function joinStream(stream, source, dest, writeId) {
     if (mock) {
       try {
         return await mock[stream === "video" ? "joinVideo" : "joinAudio"](source, dest);
@@ -118,17 +125,18 @@ function createArrangerClient(options = {}) {
       }
     }
     const command = `join ${stream} ${source} ${dest}`;
-    const result = await requestArranger(command);
+    if (writeId) console.log(`[ARRANGER ${writeId}] → "${command}"`);
+    const result = await requestArranger(command, writeId);
     if (result.error) return { ok: false, error: result.error.message };
     return { ok: result.response.ok, text: result.text, status: result.response.status };
   }
 
-  async function joinVideo(source, dest) {
-    return joinStream("video", source, dest);
+  async function joinVideo(source, dest, writeId) {
+    return joinStream("video", source, dest, writeId);
   }
 
-  async function joinAudio(source, dest) {
-    return joinStream("audio", source, dest);
+  async function joinAudio(source, dest, writeId) {
+    return joinStream("audio", source, dest, writeId);
   }
 
   // ── FW-LOCKED getters: conservados con banner, no usados por el broker ──

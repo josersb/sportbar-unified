@@ -196,11 +196,18 @@ async function createServer(options = {}) {
    *
    * Total max wait ~1.5s por stream.
    */
-  async function confirmEncoder(dest, sub, source) {
+  async function confirmEncoder(dest, sub, source, writeId) {
     let reported = null;
+    const startMs = Date.now();
     for (let attempt = 0; attempt < 3; attempt++) {
       reported = await client.getEncoder(dest, sub);
-      if (reported === source) break; // asentó
+      const settled = reported === source;
+      if (writeId) {
+        const elapsed = Date.now() - startMs;
+        const staleTag = settled ? "✓ (settled)" : `(stale, retry ${250 * (attempt + 1)}ms)`;
+        writeLog(writeId, "CONFIRM", `get#${attempt + 1} ${dest}/${sub} → "${reported}" ${staleTag} (t+${elapsed}ms)`);
+      }
+      if (settled) break;
       await sleep(250 * (attempt + 1)); // 250ms, 500ms, 750ms
     }
     return reported;
@@ -212,9 +219,10 @@ async function createServer(options = {}) {
    * Debe ejecutarse DENTRO de writeQueue.enqueue(dest, ...) para serializar
    * por destino. Devuelve { ok, dest, source, sub, reported, error? }.
    */
-  async function executeWrite(dest, source, sub = "video") {
+  async function executeWrite(dest, source, sub = "video", writeId) {
     const domain = dest === TVRACK_ID ? "tvrack" : ZONA_FUERA_IDS.includes(dest) ? "zonasFuera" : "tvs";
     const key = domain === "tvs" ? toApp(dest) : dest;
+    const wlog = (tag, msg) => writeLog(writeId, tag, msg);
     const d = store.getDomain(domain);
     // Leer link aquí, dentro de la tarea encolada: nunca capturar una versión
     // obsoleta antes de que la cola FIFO procese la escritura.
@@ -246,24 +254,26 @@ async function createServer(options = {}) {
     // 2. Comando al Arranger
     const joinResult =
       domain === "tvs" || linked
-        ? await client.joinAv(source, dest)
+        ? await client.joinAv(source, dest, writeId)
         : sub === "audio"
-          ? await client.joinAudio(source, dest)
-          : await client.joinVideo(source, dest);
+          ? await client.joinAudio(source, dest, writeId)
+          : await client.joinVideo(source, dest, writeId);
     if (!joinResult.ok) {
+      wlog("ARRANGER", `→ join ${linked ? "av" : sub} ${source} ${dest} FAILED: ${joinResult.error || joinResult.text || "?"}`);
       await store.write();
       return { ok: false, dest, source, sub, error: joinResult.error || "join falló" };
     }
+    wlog("ARRANGER", `→ join ${linked ? "av" : sub} ${source} ${dest} ok (${joinResult.text || ""})`);
 
     // 3. Lectura post-comando (confirmación) — retry con backoff por el
     //    settling time del firmware v1.3.4 (la lectura inmediata puede ser
     //    stale; ver confirmEncoder). En linked, ambos streams en paralelo.
     const reported = linked
       ? await Promise.all([
-          confirmEncoder(dest, "video", source),
-          confirmEncoder(dest, "audio", source),
+          confirmEncoder(dest, "video", source, writeId),
+          confirmEncoder(dest, "audio", source, writeId),
         ]).then(([video, audio]) => ({ video, audio }))
-      : await confirmEncoder(dest, sub, source);
+      : await confirmEncoder(dest, sub, source, writeId);
 
     // 4. reported ← solo lecturas confirmadas válidas (null nunca pisa)
     if (linked) {
@@ -290,6 +300,9 @@ async function createServer(options = {}) {
         store.bumpVersion(domain);
       }
     }
+
+    const finalDomain = store.getDomain(domain);
+    wlog("STORE", `setReported ${domain} (key=${key})=${JSON.stringify(reported)} (v${finalDomain.version})`);
 
     await store.write();
     return { ok: true, dest, source, sub, link, reported };
@@ -324,7 +337,7 @@ async function createServer(options = {}) {
   }
 
   /** Broadcast del estado de un dominio (payload = reported + link app-only). */
-  function broadcastDomain(domain) {
+  function broadcastDomain(domain, writeId) {
     const d = store.getDomain(domain);
     if (!d) return;
     let payload;
@@ -352,7 +365,7 @@ async function createServer(options = {}) {
     } else {
       payload = d.reported || {};
     }
-    bus.publish(domain, payload, d.version, d.lastUpdated);
+    bus.publish(domain, payload, d.version, d.lastUpdated, writeId);
   }
 
   /** Snapshot broker (GET /api/broker/state y evento SSE `snapshot`). */
@@ -428,6 +441,32 @@ async function createServer(options = {}) {
    */
   const BACKGROUND_CONFIRM = String(process.env.BROKER_BACKGROUND_CONFIRM || "1") !== "0";
 
+  // ── Observabilidad: correlation ID por write (hotfix 3 instrumentación) ──
+  // Contador en memoria del server. Genera IDs secuenciales `w-001`, `w-002`,
+  // … que viajan por TODA la cadena del write: POST → cola → join →
+  // confirmEncoder → setReported → broadcast. Es cero-overhead en prod
+  // (solo un Number++) y se loggea a stdout; desactivable con `BROKER_LOG=0`.
+  const BROKER_LOG = String(process.env.BROKER_LOG || "1") !== "0";
+  let writeSeq = 0;
+  function nextWriteId() {
+    writeSeq += 1;
+    return `w-${String(writeSeq).padStart(3, "0")}`;
+  }
+  /**
+   * Logger estructurado de write: prefijo `[WRITE|QUEUE|ARRANGER|CONFIRM|STORE|BROADCAST <id>]`.
+   * Es `console.log` directo (sin filtrar por nivel) — la idea es visibilidad
+   * quirúrgica, no formato JSON. Si se desactiva con `BROKER_LOG=0`, retorna
+   * sin escribir.
+   */
+  function writeLog(id, tag, msg) {
+    if (!BROKER_LOG) return;
+    console.log(`[${tag} ${id}] ${msg}`);
+  }
+  function writeError(id, tag, msg) {
+    if (!BROKER_LOG) return;
+    console.error(`[${tag} ${id}] ${msg}`);
+  }
+
   /**
    * Helper: encola una escritura en background, broadcastea el desired
    * inmediato, captura errores para que no queden promesas flotantes, y
@@ -439,32 +478,32 @@ async function createServer(options = {}) {
    * @param {string} sub - video | audio
    * @returns {Promise<{ok, confirmed, reported}>} - siempre se resuelve
    */
-  function writeInBackground(dest, domain, source, sub) {
+  function writeInBackground(dest, domain, source, sub, writeId) {
     if (!BACKGROUND_CONFIRM) {
       // Modo síncrono (compat): se mantiene para rollback o tests E2E
-      return writeQueue.enqueue(dest, () => executeWrite(dest, source, sub));
+      return writeQueue.enqueue(dest, () => executeWrite(dest, source, sub, writeId));
     }
     // Fire-and-forget: la cola FIFO del writeQueue garantiza orden; el
     // broadcast del desired sale inmediato para que el cliente vea la
     // intención YA (no necesita esperar el join físico).
-    const task = writeQueue.enqueue(dest, () => executeWrite(dest, source, sub));
+    const queuePos = writeQueue.pendingCount + 1;
+    writeLog(writeId, "QUEUE", `enqueued ${dest} (pos ${queuePos}, pending ${writeQueue.pendingKeys.length})`);
+    const task = writeQueue.enqueue(dest, () => executeWrite(dest, source, sub, writeId));
     // Broadcast desired inmediato: el cliente con optimistic overlay o el
     // polling ven la intención sin esperar el join.
-    broadcastDomain(domain);
+    broadcastDomain(domain, writeId);
     task
       .then((result) => {
         if (!result || !result.ok) {
-          log.warn(
-            `[background-confirm] write ${dest}/${sub}=${source} falló: ${result && result.error}`,
-          );
+          writeError(writeId, "QUEUE", `write ${dest}/${sub}=${source} falló: ${result && result.error}`);
           return;
         }
         // Confirmación asienta: re-broadcast con el reported confirmado.
         // El SSE event del broker llega al cliente que ya tenía el optimistic.
-        broadcastDomain(domain);
+        broadcastDomain(domain, writeId);
       })
       .catch((err) => {
-        log.error(`[background-confirm] error inesperado en ${dest}/${sub}: ${err && err.message}`);
+        writeError(writeId, "QUEUE", `error inesperado en ${dest}/${sub}: ${err && err.message}`);
       });
     return Promise.resolve({ ok: true, confirmed: false, reported: null, accepted: true });
   }
@@ -524,12 +563,15 @@ async function createServer(options = {}) {
       return res.status(400).json({ error: "source requerido" });
     }
 
+    const writeId = nextWriteId();
+    writeLog(writeId, "WRITE", `POST /api/tvs/${id}/source {source:"${src}"} client=${req.ip || req.socket?.remoteAddress || "?"}`);
+
     if (BACKGROUND_CONFIRM) {
       // Background confirmation (fix real-hardware C): respondemos rápido
       // con confirmed=false; el join + confirmEncoder + broadcast del
       // reported corren en background. El cliente con optimistic overlay ve
       // el desired YA por el broadcast inmediato que dispara writeInBackground.
-      writeInBackground(dest, "tvs", src, "video");
+      writeInBackground(dest, "tvs", src, "video", writeId);
       const d = store.getDomain("tvs");
       return res.json({
         ok: true,
@@ -545,7 +587,7 @@ async function createServer(options = {}) {
       });
     }
 
-    const result = await writeQueue.enqueue(dest, () => executeWrite(dest, src, "video"));
+    const result = await writeQueue.enqueue(dest, () => executeWrite(dest, src, "video", writeId));
     if (!result.ok) {
       return res.status(502).json({ ok: false, id, source: src, error: result.error });
     }
@@ -584,19 +626,33 @@ async function createServer(options = {}) {
     for (const [tvKey, source] of Object.entries(preset.tvs || {})) {
       const dest = toArranger(tvKey);
       if (!isDestination(dest) || !source) continue;
-      writes.push(() => writeQueue.enqueue(dest, () => executeWrite(dest, source, "video")));
+      const wid = nextWriteId();
+      writeLog(wid, "WRITE", `POST /api/presets/${n}/load → tvs ${dest} video=${source}`);
+      writes.push(() => writeQueue.enqueue(dest, () => executeWrite(dest, source, "video", wid)));
     }
     for (const [zoneId, zone] of Object.entries(preset.zonasFuera || {})) {
       if (!isDestination(zoneId) || !zone) continue;
-      if (zone.video) writes.push(() => writeQueue.enqueue(zoneId, () => executeWrite(zoneId, zone.video, "video")));
+      if (zone.video) {
+        const wid = nextWriteId();
+        writeLog(wid, "WRITE", `POST /api/presets/${n}/load → zonasFuera ${zoneId} video=${zone.video}`);
+        writes.push(() => writeQueue.enqueue(zoneId, () => executeWrite(zoneId, zone.video, "video", wid)));
+      }
       if (zone.audio && zone.audio !== zone.video) {
-        writes.push(() => writeQueue.enqueue(zoneId, () => executeWrite(zoneId, zone.audio, "audio")));
+        const wid = nextWriteId();
+        writeLog(wid, "WRITE", `POST /api/presets/${n}/load → zonasFuera ${zoneId} audio=${zone.audio}`);
+        writes.push(() => writeQueue.enqueue(zoneId, () => executeWrite(zoneId, zone.audio, "audio", wid)));
       }
     }
     const tvrack = preset.tvrack || {};
-    if (tvrack.video) writes.push(() => writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, tvrack.video, "video")));
+    if (tvrack.video) {
+      const wid = nextWriteId();
+      writeLog(wid, "WRITE", `POST /api/presets/${n}/load → tvrack video=${tvrack.video}`);
+      writes.push(() => writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, tvrack.video, "video", wid)));
+    }
     if (tvrack.audio && tvrack.audio !== tvrack.video) {
-      writes.push(() => writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, tvrack.audio, "audio")));
+      const wid = nextWriteId();
+      writeLog(wid, "WRITE", `POST /api/presets/${n}/load → tvrack audio=${tvrack.audio}`);
+      writes.push(() => writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, tvrack.audio, "audio", wid)));
     }
 
     const results = [];
@@ -623,12 +679,14 @@ async function createServer(options = {}) {
     const { deviceId, source } = req.body || {};
     const src = source || deviceId;
     if (!src) return res.status(400).json({ error: "deviceId required" });
+    const writeId = nextWriteId();
+    writeLog(writeId, "WRITE", `POST /api/tvrack/${sub} {source:"${src}"} client=${req.ip || req.socket?.remoteAddress || "?"}`);
     if (BACKGROUND_CONFIRM) {
       // Background confirmation: respondemos rápido; el join + confirmEncoder
       // + broadcast del reported corren en background. El broadcast del
       // desired sale inmediato vía writeInBackground (link toggle-aware:
       // executeWrite lee appOnly.tvrack.link dentro de la tarea encolada).
-      writeInBackground(TVRACK_ID, "tvrack", src, sub);
+      writeInBackground(TVRACK_ID, "tvrack", src, sub, writeId);
       const link = !!store.getAppOnly().tvrack?.link;
       const d = store.getDomain("tvrack");
       return res.json({
@@ -642,7 +700,7 @@ async function createServer(options = {}) {
         lastUpdated: d.lastUpdated,
       });
     }
-    const result = await writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, src, sub));
+    const result = await writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, src, sub, writeId));
     if (!result.ok) return res.status(502).json({ ok: false, error: result.error });
     const link = !!store.getAppOnly().tvrack?.link;
     broadcastDomain("tvrack");
@@ -687,10 +745,12 @@ async function createServer(options = {}) {
     const { deviceId, source } = req.body || {};
     const src = source || deviceId;
     if (!src) return res.status(400).json({ error: "deviceId required" });
+    const writeId = nextWriteId();
+    writeLog(writeId, "WRITE", `POST /api/zonas-fuera/${id}/${sub} {source:"${src}"} client=${req.ip || req.socket?.remoteAddress || "?"}`);
     if (BACKGROUND_CONFIRM) {
       // Background confirmation: link toggle-aware (executeWrite lee
       // appOnly.zonasFuera[id].link dentro de la tarea encolada).
-      writeInBackground(id, "zonasFuera", src, sub);
+      writeInBackground(id, "zonasFuera", src, sub, writeId);
       const link = !!store.getAppOnly().zonasFuera?.[id]?.link;
       const d = store.getDomain("zonasFuera");
       return res.json({
@@ -704,7 +764,7 @@ async function createServer(options = {}) {
         lastUpdated: d.lastUpdated,
       });
     }
-    const result = await writeQueue.enqueue(id, () => executeWrite(id, src, sub));
+    const result = await writeQueue.enqueue(id, () => executeWrite(id, src, sub, writeId));
     if (!result.ok) return res.status(502).json({ ok: false, error: result.error });
     const link = !!store.getAppOnly().zonasFuera?.[id]?.link;
     broadcastDomain("zonasFuera");

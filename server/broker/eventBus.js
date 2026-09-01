@@ -81,10 +81,15 @@ function createEventBus({ getSnapshot, log = console, heartbeatMs = HEARTBEAT_MS
   }
 
   /** Evento incremental por dominio. */
-  function publish(domain, payload, version, lastUpdated) {
+  function publish(domain, payload, version, lastUpdated, writeId) {
     emitter.emit("state", { domain, payload, version, lastUpdated });
     const data = { domain, payload, version, lastUpdated };
     for (const res of clients) sendEvent(res, "state", data);
+    if (writeId && typeof console !== "undefined") {
+      const payloadKeys = payload && typeof payload === "object" ? Object.keys(payload).length : 0;
+      const payloadPreview = payloadKeys > 15 ? `(${payloadKeys} keys)` : JSON.stringify(payload);
+      console.log(`[BROADCAST ${writeId}] ${domain} v${version} → ${clients.size} clientes ${payloadPreview}`);
+    }
   }
 
   /** Evento de estado de sincronización global. */

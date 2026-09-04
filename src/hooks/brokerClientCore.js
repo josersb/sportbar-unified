@@ -196,8 +196,14 @@ export function deriveVersions(domains) {
  * claves que no trae (fix real-hardware B: el link toggle no revierte).
  *
  * El link es app-only pero viaja en el payload incremental: se extrae a
- * appOnly (tvrack / por zona). Las claves presentes en el payload SON la
- * confirmación del server: se limpian del overlay optimista.
+ * appOnly (tvrack / por zona) y SIEMPRE se limpia del overlay optimista
+ * (estado autoritativo del server, sin lag de hardware). El resto de las
+ * claves del payload solo se limpia del overlay cuando su valor COINCIDE
+ * con el optimistic (confirmación real del write). Si difiere, el evento
+ * trae un valor stale (one-join-lag del firmware / broadcast previo al
+ * confirm del propio write) y la clave optimista se RETIENE hasta que la
+ * confirmación llegue; snapshot/poll posteriores descartan el overlay si
+ * el write fracasó (hotfix 4: evita la oscilación por toggle de link).
  */
 export function applyStateEvent(prev, evt) {
   if (!evt || !evt.domain || !DOMAIN_KEYS.includes(evt.domain)) return prev;
@@ -241,6 +247,14 @@ export function applyStateEvent(prev, evt) {
         cleanPayload[zoneId] = reported;
         if (Object.prototype.hasOwnProperty.call(zonePayload, "link")) {
           zonasFuera[zoneId] = { ...(zonasFuera[zoneId] || {}), link: !!link };
+          // link es app-only y autoritativo del server (sin lag de
+          // hardware): siempre se limpia del overlay optimista de la zona.
+          if (domainOpt[zoneId] && typeof domainOpt[zoneId] === "object") {
+            const zoneOpt = { ...domainOpt[zoneId] };
+            delete zoneOpt.link;
+            if (Object.keys(zoneOpt).length > 0) domainOpt[zoneId] = zoneOpt;
+            else delete domainOpt[zoneId];
+          }
         }
       } else {
         cleanPayload[zoneId] = zonePayload;
@@ -259,10 +273,18 @@ export function applyStateEvent(prev, evt) {
     for (const [zoneId, zonePayload] of Object.entries(cleanPayload)) {
       if (zonePayload && typeof zonePayload === "object") {
         mergedPayload[zoneId] = { ...(mergedPayload[zoneId] || {}), ...zonePayload };
-        // Las claves de la zona presentes en el evento son confirmación:
-        // limpiarlas del overlay optimista (conserva las no tocadas).
+        // Solo la clave CONFIRMADA se limpia del overlay (valor del evento
+        // == valor optimistic). Si difiere, el evento trae un valor stale y
+        // la clave optimista se RETIENE (hotfix 4). Conserva las no tocadas.
         const zoneOpt = { ...(domainOpt[zoneId] || {}) };
-        for (const k of Object.keys(zonePayload)) delete zoneOpt[k];
+        for (const k of Object.keys(zonePayload)) {
+          if (
+            !Object.prototype.hasOwnProperty.call(zoneOpt, k) ||
+            zoneOpt[k] === zonePayload[k]
+          ) {
+            delete zoneOpt[k];
+          }
+        }
         if (Object.keys(zoneOpt).length > 0) domainOpt[zoneId] = zoneOpt;
         else delete domainOpt[zoneId];
       } else {
@@ -272,7 +294,18 @@ export function applyStateEvent(prev, evt) {
     }
   } else {
     mergedPayload = { ...prevState, ...cleanPayload };
-    for (const k of Object.keys(cleanPayload)) delete domainOpt[k];
+    // Solo la clave CONFIRMADA se limpia del overlay (valor del evento ==
+    // valor optimistic). Si difiere, el evento trae un valor stale (lag del
+    // firmware o broadcast previo al confirm) y la clave optimista se
+    // RETIENE hasta la confirmación real (hotfix 4: sin oscilación).
+    for (const k of Object.keys(cleanPayload)) {
+      if (
+        !Object.prototype.hasOwnProperty.call(domainOpt, k) ||
+        domainOpt[k] === cleanPayload[k]
+      ) {
+        delete domainOpt[k];
+      }
+    }
   }
 
   if (Object.keys(domainOpt).length > 0) optimistic[domain] = domainOpt;
@@ -314,7 +347,10 @@ export function applyStateEvent(prev, evt) {
         if (c.action === "limpiar") {
           clientLog(`OPTIMISTIC limpiar ${domain}.${c.k} (confirmado por v${evt.version})`);
         } else {
-          clientLog(`OPTIMISTIC RETENER ${domain}.${c.k} (evento trae "${c.evt}" ≠ optimistic "${c.opt}")`);
+          // Hotfix 4: la retención ahora es REAL — la clave queda en el
+          // overlay hasta que la confirmación llegue (antes el log decía
+          // RETENER pero el código borraba la clave igual: oscilación).
+          clientLog(`OPTIMISTIC RETENER ${domain}.${c.k} (evento trae "${c.evt}" ≠ optimistic "${c.opt}", retención activa hasta confirmación)`);
         }
       }
       pushLog(logBuffer.optimistic, { domain, version: evt.version, comparisons });
@@ -351,7 +387,12 @@ export function applySync(prev, sync) {
  *   - tvs:        { TV01: "DTV3" }
  *   - tvrack:     { video: "DTV3" } | { audio: "DTV3" } | { link: true }
  *   - zonasFuera: { aVip-Barra-Centro: { video: "DTV3", link: true } }
- * Un patch vacío ({}) limpia el overlay del dominio.
+ *
+ * MERGE por clave (hotfix 4): el patch se mergea sobre el overlay existente
+ * del dominio, NUNCA lo reemplaza — togglear link convive con el video
+ * optimista pendiente (evidencia #908). Un patch vacío ({}) no modifica el
+ * overlay. El overlay solo se descarta por confirmación (applyStateEvent,
+ * clave por clave), snapshot o poll.
  */
 export function applyOptimistic(prev, domain, patch) {
   if (!domain || !DOMAIN_KEYS.includes(domain)) return prev;
@@ -371,14 +412,45 @@ export function applyOptimistic(prev, domain, patch) {
     if (Object.keys(domainOpt).length > 0) optimistic[domain] = domainOpt;
     else delete optimistic[domain];
   }
-  // Hotfix 3 observability: log de cada applyOptimistic.
+  // Hotfix 3 observability + hotfix 4 auditoría: distinguir apply nuevo vs
+  // MERGE sobre claves ya presentes en el overlay del dominio (evidencia
+  // #908: el toggle de link debe convivir con el video pendiente del mismo
+  // dominio, nunca reemplazarlo). El caso "merge" queda auditado en el ring
+  // buffer para la próxima verificación contra hardware real.
   if (isLoggingEnabled()) {
+    const prevDomain = prev.optimistic?.[domain] || {};
+    const mergedKeys = [];
+    if (domain === "zonasFuera") {
+      for (const [zoneId, zonePatch] of Object.entries(patch)) {
+        if (zonePatch && typeof zonePatch === "object" && !Array.isArray(zonePatch)) {
+          for (const k of Object.keys(zonePatch)) {
+            if (prevDomain[zoneId] && Object.prototype.hasOwnProperty.call(prevDomain[zoneId], k)) {
+              mergedKeys.push(`${zoneId}.${k}`);
+            }
+          }
+        }
+      }
+    } else {
+      for (const k of Object.keys(patch)) {
+        if (Object.prototype.hasOwnProperty.call(prevDomain, k)) mergedKeys.push(k);
+      }
+    }
     const overlay = optimistic[domain] || {};
     const overlayKeys = domain === "zonasFuera"
       ? Object.keys(optimistic.zonasFuera || {}).reduce((acc, z) => acc + Object.keys(optimistic.zonasFuera[z] || {}).length, 0)
       : Object.keys(overlay).length;
-    pushLog(logBuffer.optimistic, { kind: "apply", domain, patch, overlayKeys });
-    clientLog(`OPTIMISTIC aplicar ${domain}=${JSON.stringify(patch)} (overlay: ${overlayKeys} claves)`);
+    pushLog(logBuffer.optimistic, {
+      kind: mergedKeys.length > 0 ? "merge" : "apply",
+      domain,
+      patch,
+      overlayKeys,
+      mergedKeys,
+    });
+    if (mergedKeys.length > 0) {
+      clientLog(`OPTIMISTIC merge ${domain}: claves actualizadas sobre overlay existente (${mergedKeys.join(", ")}) (overlay: ${overlayKeys} claves)`);
+    } else {
+      clientLog(`OPTIMISTIC aplicar ${domain}=${JSON.stringify(patch)} (overlay: ${overlayKeys} claves)`);
+    }
   }
   return { ...prev, optimistic };
 }

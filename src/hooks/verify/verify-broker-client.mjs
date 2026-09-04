@@ -103,7 +103,13 @@ async function readSseSnapshot(base, ms = 3000) {
       body: JSON.stringify({ source: "DTV3" }),
     });
     const writeBody = await writeRes.json();
-    check("POST /api/tvs/TV01/source → confirmado DTV3", writeRes.status === 200 && writeBody.reported === "DTV3");
+    // Contrato background (hotfix 2/4): accepted inmediato, confirmed: false,
+    // reported: null; la convergencia asienta vía broadcast/SSE (se verifica
+    // justo abajo con el snapshot fresco).
+    check(
+      "POST /api/tvs/TV01/source → accepted background (confirmed: false)",
+      writeRes.status === 200 && writeBody.accepted === true && writeBody.confirmed === false,
+    );
 
     // Esperar el broadcast y re-derivar desde el snapshot fresco
     await sleep(300);

@@ -5,6 +5,7 @@
  *   - parser SSE incremental (snapshot/state/sync/heartbeat)
  *   - buildSinceQuery para polling versionado
  *   - applySnapshot / applyStateEvent / applySync / applyPollBody
+ *   - applyOptimistic: merge por clave + limpieza por confirmación (hotfix 4)
  *   - nextPollDelay (5s → 10s → 20s → 30s cap)
  *   - deriveUiState (reported gana, link app-only, TVRACK desde dominio)
  *   - buildDiffsInfo (solo reported confirmado)
@@ -20,6 +21,7 @@ import {
   applyStateEvent,
   applySync,
   applyPollBody,
+  applyOptimistic,
   nextPollDelay,
   deriveUiState,
   buildDiffsInfo,
@@ -125,6 +127,86 @@ function check(name, cond) {
   const before = st.domains;
   const after = applyStateEvent(st, { domain: "bogus", payload: {} });
   check("state: dominio inválido ignorado", after.domains === before);
+}
+
+// ── 4b. Optimistic overlay: merge por clave + limpieza por confirmación (hotfix 4) ──
+{
+  let st = applySnapshot({}, {
+    schemaVersion: 3,
+    sync: { status: "synced", lastSync: null },
+    versions: { tvrack: 1 },
+    domains: {
+      tvrack: {
+        desired: { video: "DTV1", audio: "DTV1" },
+        reported: { video: "DTV1", audio: "DTV1" },
+        version: 1,
+        lastUpdated: "x",
+      },
+    },
+    appOnly: { tvrack: { link: false } },
+  });
+
+  // MERGE por clave: video y luego link al MISMO dominio → ambas claves
+  // conviven en el overlay (evidencia #908: el toggle de link NO borra el
+  // optimistic pendiente del video).
+  st = applyOptimistic(st, "tvrack", { video: "DTV3" });
+  check("opt: apply video → overlay tvrack.video=DTV3", st.optimistic.tvrack?.video === "DTV3");
+  st = applyOptimistic(st, "tvrack", { link: true });
+  check(
+    "opt: MERGE por clave — link no borra el video pendiente (overlay con ambas claves)",
+    st.optimistic.tvrack?.video === "DTV3" && st.optimistic.tvrack?.link === true,
+  );
+
+  // Limpieza por CONFIRMACIÓN: evento con valor ≠ optimistic (stale, e.g. el
+  // broadcast inmediato previo al confirm del propio write) RETIENE la
+  // clave; evento con valor == optimistic (confirmación real) limpia SOLO
+  // esa clave. Link (app-only autoritativo) siempre se limpia.
+  st = applyStateEvent(st, { domain: "tvrack", payload: { video: "DTV1", audio: "DTV1", link: true }, version: 2, lastUpdated: "y" });
+  check(
+    "opt: evento stale (video DTV1 ≠ optimistic DTV3) RETIENE el video",
+    st.optimistic.tvrack?.video === "DTV3",
+  );
+  check("opt: link confirmado se limpia del overlay (app-only autoritativo)", st.optimistic.tvrack?.link === undefined);
+  check(
+    "opt: ui conserva el optimistic retenido (overlay gana sobre reported stale, sin oscilación)",
+    deriveUiState(st).tvrackState.video === "DTV3",
+  );
+  st = applyStateEvent(st, { domain: "tvrack", payload: { video: "DTV3", audio: "DTV1" }, version: 3, lastUpdated: "z" });
+  check(
+    "opt: confirmación real (video DTV3) limpia SOLO esa clave (overlay vacío)",
+    st.optimistic.tvrack === undefined,
+  );
+  check("opt: reported mergeado con el evento confirmado (video DTV3)", st.domains.tvrack.reported.video === "DTV3");
+
+  // zonasFuera: MERGE por zona + retención/cleanup por clave confirmada.
+  st = applyOptimistic(st, "zonasFuera", { "aVip-Barra-Centro": { video: "DTV5" } });
+  st = applyOptimistic(st, "zonasFuera", { "aVip-Barra-Centro": { link: true } });
+  check(
+    "opt: zonasFuera MERGE por zona (video + link conviven)",
+    st.optimistic.zonasFuera?.["aVip-Barra-Centro"]?.video === "DTV5" &&
+      st.optimistic.zonasFuera?.["aVip-Barra-Centro"]?.link === true,
+  );
+  st = applyStateEvent(st, {
+    domain: "zonasFuera",
+    payload: { "aVip-Barra-Centro": { video: "DTV1", audio: "DTV1", link: true } },
+    version: 4,
+    lastUpdated: "w",
+  });
+  check(
+    "opt: zonasFuera evento stale RETIENE video, link se limpia",
+    st.optimistic.zonasFuera?.["aVip-Barra-Centro"]?.video === "DTV5" &&
+      st.optimistic.zonasFuera?.["aVip-Barra-Centro"]?.link === undefined,
+  );
+  st = applyStateEvent(st, {
+    domain: "zonasFuera",
+    payload: { "aVip-Barra-Centro": { video: "DTV5" } },
+    version: 5,
+    lastUpdated: "v",
+  });
+  check(
+    "opt: zonasFuera confirmación limpia la clave (overlay de la zona vacío)",
+    st.optimistic.zonasFuera?.["aVip-Barra-Centro"] === undefined,
+  );
 }
 
 // ── 5. applySync ──

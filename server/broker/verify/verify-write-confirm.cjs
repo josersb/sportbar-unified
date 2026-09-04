@@ -8,7 +8,7 @@
  * `get encoder` del destino devuelve el valor ANTERIOR (stale), como el
  * routing table del hardware que tarda en reflejar el join.
  *
- * Valida DOS modos:
+ * Valida DOS modos + hotfix 4:
  *   A. Síncrono (`BROKER_BACKGROUND_CONFIRM=0`): el retry de confirmEncoder
  *      (250/500/750ms) corre DENTRO del response. POST responde con
  *      `reported = source` (no stale) tras el retry.
@@ -17,6 +17,11 @@
  *      asienta vía SSE/poll unos ms después: el cliente con optimistic
  *      overlay ya tenía el cambio visualmente, el reported llega por SSE
  *      (verificamos con poll versionado al broker state).
+ *   C. One-join-lag (hotfix 4, mock `oneJoinLag`): el get encoder devuelve el
+ *      valor del join ANTERIOR en TODAS las lecturas durante 3s (evidence
+ *      w-001..w-008). Valida que (a) reported NO se envenena con el stale,
+ *      (b) el re-read postergado (3s/9s) converge cuando el mock asienta, y
+ *      (c) la respuesta marca `confirmed: false`.
  *
  * Uso: node server/broker/verify/verify-write-confirm.cjs
  */
@@ -54,8 +59,8 @@ async function waitForConvergence(base, domain, predicate, timeoutMs = 5000) {
   return { ok: false, elapsed: Date.now() - start };
 }
 
-async function runScenario({ mode, label }) {
-  console.log(`\n── Escenario ${label} (BROKER_BACKGROUND_CONFIRM=${mode === "background" ? "1" : "0"}) ──`);
+async function runScenario({ mode, label, mockMode = "settle" }) {
+  console.log(`\n── Escenario ${label} (BROKER_BACKGROUND_CONFIRM=${mode === "background" ? "1" : "0"}, mock=${mockMode}) ──`);
   process.env.BROKER_BACKGROUND_CONFIRM = mode === "background" ? "1" : "0";
   // Forzar re-require para que el flag se relea (jest-style isolation).
   delete require.cache[require.resolve("../../server.js")];
@@ -73,13 +78,77 @@ async function runScenario({ mode, label }) {
   const { app, broker } = await createServerFresh({
     dbPath,
     silent: true,
-    mockMode: "settle", // primera lectura post-join → stale
+    mockMode, // settle: primera lectura stale | oneJoinLag: stale hasta +3s del join
   });
   const server = app.listen(0);
   const port = server.address().port;
   const base = `http://127.0.0.1:${port}`;
 
   try {
+    if (mockMode === "oneJoinLag") {
+      // ── Escenario C (hotfix 4): one-join-lag del firmware v1.3.4 ──
+      // El mock devuelve el valor del join ANTERIOR en TODAS las lecturas
+      // durante 3s (los 3 retries de confirmEncoder leen stale SIEMPRE,
+      // como contra el hardware físico, evidence w-001..w-008). El
+      // fresh-start del store hidrata reported desde el mock (todo DTV1),
+      // así que primero se CONFIRMA un write baseline para tener un
+      // reported distinguible del stale.
+      const postTv = async (source) =>
+        fetch(`${base}/api/tvs/TV05/source`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source }),
+        });
+
+      // Espera contra el store directo (sin HTTP → sin rate-limiter).
+      const waitReported = async (expected, timeoutMs) => {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+          if (broker.store.getDomain("tvs").reported.TV05 === expected) return true;
+          await sleep(100);
+        }
+        return false;
+      };
+
+      // W1 (baseline): POST TV05 → DTV2. Los retries leen stale DTV1 ×3
+      // (unconfirmed, response confirmed:false) y el RE-READ POSTERGADO
+      // converge cuando el mock asienta a los 3s del join.
+      const res1 = await postTv("DTV2");
+      const body1 = await res1.json();
+      check(`[lag] W1 POST TV05 → 200 ok`, res1.status === 200 && body1.ok === true);
+      check(`[lag] (c) respuesta marca confirmed: false, reported: null`, body1.accepted === true && body1.confirmed === false && body1.reported === null);
+      check(`[lag] (b-W1) re-read postergado converge: reported.TV05 = DTV2`, await waitReported("DTV2", 8000));
+
+      // W2 + W3: dos writes rápidos al MISMO destino — el patrón de veneno
+      // del hardware. El read stale del W3 devuelve DTV3, el desired del W2
+      // NUNCA confirmado: si se guardara, reported quedaría un join atrás.
+      const res2 = await postTv("DTV3");
+      const body2 = await res2.json();
+      check(`[lag] W2 POST TV05 → 200 ok (confirmed: false)`, res2.status === 200 && body2.ok === true && body2.confirmed === false);
+      const res3 = await postTv("DTV4");
+      const body3 = await res3.json();
+      check(`[lag] W3 POST TV05 → 200 ok (confirmed: false)`, res3.status === 200 && body3.ok === true && body3.confirmed === false);
+
+      // (a) reported NO envenenado: tras agotar los retries del W2 y del W3
+      // (~3s), TV05 conserva el último valor CONFIRMADO (DTV2 del W1) — ni
+      // el stale DTV2 del W2 ni el stale DTV3 del W3 (el desired del W2 sin
+      // confirmar) pisaron reported.
+      await sleep(3500);
+      const reportedMid = broker.store.getDomain("tvs").reported.TV05;
+      check(
+        `[lag] (a) reported NO envenenado tras retries (TV05=${reportedMid}, conserva confirmado DTV2 ≠ stale DTV3)`,
+        reportedMid === "DTV2",
+      );
+
+      // (b) el re-read del W3 (que reemplazó al pendiente del W2,
+      // single-flight) converge cuando el mock asienta.
+      check(`[lag] (b) re-read postergado converge: reported.TV05 = DTV4`, await waitReported("DTV4", 8000));
+      check(
+        `[lag] desired TV05 = DTV4 (intacto durante todo el flujo)`,
+        broker.store.getDomain("tvs").desired.TV05 === "DTV4",
+      );
+      return;
+    }
     if (mode === "sync") {
       // ── Escenario A: TV común, settle → retry confirma DTV3 ──
       const t0 = Date.now();
@@ -178,11 +247,12 @@ async function runScenario({ mode, label }) {
 (async () => {
   await runScenario({ mode: "sync", label: "A (síncrono, regresión)" });
   await runScenario({ mode: "background", label: "B (background, hotfix C)" });
+  await runScenario({ mode: "background", label: "C (one-join-lag, hotfix 4)", mockMode: "oneJoinLag" });
   // Reset del flag y módulo
   process.env.BROKER_BACKGROUND_CONFIRM = "1";
 
   const failed = checks.filter((c) => !c.ok).length;
-  console.log(`\n${failed === 0 ? "✓ WRITE-CONFIRM OK (síncrono + background verificados)" : `✗ ${failed} chequeos fallaron`}`);
+  console.log(`\n${failed === 0 ? "✓ WRITE-CONFIRM OK (síncrono + background + one-join-lag verificados)" : `✗ ${failed} chequeos fallaron`}`);
   process.exit(failed === 0 ? 0 : 1);
 })().catch((e) => {
   console.error("FALLO:", e);

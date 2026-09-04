@@ -50,9 +50,17 @@ function createWriteQueue({ log = console } = {}) {
     // microtask batch que el await del caller (finally registrado antes), de
     // modo que tras `await enqueue(...)` el Map ya está limpio.
     chains.set(key, run);
-    run.finally(() => {
-      if (chains.get(key) === run) chains.delete(key);
-    });
+    // OJO: el promise derivado del .finally() NO se retorna — si run rechaza,
+    // ese derivado queda huérfano y Node lo reporta como unhandled rejection
+    // (crashea el proceso). El catch vacío lo silencia: la rejection de run
+    // YA está manejada por el caller (writeInBackground .catch / handler).
+    // Encontrado por el verify-write-confirm del hotfix 4 (un store.write
+    // tardío rechazaba tras el cleanup del escenario).
+    run
+      .finally(() => {
+        if (chains.get(key) === run) chains.delete(key);
+      })
+      .catch(() => {});
 
     return run;
   }

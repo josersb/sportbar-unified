@@ -20,11 +20,19 @@
  *             PRIMERA lectura get encoder del destino devuelve el valor
  *             ANTERIOR (stale) y las siguientes el nuevo — el hardware físico
  *             ya aplicó el join pero el routing table tarda en reflejarlo.
+ *   oneJoinLag — simula el lag POR COMANDO del firmware v1.3.4 (hotfix 4,
+ *             evidence w-001..w-008): tras un join, TODA lectura get encoder
+ *             del destino devuelve el valor del join ANTERIOR (stale) hasta
+ *             que pasa `lagSettleMs` (default 3s), momento en el que el
+ *             routing table "asienta" y las lecturas devuelven el valor real.
+ *             A diferencia de `settle` (solo la primera lectura es stale),
+ *             aquí los 3 retries de confirmEncoder (~1.5s) leen stale
+ *             SIEMPRE, como contra el hardware físico.
  */
 
 const { MATRIX_DESTINATIONS, DEFAULT_SOURCE } = require("./destinations");
 
-const MOCK_MODES = ["normal", "blip", "offline", "settle"];
+const MOCK_MODES = ["normal", "blip", "offline", "settle", "oneJoinLag"];
 
 /** Crea un mock arranger con estado de matriz inicializado a DEFAULT_SOURCE. */
 function createMockArranger(options = {}) {
@@ -46,6 +54,11 @@ function createMockArranger(options = {}) {
   // settle: dest:sub → valor ANTERIOR que debe devolver la primera lectura
   // post-join (simula el routing table que tarda en reflejar el join).
   const settlePending = new Map();
+  // oneJoinLag: dest:sub → { stale, until }. Toda lectura antes de `until`
+  // devuelve el valor del join ANTERIOR (lag por comando, no por tiempo);
+  // después el routing table "asienta" y se lee el valor real.
+  const lagPending = new Map();
+  const lagSettleMs = options.lagSettleMs || 3000;
 
   function isOffline() {
     return currentMode === "offline";
@@ -72,6 +85,12 @@ function createMockArranger(options = {}) {
     if (currentMode === "settle") {
       for (const stream of streams) {
         settlePending.set(`${dest}:${stream}`, matrix[dest][stream]);
+      }
+    }
+    // oneJoinLag: registrar el valor previo como stale durante lagSettleMs
+    if (currentMode === "oneJoinLag") {
+      for (const stream of streams) {
+        lagPending.set(`${dest}:${stream}`, { stale: matrix[dest][stream], until: Date.now() + lagSettleMs });
       }
     }
     for (const stream of streams) matrix[dest][stream] = source;
@@ -110,6 +129,17 @@ function createMockArranger(options = {}) {
         const stale = settlePending.get(pendingKey);
         settlePending.delete(pendingKey);
         return stale || null;
+      }
+    }
+    // oneJoinLag: toda lectura antes de `until` devuelve el valor del join
+    // ANTERIOR (stale); al expirar, el routing table asienta y se consume la
+    // entrada para leer el valor real.
+    if (currentMode === "oneJoinLag") {
+      const lagKey = `${dest}:${subscription}`;
+      const lag = lagPending.get(lagKey);
+      if (lag) {
+        if (Date.now() < lag.until) return lag.stale || null;
+        lagPending.delete(lagKey);
       }
     }
     const entry = matrix[dest];

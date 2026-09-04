@@ -190,27 +190,100 @@ async function createServer(options = {}) {
    * lectura INMEDIATA puede devolver el valor ANTERIOR aunque el comando ya
    * se aplicó físicamente (el TV cambia, pero el routing table aún no
    * refleja el join). Hasta 3 lecturas con backoff 250/500/750ms; corta
-   * apenas `reported` coincide con `source`. Si agota intentos devuelve el
-   * último valor leído (stale): el scan del reconciler corregirá después
-   * (status quo previo, la UI converge en el próximo scan).
+   * apenas `reported` coincide con `source`.
+   *
+   * HOTFIX 4 (one-join-lag): contra el hardware físico el lag es POR COMANDO,
+   * no por tiempo (evidence w-001..w-008: 3 retries en 1.4s leen stale el
+   * 100% de las veces). Si agota los intentos, devuelve
+   * `{ value, confirmed: false }` — el caller NO debe guardar ese valor como
+   * reported (no envenenar); queda para el re-read postergado (3s/9s) o el
+   * scan del reconciler.
    *
    * Total max wait ~1.5s por stream.
+   *
+   * @returns {{ value: string|null, confirmed: boolean }}
    */
   async function confirmEncoder(dest, sub, source, writeId) {
     let reported = null;
+    let confirmed = false;
     const startMs = Date.now();
     for (let attempt = 0; attempt < 3; attempt++) {
       reported = await client.getEncoder(dest, sub);
-      const settled = reported === source;
+      confirmed = reported === source;
       if (writeId) {
         const elapsed = Date.now() - startMs;
-        const staleTag = settled ? "✓ (settled)" : `(stale, retry ${250 * (attempt + 1)}ms)`;
+        const staleTag = confirmed ? "✓ (settled)" : `(stale, retry ${250 * (attempt + 1)}ms)`;
         writeLog(writeId, "CONFIRM", `get#${attempt + 1} ${dest}/${sub} → "${reported}" ${staleTag} (t+${elapsed}ms)`);
       }
-      if (settled) break;
+      if (confirmed) break;
       await sleep(250 * (attempt + 1)); // 250ms, 500ms, 750ms
     }
-    return reported;
+    return { value: reported, confirmed };
+  }
+
+  // ── Hotfix 4 (one-join-lag): re-read postergado de writes unconfirmed ──
+  // Cuando confirmEncoder agota los retries sin coincidir, el read stale NO
+  // se guarda como reported y se agenda una lectura de ese destino a los 3s
+  // y, si sigue sin coincidir, otra a los 9s (máx 2 por write). La lectura es
+  // safe (get encoder no modifica estado) y NO encola en writeQueue. Si
+  // coincide con el desired del write: setReported + broadcast (converge en
+  // segundos). Si no: queda para el scan del reconciler (degradación
+  // aceptable, 5 min). Single-flight por `${dest}:${sub}`: un write más
+  // nuevo al mismo destino reemplaza el re-read pendiente (nunca se
+  // acumulan re-reads infinitos).
+  const REREAD_DELAYS_MS = [3000, 9000];
+  const pendingReReads = new Map(); // `${dest}:${sub}` → { attempts, source, timer }
+
+  /** Aplica un read confirmado al reported (misma lógica que executeWrite §4). */
+  function applyConfirmedRead(domain, key, sub, value) {
+    if (domain === "tvs") {
+      store.setReported(domain, key, value);
+    } else if (domain === "tvrack") {
+      store.setReported(domain, sub, value);
+    } else {
+      const d = store.getDomain(domain);
+      d.reported[key] = { ...(d.reported[key] || {}), [sub]: value };
+      store.bumpVersion(domain);
+    }
+  }
+
+  /** Agenda los re-reads postergados (3s/9s) de un write sin confirmar. */
+  function scheduleDelayedReRead(dest, domain, key, sub, source, writeId) {
+    const id = `${dest}:${sub}`;
+    const prev = pendingReReads.get(id);
+    if (prev && prev.timer) clearTimeout(prev.timer); // single-flight: el write nuevo gana
+    const state = { attempts: 0, source, timer: null };
+    pendingReReads.set(id, state);
+    const fire = async () => {
+      const s = pendingReReads.get(id);
+      if (!s || s.source !== source) return; // superseded por un write más nuevo
+      s.attempts += 1;
+      try {
+        const value = await client.getEncoder(dest, sub);
+        writeLog(
+          writeId,
+          "CONFIRM",
+          `re-read #${s.attempts} ${dest}/${sub} → "${value}" ${value === source ? "✓ (settled)" : "(still stale)"}`,
+        );
+        if (value === source) {
+          pendingReReads.delete(id);
+          applyConfirmedRead(domain, key, sub, value);
+          await store.write();
+          writeLog(writeId, "STORE", `re-read convergió: setReported ${domain} (key=${key}, ${sub})=${value}`);
+          broadcastDomain(domain, writeId);
+        } else if (s.attempts < REREAD_DELAYS_MS.length) {
+          // Segunda (y última) lectura: a los 9s absolutos desde el write.
+          s.timer = setTimeout(fire, REREAD_DELAYS_MS[s.attempts] - REREAD_DELAYS_MS[s.attempts - 1]);
+        } else {
+          pendingReReads.delete(id);
+          writeLog(writeId, "CONFIRM", `re-read agotado (${s.attempts} intentos); queda para el scan del reconciler`);
+        }
+      } catch (err) {
+        pendingReReads.delete(id);
+        writeError(writeId, "CONFIRM", `re-read falló: ${err && err.message}; queda para el scan del reconciler`);
+      }
+    };
+    state.timer = setTimeout(fire, REREAD_DELAYS_MS[0]);
   }
 
   /**
@@ -266,46 +339,65 @@ async function createServer(options = {}) {
     wlog("ARRANGER", `→ join ${linked ? "av" : sub} ${source} ${dest} ok (${joinResult.text || ""})`);
 
     // 3. Lectura post-comando (confirmación) — retry con backoff por el
-    //    settling time del firmware v1.3.4 (la lectura inmediata puede ser
-    //    stale; ver confirmEncoder). En linked, ambos streams en paralelo.
-    const reported = linked
+    //    settling time del firmware v1.3.4 (ver confirmEncoder). En linked,
+    //    ambos streams en paralelo. HOTFIX 4 (one-join-lag): si agota los
+    //    retries SIN coincidir, el valor leído es stale y NO se guarda como
+    //    reported (no envenenar); queda el reported anterior y se agenda el
+    //    re-read postergado (3s/9s) para converger en segundos.
+    const confirm = linked
       ? await Promise.all([
           confirmEncoder(dest, "video", source, writeId),
           confirmEncoder(dest, "audio", source, writeId),
         ]).then(([video, audio]) => ({ video, audio }))
       : await confirmEncoder(dest, sub, source, writeId);
 
-    // 4. reported ← solo lecturas confirmadas válidas (null nunca pisa)
+    // 4. reported ← SOLO lecturas confirmadas. El valor stale del one-join-lag
+    //    NUNCA pisa reported (envenenaría el estado que el broadcast y el
+    //    snapshot propagan a todos los clientes). Los streams sin confirmar
+    //    quedan para el re-read postergado o el scan del reconciler.
+    let confirmed;
+    let reported;
     if (linked) {
+      confirmed = confirm.video.confirmed && confirm.audio.confirmed;
+      reported = {
+        video: confirm.video.confirmed ? confirm.video.value : null,
+        audio: confirm.audio.confirmed ? confirm.audio.value : null,
+      };
       if (domain === "tvrack") {
-        if (reported.video != null) store.setReported(domain, "video", reported.video);
-        if (reported.audio != null) store.setReported(domain, "audio", reported.audio);
-      } else {
-        if (reported.video != null || reported.audio != null) {
-          d.reported[key] = {
-            ...(d.reported[key] || {}),
-            ...(reported.video != null ? { video: reported.video } : {}),
-            ...(reported.audio != null ? { audio: reported.audio } : {}),
-          };
+        if (confirm.video.confirmed) store.setReported(domain, "video", reported.video);
+        if (confirm.audio.confirmed) store.setReported(domain, "audio", reported.audio);
+      } else if (confirm.video.confirmed || confirm.audio.confirmed) {
+        d.reported[key] = {
+          ...(d.reported[key] || {}),
+          ...(confirm.video.confirmed ? { video: reported.video } : {}),
+          ...(confirm.audio.confirmed ? { audio: reported.audio } : {}),
+        };
+        store.bumpVersion(domain);
+      }
+      if (!confirm.video.confirmed) scheduleDelayedReRead(dest, domain, key, "video", source, writeId);
+      if (!confirm.audio.confirmed) scheduleDelayedReRead(dest, domain, key, "audio", source, writeId);
+    } else {
+      confirmed = confirm.confirmed;
+      reported = confirmed ? confirm.value : null;
+      if (confirmed) {
+        if (domain === "tvs") {
+          store.setReported(domain, key, reported);
+        } else if (domain === "tvrack") {
+          store.setReported(domain, sub, reported);
+        } else {
+          d.reported[key] = { ...(d.reported[key] || {}), [sub]: reported };
           store.bumpVersion(domain);
         }
-      }
-    } else if (reported != null) {
-      if (domain === "tvs") {
-        store.setReported(domain, key, reported);
-      } else if (domain === "tvrack") {
-        store.setReported(domain, sub, reported);
       } else {
-        d.reported[key] = { ...(d.reported[key] || {}), [sub]: reported };
-        store.bumpVersion(domain);
+        scheduleDelayedReRead(dest, domain, key, sub, source, writeId);
       }
     }
 
     const finalDomain = store.getDomain(domain);
-    wlog("STORE", `setReported ${domain} (key=${key})=${JSON.stringify(reported)} (v${finalDomain.version})`);
+    wlog("STORE", `setReported ${domain} (key=${key})=${JSON.stringify(reported)} confirmed=${confirmed} (v${finalDomain.version})`);
 
     await store.write();
-    return { ok: true, dest, source, sub, link, reported };
+    return { ok: true, dest, source, sub, link, confirmed, reported };
   }
 
   function validateLinkedSnapshot(snapshot) {
@@ -598,6 +690,9 @@ async function createServer(options = {}) {
       id,
       source: src,
       dest,
+      // Hotfix 4 (one-join-lag): reported solo cuando el read confirmó;
+      // unconfirmed → null y el re-read postergado (3s/9s) converge.
+      confirmed: !!result.confirmed,
       reported: result.reported,
       version: d.version,
       lastUpdated: d.lastUpdated,

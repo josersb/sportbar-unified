@@ -39,6 +39,9 @@ server/state.json
 build/
 out/
 
+# Server file logs (hotfix 5: un archivo por boot, rollover 900KB)
+server/logs/
+
 # Temporary folders
 tmp/
 temp/

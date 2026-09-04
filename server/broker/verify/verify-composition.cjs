@@ -24,6 +24,9 @@ const path = require("path");
 
 process.env.VITE_MOCK_ARRANGER = "1";
 process.env.VITE_ARRANGER_TOKEN = process.env.VITE_ARRANGER_TOKEN || "verify-token";
+// Hotfix 5: el fileLogger de server.js escribe a server/logs/ — desactivado
+// en verify (CI sin escritura a disco del repo).
+process.env.BROKER_FILE_LOG = "0";
 
 const { createServer } = require("../../server.js");
 

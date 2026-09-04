@@ -3,6 +3,14 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
+// Hotfix 5: intercepta console.log/warn/error y persiste TODA la salida a
+// server/logs/sportbar-<boot>.txt con timestamp por línea y rollover 900KB.
+// Debe requerirse antes que cualquier módulo que loguee al arrancar. Desactivable
+// con BROKER_FILE_LOG=0 (verify/CI sin escritura a disco).
+if (String(process.env.BROKER_FILE_LOG || "1") !== "0") {
+  require("./broker/fileLogger.js").installFileLogger();
+}
+
 const { createStore } = require("./broker/store.js");
 const { createArrangerClient } = require("./broker/arrangerClient.js");
 const { createEventBus } = require("./broker/eventBus.js");
@@ -295,8 +303,14 @@ async function createServer(options = {}) {
    * desired → join (según domain/sub/link) → get encoder → reported → persistir.
    * Debe ejecutarse DENTRO de writeQueue.enqueue(dest, ...) para serializar
    * por destino. Devuelve { ok, dest, source, sub, reported, error? }.
+   *
+   * HOTFIX 5 (observabilidad): mide las duraciones de cada fase (queue, join,
+   * confirm, re-reads) para la línea de cierre end-to-end que loggea
+   * writeInBackground tras el broadcast — reconstrucción de timelines.
    */
-  async function executeWrite(dest, source, sub = "video", writeId) {
+  async function executeWrite(dest, source, sub = "video", writeId, timings) {
+    const t = timings || { queuedAt: Date.now(), startedAt: Date.now() };
+    t.startedAt = Date.now(); // la tarea arrancó (salió de la cola)
     const domain = dest === TVRACK_ID ? "tvrack" : ZONA_FUERA_IDS.includes(dest) ? "zonasFuera" : "tvs";
     const key = domain === "tvs" ? toApp(dest) : dest;
     const wlog = (tag, msg) => writeLog(writeId, tag, msg);
@@ -329,12 +343,14 @@ async function createServer(options = {}) {
     }
 
     // 2. Comando al Arranger
+    const joinStart = Date.now();
     const joinResult =
       domain === "tvs" || linked
         ? await client.joinAv(source, dest, writeId)
         : sub === "audio"
           ? await client.joinAudio(source, dest, writeId)
           : await client.joinVideo(source, dest, writeId);
+    t.joinMs = Date.now() - joinStart;
     if (!joinResult.ok) {
       wlog("ARRANGER", `→ join ${linked ? "av" : sub} ${source} ${dest} FAILED: ${joinResult.error || joinResult.text || "?"}`);
       await store.write();
@@ -348,12 +364,14 @@ async function createServer(options = {}) {
     //    retries SIN coincidir, el valor leído es stale y NO se guarda como
     //    reported (no envenenar); queda el reported anterior y se agenda el
     //    re-read postergado (3s/9s) para converger en segundos.
+    const confirmStart = Date.now();
     const confirm = linked
       ? await Promise.all([
           confirmEncoder(dest, "video", source, writeId),
           confirmEncoder(dest, "audio", source, writeId),
         ]).then(([video, audio]) => ({ video, audio }))
       : await confirmEncoder(dest, sub, source, writeId);
+    t.confirmMs = Date.now() - confirmStart;
 
     // 4. reported ← SOLO lecturas confirmadas. El valor stale del one-join-lag
     //    NUNCA pisa reported (envenenaría el estado que el broadcast y el
@@ -410,6 +428,12 @@ async function createServer(options = {}) {
     if (confirmed) {
       wlog("STORE", `setReported ${domain} (key=${key})=${JSON.stringify(reported)} confirmed=true (v${finalDomain.version})`);
     }
+    // Re-reads postergados pendientes de ESTE write (convergen a 3s/9s).
+    t.reReads = linked
+      ? (confirm.video.confirmed ? 0 : 1) + (confirm.audio.confirmed ? 0 : 1)
+      : confirmed
+        ? 0
+        : 1;
 
     await store.write();
     return { ok: true, dest, source, sub, link, confirmed, reported };
@@ -595,7 +619,8 @@ async function createServer(options = {}) {
     // intención YA (no necesita esperar el join físico).
     const queuePos = writeQueue.pendingCount + 1;
     writeLog(writeId, "QUEUE", `enqueued ${dest} (pos ${queuePos}, pending ${writeQueue.pendingKeys.length})`);
-    const task = writeQueue.enqueue(dest, () => executeWrite(dest, source, sub, writeId));
+    const timings = { queuedAt: Date.now(), startedAt: Date.now() };
+    const task = writeQueue.enqueue(dest, () => executeWrite(dest, source, sub, writeId, timings));
     // Broadcast desired inmediato: el cliente con optimistic overlay o el
     // polling ven la intención sin esperar el join.
     broadcastDomain(domain, writeId);
@@ -603,11 +628,18 @@ async function createServer(options = {}) {
       .then((result) => {
         if (!result || !result.ok) {
           writeError(writeId, "QUEUE", `write ${dest}/${sub}=${source} falló: ${result && result.error}`);
+          writeLog(writeId, "WRITE", `DONE end-to-end ${(Date.now() - timings.queuedAt) / 1000}s (queue ${((timings.startedAt - timings.queuedAt) / 1000).toFixed(2)}s · join fallido)`);
           return;
         }
         // Confirmación asienta: re-broadcast con el reported confirmado.
         // El SSE event del broker llega al cliente que ya tenía el optimistic.
         broadcastDomain(domain, writeId);
+        // HOTFIX 5: línea de cierre end-to-end con desglose por fase.
+        writeLog(
+          writeId,
+          "WRITE",
+          `DONE end-to-end ${((Date.now() - timings.queuedAt) / 1000).toFixed(1)}s (queue ${((timings.startedAt - timings.queuedAt) / 1000).toFixed(2)}s · join ${(timings.joinMs || 0)}ms · confirm ${(timings.confirmMs || 0)}ms · re-reads ${timings.reReads ?? 0})`,
+        );
       })
       .catch((err) => {
         writeError(writeId, "QUEUE", `error inesperado en ${dest}/${sub}: ${err && err.message}`);

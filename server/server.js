@@ -359,6 +359,11 @@ async function createServer(options = {}) {
     //    NUNCA pisa reported (envenenaría el estado que el broadcast y el
     //    snapshot propagan a todos los clientes). Los streams sin confirmar
     //    quedan para el re-read postergado o el scan del reconciler.
+    //    HOTFIX 5 (evidencia #908): confirmed=false → SKIP TOTAL del
+    //    setReported — ni null ni el read parcial/stale tocan reported; el
+    //    destino conserva su último valor confirmado. El log lo hace
+    //    explícito para auditoría (el log anterior decía "setReported
+    //    ...=null" aunque el store nunca lo guardó — confundía el análisis).
     let confirmed;
     let reported;
     if (linked) {
@@ -377,6 +382,8 @@ async function createServer(options = {}) {
           ...(confirm.audio.confirmed ? { audio: reported.audio } : {}),
         };
         store.bumpVersion(domain);
+      } else {
+        wlog("STORE", `SKIP setReported ${domain} (key=${key}) — unconfirmed, read=${JSON.stringify({ video: confirm.video.value, audio: confirm.audio.value })}`);
       }
       if (!confirm.video.confirmed) scheduleDelayedReRead(dest, domain, key, "video", source, writeId);
       if (!confirm.audio.confirmed) scheduleDelayedReRead(dest, domain, key, "audio", source, writeId);
@@ -393,12 +400,16 @@ async function createServer(options = {}) {
           store.bumpVersion(domain);
         }
       } else {
+        // SKIP explícito: el read fallido (null/stale) NO toca reported.
+        wlog("STORE", `SKIP setReported ${domain} (key=${key}, ${sub}) — unconfirmed, read=${JSON.stringify(confirm.value)}`);
         scheduleDelayedReRead(dest, domain, key, sub, source, writeId);
       }
     }
 
     const finalDomain = store.getDomain(domain);
-    wlog("STORE", `setReported ${domain} (key=${key})=${JSON.stringify(reported)} confirmed=${confirmed} (v${finalDomain.version})`);
+    if (confirmed) {
+      wlog("STORE", `setReported ${domain} (key=${key})=${JSON.stringify(reported)} confirmed=true (v${finalDomain.version})`);
+    }
 
     await store.write();
     return { ok: true, dest, source, sub, link, confirmed, reported };

@@ -50,7 +50,11 @@ const readsLimiter = rateLimit({
 });
 const writesLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 240, // la serialización del writeQueue acota el tráfico real
+  // Hotfix 5 (evidencia #908: 168 respuestas 429): el patrón legítimo es un
+  // batch de 29 writes por "Enviar" del operador, que puede repetir varias
+  // veces en 15 min (~8 batches agotaban los 240). El writeQueue sigue
+  // serializando el tráfico REAL al Arranger — el limiter solo acota POSTs.
+  max: 600,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, try again later" },

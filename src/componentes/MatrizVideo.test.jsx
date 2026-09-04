@@ -60,6 +60,8 @@ const baseState = {
 };
 
 const mockHandleZonasFueraChange = vi.fn();
+const mockGetOptimisticDomain = vi.fn(() => ({}));
+const mockRevertOptimistic = vi.fn();
 
 function renderWithContext(overrideValue = {}) {
   const contextValue = {
@@ -73,8 +75,11 @@ function renderWithContext(overrideValue = {}) {
     syncStatus: { status: "synced", lastSync: null },
     syncDiffs: [],
     // fix real-hardware A: los handlers aplican optimistic al snapshot del
-    // broker; en los tests es un no-op (no usamos el hook real).
+    // broker; en los tests es un no-op (no usamos el hook real). Hotfix 5:
+    // el rollback del optimistic en write fallido también es no-op aquí.
     applyOptimistic: vi.fn(),
+    getOptimisticDomain: mockGetOptimisticDomain,
+    revertOptimistic: mockRevertOptimistic,
     ...overrideValue,
   };
   return render(
@@ -276,6 +281,36 @@ describe("MatrizVideo", () => {
 
       // All 29 still attempted despite failures (allSettled never rejects)
       expect(mockSetTvSource.mock.calls.length).toBeGreaterThanOrEqual(29);
+
+      // Clean up mock
+      mockSetTvSource.mockResolvedValue({ ok: true, reported: "DTV1" });
+    });
+
+    it("reverts optimistic of failed writes and reports count on 429 (hotfix 5)", async () => {
+      // Un 429 por express-rate-limit: la API expone err.status (arrangerApi
+      // writeError). 3 de las 29 órdenes rechazadas → revert + toast con conteo.
+      const e429 = new Error("Too many requests, try again later");
+      e429.status = 429;
+      mockSetTvSource
+        .mockRejectedValueOnce(e429)
+        .mockRejectedValueOnce(e429)
+        .mockRejectedValueOnce(e429)
+        .mockResolvedValue({ ok: true, reported: "DTV1" });
+
+      const applyOptimistic = vi.fn();
+      const revertOptimistic = vi.fn();
+      renderWithContext({ applyOptimistic, revertOptimistic });
+
+      fireEvent.click(screen.getByText("Enviar"));
+
+      await vi.waitFor(() => {
+        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+      });
+
+      // El optimistic del batch se aplicó (patch de TVs) y el rollback de los
+      // fallidos se disparó con el overlay previo.
+      expect(applyOptimistic).toHaveBeenCalledWith("tvs", expect.objectContaining({ TV01: expect.any(String) }));
+      expect(revertOptimistic).toHaveBeenCalledWith("tvs", expect.any(Object), expect.any(Object));
 
       // Clean up mock
       mockSetTvSource.mockResolvedValue({ ok: true, reported: "DTV1" });

@@ -19,6 +19,17 @@
 // ── Cliente del broker ──
 
 /**
+ * Error de escritura con el status HTTP adjunto (hotfix 5): los handlers del
+ * cliente detectan el 429 del express-rate-limit por `err.status === 429` para
+ * elegir el mensaje del toast y revertir el optimistic update.
+ */
+function writeError(status, message) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+/**
  * Estado del broker (GET /api/broker/state). `since` (ej. "tvs:12,zonasFuera:3")
  * trae solo los dominios con versión mayor (polling de respaldo versionado).
  * @param {string} [since] — query versionada
@@ -48,7 +59,7 @@ export async function setTvSource(tvId, source) {
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Failed to set source for ${tvId}: ${response.status}`);
+    throw writeError(response.status, body.error || `Failed to set source for ${tvId}: ${response.status}`);
   }
   return response.json();
 }
@@ -80,7 +91,7 @@ export async function setTvrackVideo(deviceId) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ deviceId }),
   });
-  if (!response.ok) throw new Error("Failed to set TVRACK video");
+  if (!response.ok) throw writeError(response.status, "Failed to set TVRACK video");
   return response.json();
 }
 
@@ -90,7 +101,7 @@ export async function setTvrackAudio(deviceId) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ deviceId }),
   });
-  if (!response.ok) throw new Error("Failed to set TVRACK audio");
+  if (!response.ok) throw writeError(response.status, "Failed to set TVRACK audio");
   return response.json();
 }
 
@@ -100,7 +111,7 @@ export async function setTvrackLink(linked) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ linked }),
   });
-  if (!response.ok) throw new Error("Failed to set TVRACK link");
+  if (!response.ok) throw writeError(response.status, "Failed to set TVRACK link");
   return response.json();
 }
 
@@ -120,7 +131,7 @@ export async function setZonasFueraVideo(zoneId, deviceId) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ deviceId }),
   });
-  if (!response.ok) throw new Error(`Failed to set video for ${zoneId}: ${response.status}`);
+  if (!response.ok) throw writeError(response.status, `Failed to set video for ${zoneId}: ${response.status}`);
   return response.json();
 }
 
@@ -133,7 +144,7 @@ export async function setZonasFueraAudio(zoneId, deviceId) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ deviceId }),
   });
-  if (!response.ok) throw new Error(`Failed to set audio for ${zoneId}: ${response.status}`);
+  if (!response.ok) throw writeError(response.status, `Failed to set audio for ${zoneId}: ${response.status}`);
   return response.json();
 }
 
@@ -146,7 +157,7 @@ export async function setZonasFueraLink(zoneId, linked) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ linked }),
   });
-  if (!response.ok) throw new Error(`Failed to set link for ${zoneId}: ${response.status}`);
+  if (!response.ok) throw writeError(response.status, `Failed to set link for ${zoneId}: ${response.status}`);
   return response.json();
 }
 

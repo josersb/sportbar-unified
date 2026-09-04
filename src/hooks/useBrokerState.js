@@ -6,6 +6,7 @@ import {
   applyStateEvent,
   applySync,
   applyOptimistic,
+  revertOptimistic,
   applyPollBody,
   deriveVersions,
   nextPollDelay,
@@ -283,5 +284,33 @@ export function useBrokerState() {
     setSnapshot((prev) => applyOptimistic(prev, domain, patch));
   }, []);
 
-  return { snapshot, syncStatus, mode, connected, lastError, applyOptimistic: applyOptimisticState };
+  /**
+   * Overlay actual del dominio (para capturar el valor PREVIO justo antes del
+   * applyOptimistic y poder revertirlo si el POST responde error — hotfix 5,
+   * rollback del optimistic en 429/5xx/network, evidencia #908).
+   */
+  const getOptimisticDomain = useCallback(
+    (domain) => (snapshot?.optimistic?.[domain] ? JSON.parse(JSON.stringify(snapshot.optimistic[domain])) : {}),
+    [snapshot],
+  );
+
+  /**
+   * Rollback del optimistic update cuando el write falla (429/5xx/network):
+   * restaura las claves del patch al overlay previo; la UI vuelve al estado
+   * real del snapshot (el write fue rechazado antes de procesarse).
+   */
+  const revertOptimisticState = useCallback((domain, patch, prevOverlay) => {
+    setSnapshot((prev) => revertOptimistic(prev, domain, patch, prevOverlay));
+  }, []);
+
+  return {
+    snapshot,
+    syncStatus,
+    mode,
+    connected,
+    lastError,
+    applyOptimistic: applyOptimisticState,
+    getOptimisticDomain,
+    revertOptimistic: revertOptimisticState,
+  };
 }

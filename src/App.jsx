@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import { useBrokerState } from "./hooks/useBrokerState";
-import { deriveUiState, buildDiffsInfo } from "./hooks/brokerClientCore";
+import { deriveUiState, buildDiffsInfo, writeErrorMessage } from "./hooks/brokerClientCore";
 import {
   setAppState,
   setZonasFueraVideo,
@@ -19,7 +19,8 @@ const ESTADO_APP_KEY = "estadoApp";
 
 const App = () => {
   const toast = useToast();
-  const { snapshot, syncStatus, mode, connected, lastError, applyOptimistic } = useBrokerState();
+  const { snapshot, syncStatus, mode, connected, lastError, applyOptimistic, getOptimisticDomain, revertOptimistic } =
+    useBrokerState();
 
   // Estado app-only local (decos, dispositivos, audio, favoritos, descripcionPreset).
   // El server es dueño del estado app (appOnly.appState); la UI lo mantiene en
@@ -150,6 +151,10 @@ const App = () => {
   // el server encadena video+audio). Sin joins directos al Arranger.
   // Overlay optimista ANTES del POST: feedback visual inmediato (fix
   // real-hardware A); el SSE event del broker confirma/corrige y lo limpia.
+  // Hotfix 5: si el POST responde error (429/5xx/network), REVERTIMOS el
+  // optimistic al overlay previo y avisamos al operador — el write fue
+  // rechazado ANTES de procesarse, la UI no debe mostrar el cambio (evidencia
+  // #908: 168 respuestas 429 con la UI mostrando cambios que nunca ocurrieron).
   const handleZonasFueraChange = useCallback(
     async (zoneId, type, deviceId) => {
       try {
@@ -159,24 +164,36 @@ const App = () => {
             type === "video"
               ? { video: deviceId, ...(zoneLink ? { audio: deviceId } : {}) }
               : { audio: deviceId, ...(zoneLink ? { video: deviceId } : {}) };
+          const prevOverlay = getOptimisticDomain("zonasFuera");
           applyOptimistic("zonasFuera", { [zoneId]: optimisticPatch });
-          const response =
-            type === "video"
-              ? await setZonasFueraVideo(zoneId, deviceId)
-              : await setZonasFueraAudio(zoneId, deviceId);
-          setZonasFueraState((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], ...response } }));
-          toast.success(`${deviceId} → ${type.toUpperCase()} ${zoneId}`);
+          try {
+            const response =
+              type === "video"
+                ? await setZonasFueraVideo(zoneId, deviceId)
+                : await setZonasFueraAudio(zoneId, deviceId);
+            setZonasFueraState((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], ...response } }));
+            toast.success(`${deviceId} → ${type.toUpperCase()} ${zoneId}`);
+          } catch (err) {
+            revertOptimistic("zonasFuera", { [zoneId]: optimisticPatch }, prevOverlay);
+            toast.error(writeErrorMessage(err, `video/audio → ${zoneId}`));
+          }
         } else if (type === "link") {
-          applyOptimistic("zonasFuera", { [zoneId]: { link: deviceId } });
-          const response = await setZonasFueraLink(zoneId, deviceId);
-          setZonasFueraState((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], ...response } }));
+          const linkPatch = { [zoneId]: { link: deviceId } };
+          const prevOverlay = getOptimisticDomain("zonasFuera");
+          applyOptimistic("zonasFuera", linkPatch);
+          try {
+            const response = await setZonasFueraLink(zoneId, deviceId);
+            setZonasFueraState((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], ...response } }));
+          } catch (err) {
+            revertOptimistic("zonasFuera", linkPatch, prevOverlay);
+            toast.error(writeErrorMessage(err, `link → ${zoneId}`));
+          }
         }
       } catch (err) {
         console.error(`[zonas-fuera] Error en ${type} para ${zoneId}:`, err);
-        toast.error(`Error al cambiar ${type} en ${zoneId}`);
       }
     },
-    [toast, zonasFueraState, applyOptimistic],
+    [toast, zonasFueraState, applyOptimistic, getOptimisticDomain, revertOptimistic],
   );
 
   const reintentarDecos = useCallback(() => {
@@ -206,6 +223,8 @@ const App = () => {
       handleZonasFueraChange,
       reintentarDecos,
       applyOptimistic,
+      getOptimisticDomain,
+      revertOptimistic,
       syncDiffs: buildDiffsInfo(snapshot),
     }),
     [
@@ -227,6 +246,8 @@ const App = () => {
       handleZonasFueraChange,
       reintentarDecos,
       applyOptimistic,
+      getOptimisticDomain,
+      revertOptimistic,
     ],
   );
 

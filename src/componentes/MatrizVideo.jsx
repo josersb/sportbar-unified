@@ -4,7 +4,7 @@ import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import { setTvSource, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
-import { collapseGroup, GROUP_DEFS } from "../hooks/brokerClientCore";
+import { collapseGroup, GROUP_DEFS, writeErrorMessage } from "../hooks/brokerClientCore";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
@@ -48,6 +48,8 @@ const MatrizVideo = () => {
     handleZonasFueraChange,
     syncStatus,
     applyOptimistic,
+    getOptimisticDomain,
+    revertOptimistic,
   } = useContext(ContextoUser);
 
   const tvs = estado.tvs || {};
@@ -61,6 +63,8 @@ const MatrizVideo = () => {
   // activo el server encadena video+audio (executeWrite), sin joins cliente.
   // Overlay optimista ANTES del POST (fix real-hardware A): feedback visual
   // inmediato. El SSE event del broker confirma/corrige y lo limpia.
+  // Hotfix 5: POST con error (429/5xx/network) → revert del optimistic al
+  // overlay previo + toast al operador (evidencia #908).
   const handleTvrackBtn = (type, deviceId) => async () => {
     const isVideo = type === "video";
     if (isVideo) setLoadingVideoBtn(deviceId);
@@ -70,6 +74,7 @@ const MatrizVideo = () => {
     const optimisticPatch = isVideo
       ? { video: deviceId, ...(tvrackState.link ? { audio: deviceId } : {}) }
       : { audio: deviceId };
+    const prevOverlay = getOptimisticDomain("tvrack");
     applyOptimistic("tvrack", optimisticPatch);
 
     try {
@@ -82,8 +87,9 @@ const MatrizVideo = () => {
           ? `${deviceId} → VIDEO + AUDIO TVRACK`
           : `${deviceId} → ${type.toUpperCase()} TVRACK`
       );
-    } catch {
-      toast.error(`Error al asignar ${isVideo ? "video" : "audio"}`);
+    } catch (err) {
+      revertOptimistic("tvrack", optimisticPatch, prevOverlay);
+      toast.error(writeErrorMessage(err, `${type.toUpperCase()} → TVRACK`));
     }
 
     if (isVideo) setLoadingVideoBtn(null);
@@ -93,13 +99,17 @@ const MatrizVideo = () => {
   const handleLinkToggle = async (e) => {
     const linked = e.target.checked;
     // Optimistic del link (app-only): el server lo persiste y broadcastea
-    // como event de appOnly; el SSE confirma/corrige.
-    applyOptimistic("tvrack", { link: linked });
+    // como event de appOnly; el SSE confirma/corrige. Hotfix 5: error en el
+    // POST → revert del optimistic + toast.
+    const linkPatch = { link: linked };
+    const prevOverlay = getOptimisticDomain("tvrack");
+    applyOptimistic("tvrack", linkPatch);
     try {
       const newState = await setTvrackLink(linked);
       handleChangeTvrack(newState);
-    } catch {
-      toast.error("Error al cambiar el link de TVRACK");
+    } catch (err) {
+      revertOptimistic("tvrack", linkPatch, prevOverlay);
+      toast.error(writeErrorMessage(err, "link TVRACK"));
     }
   };
 
@@ -427,7 +437,12 @@ const MatrizVideo = () => {
             // visual inmediato. El SSE event del broker confirma/corrige y lo
             // limpia. Sin estado local optimista en setEstado — el snapshot
             // SSE es la fuente de verdad.
+            // Hotfix 5: los POSTs que fallan (429/5xx/network) se revierten
+            // del optimistic individualmente + toast con el conteo — la UI
+            // nunca muestra cambios que el server rechazó (evidencia #908).
             const mappings = DESTINOS_TV.map((tv) => ({ dest: tv, source: newTvs[tv] }));
+            const prevOverlay = getOptimisticDomain("tvs");
+            const appliedPatches = [];
             try {
               // Aplicar optimistic de TODAS las TVs del submit en una sola
               // pasada (UI se actualiza instantáneamente con la intención del
@@ -438,16 +453,49 @@ const MatrizVideo = () => {
               }
               if (Object.keys(tvsOptimisticPatch).length > 0) {
                 applyOptimistic("tvs", tvsOptimisticPatch);
+                appliedPatches.push(tvsOptimisticPatch);
               }
               const BATCH_SIZE = 8;
+              const failures = [];
               for (let i = 0; i < mappings.length; i += BATCH_SIZE) {
                 const batch = mappings.slice(i, i + BATCH_SIZE);
-                await Promise.allSettled(
+                const results = await Promise.allSettled(
                   batch.map(({ dest, source }) => setTvSource(dest, source))
                 );
+                results.forEach((r, j) => {
+                  if (r.status === "rejected") failures.push({ ...batch[j], err: r.reason });
+                });
               }
-              toast.success("Matriz de video actualizada");
+              if (failures.length === 0) {
+                toast.success("Matriz de video actualizada");
+              } else {
+                // Rollback de SOLO los fallidos: revert del patch completo
+                // contra el overlay previo capturado antes del batch restaura
+                // las claves fallidas a su valor pre-submit; los exitosos
+                // conservan su optimistic hasta la confirmación SSE.
+                const failedPatch = {};
+                for (const { dest, source } of failures) {
+                  if (source) failedPatch[dest] = source;
+                }
+                if (Object.keys(failedPatch).length > 0) {
+                  revertOptimistic("tvs", failedPatch, prevOverlay);
+                }
+                const rateLimited = failures.some((f) => f.err && f.err.status === 429);
+                if (rateLimited) {
+                  toast.error(
+                    `${failures.length} de ${mappings.length} órdenes no fueron procesadas por límite de tasa — esperá unos segundos y reenviá`,
+                  );
+                } else {
+                  toast.error(
+                    `${failures.length} de ${mappings.length} órdenes no fueron procesadas — revisá la conexión y reintentá`,
+                  );
+                }
+              }
             } catch {
+              // Rollback total (defensa: allSettled no debería rechazar).
+              for (const patch of appliedPatches) {
+                revertOptimistic("tvs", patch, prevOverlay);
+              }
               toast.error("Error al actualizar la matriz de video");
             }
           }}

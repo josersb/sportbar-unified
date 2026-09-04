@@ -456,6 +456,79 @@ export function applyOptimistic(prev, domain, patch) {
 }
 
 /**
+ * Revierte un patch aplicado por applyOptimistic — rollback del optimistic
+ * update cuando el POST del write responde error (429/5xx/network, hotfix 5:
+ * evidencia #908, 168 respuestas 429 con la UI mostrando cambios que nunca
+ * ocurrieron). Restaura las claves del patch a su valor PREVIO en el overlay
+ * (`prevOverlay`, capturado por el handler justo antes del applyOptimistic):
+ * las claves que no estaban se eliminan del overlay; las que tenían otro
+ * valor (otro write pendiente a la misma clave) se restauran a ese valor.
+ * Las claves ajenas al patch NO se tocan — otros writes pendientes del mismo
+ * dominio sobreviven (mismo merge-por-clave de applyOptimistic).
+ *
+ * La UI vuelve al valor reported/desired del snapshot local (el write fue
+ * rechazado ANTES de procesarse: el server nunca cambió su store, así que el
+ * snapshot local sigue siendo la verdad).
+ */
+export function revertOptimistic(prev, domain, patch, prevOverlay) {
+  if (!domain || !DOMAIN_KEYS.includes(domain)) return prev;
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) return prev;
+  const before = prevOverlay && typeof prevOverlay === "object" ? prevOverlay : {};
+  const optimistic = { ...(prev.optimistic || {}) };
+  if (domain === "zonasFuera") {
+    const zoneOpt = { ...(optimistic.zonasFuera || {}) };
+    for (const [zoneId, zonePatch] of Object.entries(patch)) {
+      if (!zonePatch || typeof zonePatch !== "object" || Array.isArray(zonePatch)) continue;
+      const restored = { ...(zoneOpt[zoneId] || {}) };
+      const beforeZone = before[zoneId] && typeof before[zoneId] === "object" ? before[zoneId] : {};
+      for (const k of Object.keys(zonePatch)) {
+        if (Object.prototype.hasOwnProperty.call(beforeZone, k)) restored[k] = beforeZone[k];
+        else delete restored[k];
+      }
+      if (Object.keys(restored).length > 0) zoneOpt[zoneId] = restored;
+      else delete zoneOpt[zoneId];
+    }
+    if (Object.keys(zoneOpt).length > 0) optimistic.zonasFuera = zoneOpt;
+    else delete optimistic.zonasFuera;
+  } else {
+    const domainOpt = { ...(optimistic[domain] || {}) };
+    for (const k of Object.keys(patch)) {
+      if (Object.prototype.hasOwnProperty.call(before, k)) domainOpt[k] = before[k];
+      else delete domainOpt[k];
+    }
+    if (Object.keys(domainOpt).length > 0) optimistic[domain] = domainOpt;
+    else delete optimistic[domain];
+  }
+  // Auditoría (mismo ring buffer que applyOptimistic).
+  if (isLoggingEnabled()) {
+    pushLog(logBuffer.optimistic, { kind: "revert", domain, patch });
+    clientLog(`OPTIMISTIC revert ${domain}=${JSON.stringify(patch)} (write falló: rollback al overlay previo)`);
+  }
+  return { ...prev, optimistic };
+}
+
+/**
+ * Mensaje de error para toasts de escritura fallida (hotfix 5): distingue
+ * rate limit (429, formato estándar de express-rate-limit), error del server
+ * (5xx) y network/otros. El handler detecta el 429 por `err.status === 429`
+ * (las funciones de arrangerApi lo exponen).
+ *
+ * @param {Error} err - error del POST (con .status cuando el server respondió)
+ * @param {string} [action] - etiqueta de la acción ("video DTV3 → TVRACK")
+ * @returns {string} mensaje para el operador
+ */
+export function writeErrorMessage(err, action = "") {
+  const label = action ? ` ${action}` : "";
+  if (err && err.status === 429) {
+    return `Error al enviar${label}: la orden no fue procesada (rate limit). Reintentá en unos segundos.`;
+  }
+  if (err && typeof err.status === "number" && err.status >= 500) {
+    return `Error al enviar${label}: el servidor no pudo procesar la orden (${err.status}).`;
+  }
+  return `Error al enviar${label}: la orden no fue procesada.`;
+}
+
+/**
  * Merge de una respuesta de poll versionado: solo trae dominios con version
  * mayor que `since`, más sync/versions/appOnly frescos. El poll trae la verdad
  * del server: descarta el overlay optimista de los dominios presentes (los no

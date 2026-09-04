@@ -22,6 +22,8 @@ import {
   applySync,
   applyPollBody,
   applyOptimistic,
+  revertOptimistic,
+  writeErrorMessage,
   nextPollDelay,
   deriveUiState,
   buildDiffsInfo,
@@ -207,6 +209,96 @@ function check(name, cond) {
     "opt: zonasFuera confirmación limpia la clave (overlay de la zona vacío)",
     st.optimistic.zonasFuera?.["aVip-Barra-Centro"] === undefined,
   );
+}
+
+// ── 4c. Rollback del optimistic en write fallido (hotfix 5, evidencia #908) ──
+{
+  let st = applySnapshot({}, {
+    schemaVersion: 3,
+    sync: { status: "synced", lastSync: null },
+    versions: { tvs: 1 },
+    domains: {
+      tvs: { desired: { TV01: "DTV1", TV02: "DTV1" }, reported: { TV01: "DTV1", TV02: "DTV1" }, version: 1, lastUpdated: "x" },
+    },
+    appOnly: {},
+  });
+
+  // Rollback de un apply simple: el POST 429 → la clave vuelve al estado real
+  // del snapshot (overlay vacío), reported/desired intactos.
+  const prev0 = {};
+  st = applyOptimistic(st, "tvs", { TV01: "DTV3" });
+  check("revert: apply optimistic TV01=DTV3 (overlay)", st.optimistic.tvs?.TV01 === "DTV3");
+  st = revertOptimistic(st, "tvs", { TV01: "DTV3" }, prev0);
+  check("revert: rollback 429 limpia la clave (overlay vacío)", st.optimistic.tvs === undefined);
+  check("revert: UI vuelve al reported real (TV01=DTV1)", deriveUiState(st).tvs.TV01 === "DTV1");
+
+  // Rollback convive con otros writes pendientes: solo la clave fallida se
+  // revierte; el write pendiente de OTRA clave sobrevive.
+  const prev1 = {}; // overlay vacío antes del batch
+  st = applyOptimistic(st, "tvs", { TV01: "DTV4", TV02: "DTV5" });
+  const prev2 = JSON.parse(JSON.stringify(st.optimistic.tvs)); // TV01/TV02 pendientes
+  st = applyOptimistic(st, "tvs", { TV03: "DTV6" }); // un write más
+  check(
+    "revert: precondición — 3 claves pendientes en el overlay",
+    st.optimistic.tvs?.TV01 === "DTV4" && st.optimistic.tvs?.TV02 === "DTV5" && st.optimistic.tvs?.TV03 === "DTV6",
+  );
+  // El POST de TV03 falla con 429 → revert SOLO de TV03 contra el overlay previo.
+  st = revertOptimistic(st, "tvs", { TV03: "DTV6" }, prev2);
+  check(
+    "revert: solo la clave fallida se revierte — TV03 fuera, TV01/TV02 pendientes",
+    st.optimistic.tvs?.TV03 === undefined && st.optimistic.tvs?.TV01 === "DTV4" && st.optimistic.tvs?.TV02 === "DTV5",
+  );
+
+  // Rollback restaura el valor PREVIO del overlay (no lo vacía si había otro
+  // write pendiente a la misma clave).
+  st = revertOptimistic(st, "tvs", { TV01: "DTV4" }, prev1);
+  check(
+    "revert: clave con overlay previo restaurada a ese valor (TV01 sin overlay)",
+    st.optimistic.tvs?.TV01 === undefined && st.optimistic.tvs?.TV02 === "DTV5",
+  );
+
+  // tvrack: rollback de video con link pendiente — el link (otra clave) sobrevive.
+  let stv = applySnapshot({}, {
+    schemaVersion: 3,
+    sync: { status: "synced", lastSync: null },
+    versions: { tvrack: 1 },
+    domains: {
+      tvrack: { desired: { video: "DTV1", audio: "DTV1" }, reported: { video: "DTV1", audio: "DTV1" }, version: 1, lastUpdated: "x" },
+    },
+    appOnly: { tvrack: { link: false } },
+  });
+  const prevV = {};
+  stv = applyOptimistic(stv, "tvrack", { video: "DTV3" });
+  stv = applyOptimistic(stv, "tvrack", { link: true });
+  check("revert: precondición tvrack — video + link pendientes", stv.optimistic.tvrack?.video === "DTV3" && stv.optimistic.tvrack?.link === true);
+  stv = revertOptimistic(stv, "tvrack", { video: "DTV3" }, prevV);
+  check(
+    "revert: video revertido, link pendiente sobrevive",
+    stv.optimistic.tvrack?.video === undefined && stv.optimistic.tvrack?.link === true,
+  );
+  check("revert: UI tvrack vuelve a video real DTV1", deriveUiState(stv).tvrackState.video === "DTV1");
+
+  // zonasFuera: rollback de video de una zona — la otra zona y el link sobreviven.
+  let stz = applyOptimistic(stv, "zonasFuera", { "aVip-Barra-Centro": { video: "DTV5" } });
+  stz = applyOptimistic(stz, "zonasFuera", { "a-Menos1-Escenario": { video: "DTV7" } });
+  const prevZ = JSON.parse(JSON.stringify(stz.optimistic.zonasFuera));
+  stz = applyOptimistic(stz, "zonasFuera", { "aVip-Barra-Centro": { link: true } });
+  stz = revertOptimistic(stz, "zonasFuera", { "aVip-Barra-Centro": { link: true } }, prevZ);
+  check(
+    "revert: zonasFuera link revertido, video pendiente de la zona + otra zona intactos",
+    stz.optimistic.zonasFuera?.["aVip-Barra-Centro"]?.video === "DTV5" &&
+      stz.optimistic.zonasFuera?.["aVip-Barra-Centro"]?.link === undefined &&
+      stz.optimistic.zonasFuera?.["a-Menos1-Escenario"]?.video === "DTV7",
+  );
+
+  // writeErrorMessage: 429 vs 5xx vs network.
+  const e429 = new Error("x"); e429.status = 429;
+  const e500 = new Error("x"); e500.status = 502;
+  const eNet = new Error("Failed to fetch");
+  check("msg: 429 → rate limit con retry", /rate limit/i.test(writeErrorMessage(e429)) && /Reintentá/.test(writeErrorMessage(e429)));
+  check("msg: 5xx → servidor no procesó", /servidor no pudo procesar/.test(writeErrorMessage(e500)) && /502/.test(writeErrorMessage(e500)));
+  check("msg: network → genérico no procesada", /no fue procesada/.test(writeErrorMessage(eNet)));
+  check("msg: acción opcional incluida", writeErrorMessage(e429, "VIDEO → TVRACK").includes("VIDEO → TVRACK"));
 }
 
 // ── 5. applySync ──

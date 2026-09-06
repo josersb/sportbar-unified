@@ -3,12 +3,16 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ProviderUser } from "../contexto/Contexto";
 import MatrizPreset from "./MatrizPreset";
 
-const { mockJoinMultipleTVs } = vi.hoisted(() => ({
-  mockJoinMultipleTVs: vi.fn().mockResolvedValue(undefined),
+const { mockSavePreset, mockLoadPreset, mockDeletePresetServer } = vi.hoisted(() => ({
+  mockSavePreset: vi.fn().mockResolvedValue({ ok: true }),
+  mockLoadPreset: vi.fn().mockResolvedValue({ ok: true, applied: 30, failed: 0 }),
+  mockDeletePresetServer: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 vi.mock("../api/arrangerApi", () => ({
-  joinMultipleTVs: mockJoinMultipleTVs,
+  savePreset: mockSavePreset,
+  loadPreset: mockLoadPreset,
+  deletePresetServer: mockDeletePresetServer,
 }));
 
 const presetTvs = {
@@ -40,6 +44,9 @@ function renderWithContext(overrideValue = {}) {
     estado: baseState,
     handleChangeEstadoVideo: vi.fn(),
     handleChangeEstadoPreset: vi.fn(),
+    tvrackState: { video: "DTV1", audio: "DTV1", link: false },
+    zonasFueraState: {},
+    syncStatus: { status: "synced", lastSync: null },
     ...overrideValue,
   };
   return render(
@@ -52,13 +59,20 @@ function renderWithContext(overrideValue = {}) {
 describe("MatrizPreset", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock fetch: preset 1 exists, presets 2-5 are null
-    vi.stubGlobal("fetch", vi.fn((url) => {
+    localStorage.clear();
+    // Mock fetch: preset 1 exists, presets 2-5 are null; POST /load responde ok
+    vi.stubGlobal("fetch", vi.fn((url, options) => {
       const match = url.match(/\/api\/presets\/(\d)$/);
       if (match && match[1] === "1") {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ preset: presetState }),
+        });
+      }
+      if (url.endsWith("/load")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, applied: 30, failed: 0 }),
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ preset: null }) });
@@ -80,9 +94,8 @@ describe("MatrizPreset", () => {
     expect(screen.getAllByText("Libre")).toHaveLength(4);
   });
 
-  it("carga Preset 1 y llama joinMultipleTVs con 29 mappings", async () => {
-    const handleChangeEstadoVideo = vi.fn();
-    renderWithContext({ handleChangeEstadoVideo });
+  it("carga Preset 1 vía load server-side (POST /api/presets/1/load)", async () => {
+    renderWithContext();
 
     await waitFor(() => {
       expect(screen.getByText("1 de 5 presets en uso")).toBeTruthy();
@@ -91,13 +104,10 @@ describe("MatrizPreset", () => {
     fireEvent.click(screen.getAllByText("Cargar")[0]);
 
     await waitFor(() => {
-      expect(mockJoinMultipleTVs).toHaveBeenCalled();
+      expect(mockLoadPreset).toHaveBeenCalledWith(1);
     });
 
-    expect(mockJoinMultipleTVs).toHaveBeenCalledTimes(1);
-    const mappings = mockJoinMultipleTVs.mock.calls[0][0];
-    expect(mappings).toHaveLength(29);
-    expect(mappings[0]).toEqual({ source: "DTV1", dest: "VW-Norte" });
+    expect(mockLoadPreset).toHaveBeenCalledTimes(1);
   });
 
   it("botón Cargar está disabled si el preset está libre", async () => {

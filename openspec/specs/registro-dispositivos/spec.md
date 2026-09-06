@@ -1,7 +1,7 @@
 # registro-dispositivos Specification
 
 ## Purpose
-Typed device registry replacing flat `estado.decos[]`. Each IPEX5001 is defined with metadata and auto-detected capabilities from Arranger `get status` streams (VIDEO/AUDIO/IR/SERIAL/USB), falling back to manual config.
+Typed device registry replacing flat `estado.decos[]`. Each IPEX5001 is defined with metadata and manual capabilities declared in `dispositivos.js` (sin detección automática por `get status`, FW-locked v1.3.4).
 
 ## Requirements
 
@@ -19,7 +19,8 @@ Typed device registry replacing flat `estado.decos[]`. Each IPEX5001 is defined 
 - THEN all UI components reflect new device automatically
 
 ### Requirement: Hybrid Capability Detection
-System MUST auto-detect capabilities via `getDeviceStatus()` (Arranger `get status`), merging with manual config. If Arranger unreachable, manual config SHALL serve as fallback.
+
+Las capabilities MUST ser manual-only: declaradas en el registro `dispositivos.js`. No SHALL haber detección automática vía `getDeviceStatus()` (código muerto) ni `get status` (FW-locked v1.3.4).
 
 | Stream | Capability |
 |--------|-----------|
@@ -28,23 +29,19 @@ System MUST auto-detect capabilities via `getDeviceStatus()` (Arranger `get stat
 | IR | `channelControl` |
 | SERIAL | `serialGateway` |
 
-#### Scenario: Auto-detection succeeds
-- GIVEN Arranger reachable at 192.168.2.254
-- WHEN app initializes → `getDeviceStatus()` called per device
-- THEN capabilities derived from active streams
-- AND auto-detected override manual config
+(Previously: auto-detección vía `getDeviceStatus()` con merge sobre config manual y fallback)
 
-#### Scenario: Arranger unreachable — fallback
-- GIVEN Arranger not responding
-- WHEN app initializes
-- THEN manual config capabilities from `dispositivos.js` used
-- AND app functions normally
+#### Scenario: Capabilities desde registro manual
 
-#### Scenario: Streams change between sessions
-- GIVEN device had IR active previously
-- WHEN Arranger reports IR inactive (equipment disconnected)
-- THEN `channelControl` removed for that device
-- AND UI adapts on next reload
+- GIVEN `dispositivos.js` declara capabilities por dispositivo
+- WHEN un componente consulta capabilities
+- THEN usa las del registro manual, sin llamada al Arranger
+
+#### Scenario: Cambio de equipment actualiza registro
+
+- GIVEN un dispositivo cambia de equipo (IR desconectado)
+- WHEN el operador actualiza `dispositivos.js`
+- THEN la UI refleja la nueva capability al recargar
 
 ### Requirement: Destination Registration
 The system SHALL register IPEX5002 decoder destinations alongside IPEX5001 source devices. A helper function MUST expose the full destination list to components.

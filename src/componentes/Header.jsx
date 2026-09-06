@@ -1,44 +1,20 @@
 import { useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
-import { isStaleSync } from "../hooks/useArrangerReconciliation";
 import { SYNC_PANEL_TOGGLE_EVENT } from "./SyncPanel";
 import styles from "./Header.module.css";
 import ThemeToggle from "./ThemeToggle";
 
+const STATUS_META = {
+  synced: { icon: "✅", label: "Sincronizado", modifier: "syncOk" },
+  stale: { icon: "⏳", label: "Datos del último arranque", modifier: "syncStale" },
+  out_of_sync: { icon: "⚠️", label: "Diferencias con Arranger", modifier: "syncWarn" },
+  offline: { icon: "❌", label: "Arranger offline", modifier: "syncError" },
+};
+
 const Header = () => {
-  const { reconciliationStatus } = useContext(ContextoUser);
-  const { status = "idle", diffs = [], lastSync = null } = reconciliationStatus || {};
-
-  const busy = status === "fetching" || status === "comparing";
-
-  // PR3 4.5: nunca sincronizado o hace >1 h → indicador stale con pulse sutil.
-  const stale = !busy && status !== "error" && isStaleSync(lastSync);
-
-  // Mini indicador de sincronización (AR-R4, UX-ADD3): ✅ / ⚠️ N / 🔄 / ❌ / ⚠️ stale
-  let icon = "•";
-  let label = "Sin sincronizar";
-  let modifier = "";
-  if (busy) {
-    icon = "🔄";
-    label = "Sincronizando…";
-    modifier = styles.syncActive;
-  } else if (status === "error") {
-    icon = "❌";
-    label = "Error de sincronización";
-    modifier = styles.syncError;
-  } else if (status === "done" && diffs.length > 0) {
-    icon = "⚠️";
-    label = `${diffs.length} diferencia(s)`;
-    modifier = styles.syncWarn;
-  } else if (stale) {
-    icon = "⚠️";
-    label = lastSync ? "Datos desactualizados" : "Nunca sincronizado";
-    modifier = styles.syncStale;
-  } else if (status === "done") {
-    icon = "✅";
-    label = "Todo sincronizado";
-    modifier = styles.syncOk;
-  }
+  const { syncStatus = { status: "stale", lastSync: null } } = useContext(ContextoUser);
+  const status = syncStatus.status || "stale";
+  const meta = STATUS_META[status] || STATUS_META.stale;
 
   return (
     <header className={styles.header} role="banner">
@@ -54,15 +30,12 @@ const Header = () => {
         <div className={styles.headerRight}>
           <button
             type="button"
-            className={`${styles.syncIndicator} ${modifier}`}
+            className={`${styles.syncIndicator} ${styles[meta.modifier]}`}
             onClick={() => window.dispatchEvent(new CustomEvent(SYNC_PANEL_TOGGLE_EVENT))}
-            aria-label={`Estado de sincronización: ${label}`}
-            title={label}
+            aria-label={`Estado de sincronización: ${meta.label}`}
+            title={meta.label}
           >
-            {icon}
-            {status === "done" && diffs.length > 0 && (
-              <span className={styles.syncCount}>{diffs.length}</span>
-            )}
+            {meta.icon}
           </button>
           <ThemeToggle />
           <img

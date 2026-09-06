@@ -4,70 +4,52 @@ import { ProviderUser } from "../contexto/Contexto";
 import MatrizVideo from "./MatrizVideo";
 
 // vi.mock is hoisted to top of file — use vi.hoisted for variables the factory needs
-const { mockJoinMultipleTVs, mockAssignSourceToDestination, mockAssignVideoSource, mockAssignAudioSource, mockFetchTvrackState, mockSetTvrackVideo, mockSetTvrackAudio, mockSetTvrackLink } = vi.hoisted(() => ({
-  mockJoinMultipleTVs: vi.fn().mockResolvedValue(undefined),
-  mockAssignSourceToDestination: vi.fn().mockResolvedValue(undefined),
-  mockAssignVideoSource: vi.fn().mockResolvedValue(undefined),
-  mockAssignAudioSource: vi.fn().mockResolvedValue(undefined),
-  mockFetchTvrackState: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
+const { mockSetTvSource, mockSetTvrackVideo, mockSetTvrackAudio, mockSetTvrackLink } = vi.hoisted(() => ({
+  mockSetTvSource: vi.fn().mockResolvedValue({ ok: true, reported: "DTV1" }),
   mockSetTvrackVideo: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
   mockSetTvrackAudio: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
   mockSetTvrackLink: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
 }));
 
 vi.mock("../api/arrangerApi", () => ({
-  joinMultipleTVs: mockJoinMultipleTVs,
-  assignSourceToDestination: mockAssignSourceToDestination,
-  assignVideoSource: mockAssignVideoSource,
-  assignAudioSource: mockAssignAudioSource,
-  fetchTvrackState: mockFetchTvrackState,
+  setTvSource: mockSetTvSource,
   setTvrackVideo: mockSetTvrackVideo,
   setTvrackAudio: mockSetTvrackAudio,
   setTvrackLink: mockSetTvrackLink,
 }));
 
-// TV values — each zone uses a different spread pattern so we can verify mapping correctness
+// TV values — cada zona usa un patrón distinto para verificar el mapeo.
+// PR 3: sin keys legacy (TvsBarra*, TvsEscalera*, TVRACK) — solo TVs reales.
 const initialTvs = {
   VWN: "DTV1",
   VWC: "DTV2",
   VWS: "DTV3",
-  TVRACK: "DTV1",
-  TvsBarraLivertador: "DTV123", // → TV01=DTV1, TV02=DTV2, TV03=DTV3
-  TvsBarraSur: "DTV1234", // → TV04=DTV1, TV05=DTV2, TV06=DTV3, TV07=DTV4
-  TvsBarraPista: "DTV123", // → TV08=DTV1, TV09=DTV2, TV10=DTV3
-  TvsBarraNorte: "DTV1234", // → TV11=DTV1, TV12=DTV2, TV13=DTV3, TV14=DTV4
-  TvsEscaleraNorte: "DTV1234", // → TV23=DTV1, TV24=DTV2, TV25=DTV3, TV26=DTV4
-  TvsEscaleraCentro: "DTV1234", // → TV19=DTV1, TV20=DTV2, TV21=DTV3, TV22=DTV4
-  TvsEscaleraSur: "DTV1234", // → TV15=DTV1, TV16=DTV2, TV17=DTV3, TV18=DTV4
-  // Placeholder TV values (will be overwritten by switch/case in onSubmit)
   TV01: "DTV1",
-  TV02: "DTV1",
-  TV03: "DTV1",
+  TV02: "DTV2",
+  TV03: "DTV3",
   TV04: "DTV1",
-  TV05: "DTV1",
-  TV06: "DTV1",
-  TV07: "DTV1",
+  TV05: "DTV2",
+  TV06: "DTV3",
+  TV07: "DTV4",
   TV08: "DTV1",
-  TV09: "DTV1",
-  TV10: "DTV1",
+  TV09: "DTV2",
+  TV10: "DTV3",
   TV11: "DTV1",
-  TV12: "DTV1",
-  TV13: "DTV1",
-  TV14: "DTV1",
+  TV12: "DTV2",
+  TV13: "DTV3",
+  TV14: "DTV4",
   TV15: "DTV1",
-  TV16: "DTV1",
-  TV17: "DTV1",
-  TV18: "DTV1",
+  TV16: "DTV2",
+  TV17: "DTV3",
+  TV18: "DTV4",
   TV19: "DTV1",
-  TV20: "DTV1",
-  TV21: "DTV1",
-  TV22: "DTV1",
+  TV20: "DTV2",
+  TV21: "DTV3",
+  TV22: "DTV4",
   TV23: "DTV1",
-  TV24: "DTV1",
-  TV25: "DTV1",
-  TV26: "DTV1",
-  // Zonas adicionales removidas — ahora en zonasFueraState independiente
-  // Ver: zonas-fuera-botones-independientes SDD
+  TV24: "DTV2",
+  TV25: "DTV3",
+  TV26: "DTV4",
 };
 
 const baseState = {
@@ -78,6 +60,8 @@ const baseState = {
 };
 
 const mockHandleZonasFueraChange = vi.fn();
+const mockGetOptimisticDomain = vi.fn(() => ({}));
+const mockRevertOptimistic = vi.fn();
 
 function renderWithContext(overrideValue = {}) {
   const contextValue = {
@@ -88,14 +72,14 @@ function renderWithContext(overrideValue = {}) {
     handleChangeTvrack: vi.fn(),
     zonasFueraState: {},
     handleZonasFueraChange: mockHandleZonasFueraChange,
-    reconciliationStatus: {
-      status: "idle",
-      progress: { done: 0, total: 0, subscription: "video" },
-      diffs: [],
-      elapsedMs: 0,
-      lastSync: null,
-      reconcile: vi.fn(),
-    },
+    syncStatus: { status: "synced", lastSync: null },
+    syncDiffs: [],
+    // fix real-hardware A: los handlers aplican optimistic al snapshot del
+    // broker; en los tests es un no-op (no usamos el hook real). Hotfix 5:
+    // el rollback del optimistic en write fallido también es no-op aquí.
+    applyOptimistic: vi.fn(),
+    getOptimisticDomain: mockGetOptimisticDomain,
+    revertOptimistic: mockRevertOptimistic,
     ...overrideValue,
   };
   return render(
@@ -116,14 +100,14 @@ describe("MatrizVideo", () => {
       "DTV1", "DTV2", "DTV3", "DTV4",
       "DTV5", "DTV6", "DTV7", "DTV8",
     ])(
-      "calls assignVideoSource(%s, TVRACK) when video %s button is clicked",
+      "calls setTvrackVideo(%s) when video %s button is clicked (write-through broker)",
       async (dtv) => {
         renderWithContext();
 
         fireEvent.click(screen.getByTestId(`btn-video-${dtv}`));
 
         await vi.waitFor(() => {
-          expect(mockAssignVideoSource).toHaveBeenCalledWith(dtv, "TVRACK");
+          expect(mockSetTvrackVideo).toHaveBeenCalledWith(dtv);
         });
       }
     );
@@ -132,30 +116,30 @@ describe("MatrizVideo", () => {
       "DTV1", "DTV2", "DTV3", "DTV4",
       "DTV5", "DTV6", "DTV7", "DTV8",
     ])(
-      "calls assignAudioSource(%s, TVRACK) when audio %s button is clicked",
+      "calls setTvrackAudio(%s) when audio %s button is clicked (write-through broker)",
       async (dtv) => {
         renderWithContext();
 
         fireEvent.click(screen.getByTestId(`btn-audio-${dtv}`));
 
         await vi.waitFor(() => {
-          expect(mockAssignAudioSource).toHaveBeenCalledWith(dtv, "TVRACK");
+          expect(mockSetTvrackAudio).toHaveBeenCalledWith(dtv);
         });
       }
     );
 
-    it("does NOT crash when assignVideoSource fails", async () => {
-      mockAssignVideoSource.mockRejectedValueOnce(new Error("Network error"));
+    it("does NOT crash when setTvrackVideo fails", async () => {
+      mockSetTvrackVideo.mockRejectedValueOnce(new Error("Network error"));
       renderWithContext();
 
       fireEvent.click(screen.getByTestId("btn-video-DTV1"));
 
       await vi.waitFor(() => {
-        expect(mockAssignVideoSource).toHaveBeenCalled();
+        expect(mockSetTvrackVideo).toHaveBeenCalled();
       });
 
       // No error should propagate — the button just shows error toast
-      expect(mockAssignVideoSource).toHaveBeenCalled();
+      expect(mockSetTvrackVideo).toHaveBeenCalled();
     });
   });
 
@@ -252,61 +236,108 @@ describe("MatrizVideo", () => {
   });
 
   describe("onSubmit (Enviar button)", () => {
-    it("calls assignSourceToDestination for all 36 mappings in batches of 8", async () => {
+    it("calls setTvSource for all 29 real destinations via broker (no client joins)", async () => {
+      renderWithContext();
+
+      fireEvent.click(screen.getByText("Enviar"));
+
+      await vi.waitFor(() => {
+        expect(mockSetTvSource).toHaveBeenCalled();
+      });
+
+      // 29 destinos reales: VWN/VWC/VWS + TV01-TV26 (sin TVRACK ni TvsBarra*)
+      expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+
+      // First call should be VWN
+      expect(mockSetTvSource.mock.calls[0]).toEqual(["VWN", "DTV1"]);
+    });
+
+    it("submits the batch ordered by physical groups (hotfix 6: video-wall first)", async () => {
+      renderWithContext();
+
+      fireEvent.click(screen.getByText("Enviar"));
+
+      await vi.waitFor(() => {
+        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+      });
+
+      // Orden de envío = orden de ejecución con el semáforo global del
+      // server: video wall → escaleras norte/centro/sur → barras.
+      const calledDests = mockSetTvSource.mock.calls.map(([dest]) => dest);
+      expect(calledDests.slice(0, 29)).toEqual([
+        "VWN", "VWC", "VWS",
+        "TV23", "TV24", "TV25", "TV26",
+        "TV19", "TV20", "TV21", "TV22",
+        "TV15", "TV16", "TV17", "TV18",
+        "TV01", "TV02", "TV03",
+        "TV04", "TV05", "TV06", "TV07",
+        "TV08", "TV09", "TV10",
+        "TV11", "TV12", "TV13", "TV14",
+      ]);
+    });
+
+    it("does NOT call handleChangeEstadoVideo (estado llega por SSE)", async () => {
       const handleChangeEstadoVideo = vi.fn();
       renderWithContext({ handleChangeEstadoVideo });
 
       fireEvent.click(screen.getByText("Enviar"));
 
       await vi.waitFor(() => {
-        // 36 mappings → 5 batches, state updated after each batch
-        expect(handleChangeEstadoVideo).toHaveBeenCalled();
+        expect(mockSetTvSource).toHaveBeenCalled();
       });
 
-      // All 36 mappings sent via assignSourceToDestination
-      expect(mockAssignSourceToDestination).toHaveBeenCalledTimes(36);
-
-      // First call should be VW-Norte
-      expect(mockAssignSourceToDestination.mock.calls[0]).toEqual(["DTV1", "VW-Norte"]);
-
-      // State updated incrementally: 5 batches for 36 items
-      expect(handleChangeEstadoVideo).toHaveBeenCalledTimes(5);
+      expect(handleChangeEstadoVideo).not.toHaveBeenCalled();
     });
 
-    it("calls handleChangeEstadoVideo incrementally when API succeeds", async () => {
-      const handleChangeEstadoVideo = vi.fn();
-      renderWithContext({ handleChangeEstadoVideo });
-
-      fireEvent.click(screen.getByText("Enviar"));
-
-      await vi.waitFor(() => {
-        expect(handleChangeEstadoVideo).toHaveBeenCalled();
-      });
-
-      // Should be called once per batch (36/8 = 5 batches)
-      expect(handleChangeEstadoVideo.mock.calls.length).toBeGreaterThanOrEqual(1);
-    });
-
-    it("continues updating state even when some mappings fail", async () => {
+    it("continues submitting even when some writes fail (Promise.allSettled)", async () => {
       // Make some calls fail but others succeed
-      mockAssignSourceToDestination
+      mockSetTvSource
         .mockRejectedValueOnce(new Error("Network error"))
         .mockRejectedValueOnce(new Error("Network error"));
 
-      const handleChangeEstadoVideo = vi.fn();
-      renderWithContext({ handleChangeEstadoVideo });
+      renderWithContext();
 
       fireEvent.click(screen.getByText("Enviar"));
 
       await vi.waitFor(() => {
-        expect(handleChangeEstadoVideo).toHaveBeenCalled();
+        expect(mockSetTvSource).toHaveBeenCalled();
       });
 
-      // State still updated despite failures (Promise.allSettled never rejects)
-      expect(handleChangeEstadoVideo).toHaveBeenCalled();
+      // All 29 still attempted despite failures (allSettled never rejects)
+      expect(mockSetTvSource.mock.calls.length).toBeGreaterThanOrEqual(29);
 
       // Clean up mock
-      mockAssignSourceToDestination.mockResolvedValue(undefined);
+      mockSetTvSource.mockResolvedValue({ ok: true, reported: "DTV1" });
+    });
+
+    it("reverts optimistic of failed writes and reports count on 429 (hotfix 5)", async () => {
+      // Un 429 por express-rate-limit: la API expone err.status (arrangerApi
+      // writeError). 3 de las 29 órdenes rechazadas → revert + toast con conteo.
+      const e429 = new Error("Too many requests, try again later");
+      e429.status = 429;
+      mockSetTvSource
+        .mockRejectedValueOnce(e429)
+        .mockRejectedValueOnce(e429)
+        .mockRejectedValueOnce(e429)
+        .mockResolvedValue({ ok: true, reported: "DTV1" });
+
+      const applyOptimistic = vi.fn();
+      const revertOptimistic = vi.fn();
+      renderWithContext({ applyOptimistic, revertOptimistic });
+
+      fireEvent.click(screen.getByText("Enviar"));
+
+      await vi.waitFor(() => {
+        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+      });
+
+      // El optimistic del batch se aplicó (patch de TVs) y el rollback de los
+      // fallidos se disparó con el overlay previo.
+      expect(applyOptimistic).toHaveBeenCalledWith("tvs", expect.objectContaining({ TV01: expect.any(String) }));
+      expect(revertOptimistic).toHaveBeenCalledWith("tvs", expect.any(Object), expect.any(Object));
+
+      // Clean up mock
+      mockSetTvSource.mockResolvedValue({ ok: true, reported: "DTV1" });
     });
   });
 });

@@ -252,6 +252,30 @@ describe("MatrizVideo", () => {
       expect(mockSetTvSource.mock.calls[0]).toEqual(["VWN", "DTV1"]);
     });
 
+    it("submits the batch ordered by physical groups (hotfix 6: video-wall first)", async () => {
+      renderWithContext();
+
+      fireEvent.click(screen.getByText("Enviar"));
+
+      await vi.waitFor(() => {
+        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+      });
+
+      // Orden de envío = orden de ejecución con el semáforo global del
+      // server: video wall → escaleras norte/centro/sur → barras.
+      const calledDests = mockSetTvSource.mock.calls.map(([dest]) => dest);
+      expect(calledDests.slice(0, 29)).toEqual([
+        "VWN", "VWC", "VWS",
+        "TV23", "TV24", "TV25", "TV26",
+        "TV19", "TV20", "TV21", "TV22",
+        "TV15", "TV16", "TV17", "TV18",
+        "TV01", "TV02", "TV03",
+        "TV04", "TV05", "TV06", "TV07",
+        "TV08", "TV09", "TV10",
+        "TV11", "TV12", "TV13", "TV14",
+      ]);
+    });
+
     it("does NOT call handleChangeEstadoVideo (estado llega por SSE)", async () => {
       const handleChangeEstadoVideo = vi.fn();
       renderWithContext({ handleChangeEstadoVideo });

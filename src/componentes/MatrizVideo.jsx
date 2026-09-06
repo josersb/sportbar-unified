@@ -5,6 +5,7 @@ import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import { setTvSource, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
 import { collapseGroup, GROUP_DEFS, writeErrorMessage } from "../hooks/brokerClientCore";
+import { sortTvsByGroup } from "../data/tvGroups";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
@@ -440,7 +441,13 @@ const MatrizVideo = () => {
             // Hotfix 5: los POSTs que fallan (429/5xx/network) se revierten
             // del optimistic individualmente + toast con el conteo — la UI
             // nunca muestra cambios que el server rechazó (evidencia #908).
-            const mappings = DESTINOS_TV.map((tv) => ({ dest: tv, source: newTvs[tv] }));
+            // Hotfix 6: el batch se ORDENA por grupos físicos (video-wall →
+            // escaleras → barras) ANTES de disparar los POSTs — el orden de
+            // envío = orden de enqueue = orden de ejecución con el semáforo
+            // global del server. Pantallas relacionadas cambian juntas y lo
+            // más visible primero (evidencia #908: los del final del batch
+            // esperaban minutos).
+            const mappings = sortTvsByGroup(DESTINOS_TV).map((tv) => ({ dest: tv, source: newTvs[tv] }));
             const prevOverlay = getOptimisticDomain("tvs");
             const appliedPatches = [];
             try {

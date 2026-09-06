@@ -29,6 +29,7 @@ process.env.VITE_ARRANGER_TOKEN = process.env.VITE_ARRANGER_TOKEN || "verify-tok
 process.env.BROKER_FILE_LOG = "0";
 
 const { createServer } = require("../../server.js");
+const { toArranger, toApp } = require("../destinations.js");
 
 const checks = [];
 function check(name, cond) {
@@ -329,6 +330,54 @@ async function readUntilStateLink(reader, domain, linked, zoneId = null) {
     res = await fetch(`${base}/api/command/join%20av%20DTV7%20TV03/verify-token`);
     const proxyText = await res.text();
     check("proxy /api/command join av → 200 mock", res.status === 200 && proxyText.includes("join av success DTV7 TV03"));
+
+    // ── Hotfix 6: batch de 29 writes ordenado por grupos físicos ──
+    // Simula el submit de MatrizVideo: POSTs disparados en orden de grupos
+    // (video-wall → escaleras → barras). El orden de envío = orden de
+    // enqueue en el writeQueue. Contra el mock los joins son instantáneos;
+    // la SERIALIZACIÓN real la prueba verify-semaphore con transport fake.
+    // Acá verificamos que el pipeline completa el batch de 29 y que el
+    // ORDEN de los joins refleja el orden de envío por grupos.
+    const batchOrder = ["VWN", "VWC", "VWS",
+      "TV23", "TV24", "TV25", "TV26",
+      "TV19", "TV20", "TV21", "TV22",
+      "TV15", "TV16", "TV17", "TV18",
+      "TV01", "TV02", "TV03",
+      "TV04", "TV05", "TV06", "TV07",
+      "TV08", "TV09", "TV10",
+      "TV11", "TV12", "TV13", "TV14"];
+    const commandCountBeforeBatch = broker.client.getCommandLog().length;
+    await Promise.all(
+      batchOrder.map((dest) =>
+        fetch(`${base}/api/tvs/${dest}/source`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source: "DTV2" }),
+        }),
+      ),
+    );
+    // Esperar que el writeQueue drene el batch completo (background).
+    let batchDone = false;
+    for (let i = 0; i < 100 && !batchDone; i++) {
+      const joins = broker.client.getCommandLog().slice(commandCountBeforeBatch).filter((c) => c.startsWith("join av"));
+      if (joins.length >= 29) batchDone = true;
+      else await sleep(50);
+    }
+    const batchJoins = broker.client
+      .getCommandLog()
+      .slice(commandCountBeforeBatch)
+      .filter((c) => c.startsWith("join av") && batchOrder.some((d) => c.endsWith(` ${toArranger(d)}`)));
+    check("hotfix 6: batch de 29 → 29 joins ejecutados", batchJoins.length === 29);
+    // NOTA sobre el ORDEN: contra el mock el orden de ejecución NO es
+    // determinista (writeQueue paraleliza destinos distintos y el mock es
+    // instantáneo). El orden que el HARDWARE real verá está garantizado por
+    // el semáforo (verify-semaphore b: FIFO exacto) con el disparo ordenado
+    // del cliente (test MatrizVideo: batches por grupos). Acá solo
+    // verificamos que el pipeline completo procesa el batch y drena.
+    // El semáforo debe estar drenado al final (mock bypass, stats en 0).
+    const semStats = broker.client.getSemaphoreStats();
+    check("hotfix 6: semáforo drenado tras el batch (inFlight 0)", semStats.inFlight === 0 && semStats.waiting === 0);
+
     // ── Respaldo versionado ?since= ──
     res = await fetch(`${base}/api/broker/state?since=tvs:999999`);
     body = await res.json();

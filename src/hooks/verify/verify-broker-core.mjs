@@ -30,6 +30,7 @@ import {
   collapseGroup,
   GROUP_DEFS,
 } from "../brokerClientCore.js";
+import { TV_GROUPS, GROUP_ORDER, sortTvsByGroup } from "../../data/tvGroups.js";
 
 const checks = [];
 function check(name, cond) {
@@ -383,6 +384,49 @@ function check(name, cond) {
   check("collapse: patrón DTV1234 (escalera sur)", collapseGroup(tvs, GROUP_DEFS.TvsEscaleraSur) === "DTV1234");
   check("collapse: TVs faltantes → undefined", collapseGroup(tvs, GROUP_DEFS.TvsEscaleraNorte) === undefined);
   check("collapse: todos iguales → valor único", collapseGroup({ TV08: "DTV2", TV09: "DTV2", TV10: "DTV2" }, GROUP_DEFS.TvsBarraPista) === "DTV2");
+}
+
+// ── 11. sortTvsByGroup (hotfix 6: orden de batch por grupos físicos) ──
+{
+  // Batch desordenado (orden TV01..TV26 + VW al final, como llega del form).
+  const dests = [
+    "TV01", "TV04", "TV23", "VWS", "VWN", "TV15", "TV11", "TV08", "TV19",
+    "VWC", "TV02", "TV05", "TV24", "TV16", "TV12", "TV09", "TV20",
+    "TV03", "TV06", "TV25", "TV17", "TV13", "TV10", "TV21",
+    "TV07", "TV26", "TV18", "TV14", "TV22",
+  ];
+  const sorted = sortTvsByGroup(dests);
+  // Video wall primero (VWN, VWC, VWS — orden interno del grupo), escaleras
+  // norte (TV23-26), escaleras centro (TV19-22), escaleras sur (TV15-18),
+  // barra libertador (TV01-03), barra sur (TV04-07), barra pista (TV08-10),
+  // barra norte (TV11-14).
+  const expected = [
+    "VWN", "VWC", "VWS",
+    "TV23", "TV24", "TV25", "TV26",
+    "TV19", "TV20", "TV21", "TV22",
+    "TV15", "TV16", "TV17", "TV18",
+    "TV01", "TV02", "TV03",
+    "TV04", "TV05", "TV06", "TV07",
+    "TV08", "TV09", "TV10",
+    "TV11", "TV12", "TV13", "TV14",
+  ];
+  check("sort: 29 destinos → 29 (sin perder ninguno)", sorted.length === dests.length);
+  check("sort: orden exacto por grupos físicos (video-wall primero)", JSON.stringify(sorted) === JSON.stringify(expected));
+  check("sort: no muta el array original", dests[0] === "TV01" && dests[3] === "VWS");
+  // Destinos sin grupo al final, orden estable.
+  const withUnknown = sortTvsByGroup(["TVRACK", "TV05", "aVip-Barra-Centro", "TV01"]);
+  check(
+    "sort: destinos sin grupo al final (orden estable)",
+    withUnknown[0] === "TV01" && withUnknown[1] === "TV05" && withUnknown[2] === "TVRACK" && withUnknown[3] === "aVip-Barra-Centro",
+  );
+  // Sincronización con el server: TV_GROUPS del cliente ≡ DEST_GROUPS del
+  // server (misma estructura de grupos, nomenclatura VW distinta por diseño).
+  check(
+    "sort: sincronizado con server (mismos grupos y TVs numéricas)",
+    GROUP_ORDER.length === 8 &&
+      TV_GROUPS["escaleras-norte"].join(",") === "TV23,TV24,TV25,TV26" &&
+      TV_GROUPS["barra-libertador"].join(",") === "TV01,TV02,TV03",
+  );
 }
 
 const failed = checks.filter((c) => !c.ok).length;

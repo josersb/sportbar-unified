@@ -4,6 +4,19 @@ Registro cronológico de todas las operaciones de la wiki: ingestas, creación d
 
 ---
 
+## [2026-09-06] decision | Archivado worktree state-sync-rework
+
+**Operación**: Cierre del ciclo SDD state-sync-rework (mergeado a `v2` en 34c4414). Eliminación del worktree `state-sync-rework` y de la rama local `feat/state-sync-rework`; `origin/feat/state-sync-rework` conservada hasta el deploy `v2 → master`.
+
+**Cambios**:
+- Worktree eliminado tras verificación: status limpio, `git log v2..feat/state-sync-rework` vacío, tip idéntico a `v2` HEAD
+- Rama local borrada con `git branch -d` (solo borra si está mergeada)
+- Página Decision creada: `Decisions/2026-09-06-ArchivadoWorktreeStateSyncRework.md`
+- Actualizada sección Decisions en `index.md`
+- `git worktree remove` falló por "Filename too long" (node_modules de pnpm); resuelto con `robocopy /MIR /XJ` de directorio vacío + prune
+
+**Archivos**: wiki/Decisions/2026-09-06-ArchivadoWorktreeStateSyncRework.md, wiki/index.md, wiki/log.md (sin commit a v2, viaja con próxima feature)
+
 ## [2026-07-25] feat | Presets compartidos + UI MatrizPreset
 
 **Operación**: Fase 3 del plan multi-dispositivo. Endpoints REST para presets, UI rediseñada, sincronización servidor↔localStorage.

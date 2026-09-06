@@ -110,7 +110,7 @@ Sistema de documentación interconectada del proyecto SportBar Unified. Cada pá
 
 ## Decisions
 
-*Sin decisiones documentadas en la wiki. Ver [[AGENTS]] para decisiones de arquitectura registradas.*
+- [[Decisions/2026-09-06-ArchivadoWorktreeStateSyncRework]] — cierre del ciclo state-sync-rework: worktree eliminado tras merge a `v2` (34c4414), rama local borrada, `origin` conservada hasta el deploy a `master`
 
 ## Queries
 

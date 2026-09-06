@@ -282,7 +282,19 @@ async function freshStartV3(readEncoder, legacy, now = isoNow()) {
  * Returns: Promise<store>. Lanza si no puede escribir el backup (migración).
  */
 async function createStore(options = {}) {
-  const dbPath = options.dbPath || path.join(__dirname, "..", "state.json");
+  let dbPath = options.dbPath || path.join(__dirname, "..", "state.json");
+  // Docker: /app/server/state.json es un symlink a /app/data/state.json
+  // (filesystem read-only). lowdb escribe su .tmp y el backup JUNTO al
+  // path recibido — resolver el symlink al target real para que ambas
+  // escrituras caigan en el volumen, el rename atómico sea same-fs y el
+  // symlink quede intacto.
+  try {
+    if (fs.lstatSync(dbPath).isSymbolicLink()) {
+      dbPath = path.resolve(path.dirname(dbPath), fs.readlinkSync(dbPath));
+    }
+  } catch {
+    /* el archivo puede no existir aún en primer arranque — usar tal cual */
+  }
   const backupPath = options.backupPath || path.join(path.dirname(dbPath), "state.backup.json");
   const readEncoder = options.readEncoder;
   const log = options.log || console;

@@ -651,6 +651,12 @@ async function createServer(options = {}) {
   // ENDPOINTS NUEVOS DEL BROKER
   // ══════════════════════════════════════════════════════════════════════
 
+  // Liveness probe para HEALTHCHECK del container Docker: sin limiter, sin
+  // acceso al store — responde si el proceso Express y las rutas están vivos.
+  app.get("/healthz", (req, res) => {
+    res.json({ ok: true });
+  });
+
   // SSE: sin limiter (las conexiones largas no cuentan por evento; máx 10 en eventBus)
   app.get("/api/stream", (req, res) => {
     bus.handleConnection(req, res);

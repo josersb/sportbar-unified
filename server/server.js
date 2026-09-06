@@ -958,35 +958,22 @@ async function createServer(options = {}) {
   // Middleware para servir archivos estáticos desde dist (build de producción)
   app.use(express.static(path.join(__dirname, "../dist")));
 
-  // ── Retry helper con exponential backoff (proxy Arranger) ──
-  async function fetchWithRetry(url, retries = 3, baseDelayMs = 1000) {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        const response = await fetch(url);
-        if (!response.ok && response.status >= 400 && response.status < 500) {
-          return response;
-        }
-        return response;
-      } catch (error) {
-        if (attempt === retries) throw error;
-        const delay = baseDelayMs * Math.pow(2, attempt - 1);
-        log.info(`[ArrangerProxy] Intento ${attempt}/${retries} falló, reintentando en ${delay}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-  }
-
   // ── Proxy genérico de comandos del Arranger (único camino, spec) ──
+  // HOTFIX 6: el camino REAL pasa por client.sendRaw → semáforo global del
+  // arrangerClient (el Arranger es serial sin importar el origen del
+  // comando). El fetchWithRetry legacy queda solo para el mock (que no
+  // toca hardware).
   app.get("/api/command/:command/:token", async (req, res) => {
     try {
       const { command } = req.params;
       if (client.isMock) {
         return res.status(200).send(await mockCommandResult(command));
       }
-      const url = `${ARRANGER_BASE}/api/command/${encodeURIComponent(command)}/${encodeURIComponent(req.params.token)}`;
-      const response = await fetchWithRetry(url);
-      const text = await response.text();
-      res.status(response.status).send(text);
+      const result = await client.sendRaw(command, req.params.token);
+      if (result.error) {
+        return res.status(502).json({ error: "Arranger unreachable", detail: result.error });
+      }
+      res.status(result.status).send(result.text);
     } catch (error) {
       res.status(502).json({ error: "Arranger unreachable", detail: error.message });
     }

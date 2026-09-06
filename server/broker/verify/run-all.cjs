@@ -18,6 +18,7 @@ const steps = [
   ["verify-destinations", "destinos canónicos (40, sin duplicados, mapa VW)"],
   ["verify-mock", "mockArranger modos normal/blip/offline deterministas"],
   ["verify-arranger-client", "arrangerClient getEncoder/joinAv + retry + FW-LOCKED"],
+  ["verify-semaphore", "hotfix 6: semáforo global serial, FIFO, watchdog, batch 29"],
   ["verify-store", "store v3: migración v2→v3 + backup + fresh-start"],
   ["verify-eventbus", "eventBus hub SSE: snapshot, incremental, heartbeat, máx 10"],
   ["verify-writequeue", "writeQueue FIFO por destino: serie, última intención gana"],

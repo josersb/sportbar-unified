@@ -144,9 +144,15 @@ async function createServer(options = {}) {
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           objectSrc: ["'none'"],
           frameSrc: ["'self'", ARRANGER_BASE],
+          // LAN HTTP-only: esta directiva elevaría todos los subrecursos a
+          // HTTPS (no hay nada en 443) → página en blanco. DEBE ser null.
+          upgradeInsecureRequests: null,
         },
       },
       crossOriginEmbedderPolicy: false,
+      // LAN HTTP-only: HSTS fuerza HTTPS en el navegador. La skill de deploy
+      // lo exige deshabilitado (rompe el SPA en la red del bar).
+      strictTransportSecurity: false,
     }),
   );
 

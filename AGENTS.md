@@ -106,6 +106,30 @@ La configuración de puertos queda en `worktree.config.json` (gitignored). `vite
 
 El flag `--ignore-workspace` es necesario porque pnpm 11 detecta el `pnpm-workspace.yaml` de la raíz y no trata `server/` como proyecto independiente. Documentado en Engram #648.
 
+## Deploy a Producción (State Broker — vigente desde 2026-09-07)
+
+Producción corre en el **host Proxmox `pve` (192.168.2.191:3051)**, Docker directo sobre el host, container `sportbar-broker` (imagen `sportbar-broker:latest`, usuario `sportbar` uid 100, filesystem read-only + volúmenes).
+
+### Flujo de deploy (resumen — detalle completo en la skill `sportbar-linux-deploy`)
+
+1. `pnpm run build` en dev → `dist/`
+2. Bundle: `npm install` flat de `server/` con los `pnpm.overrides` traducidos a npm `overrides` (**NUNCA materializar junctions de pnpm** — rompe la resolución de transitivos)
+3. Smoke-test local del bundle (require express + import lowdb ESM) → `tar` → `scp` → extraer en `pve:/root/sportbar/`
+4. `docker compose -p sportbar-prod build && up -d` (assets versionados en `scripts/deploy/docker/` de este repo)
+5. Verify: container `(healthy)` vía `/healthz`, SPA 200, `/api/broker/state` con `"status":"synced"`
+
+### Rollback (3 capas)
+
+1. `docker start sportbar-v1.1.0` + `docker stop sportbar-broker` (legacy preservado con `restart=no`)
+2. `pve:/root/sportbar-backup-pre-broker-20260413-1648.tgz` + `scripts/deploy/docker.legacy-v110/` en el server
+3. Git tag `pre-broker-deploy`
+
+### Reglas
+
+- **HSTS y `upgrade-insecure-requests` deben estar OFF** en el helmet de `server/server.js` (LAN HTTP-only; si no, página en blanco — fix 83eb439)
+- El volumen de datos es de `uid 100` (`_chrony` en el host = sportbar del container) — no "corregir" el owner
+- El container legacy `sportbar-v1.1.0` NO se borra hasta cierre formal de la coexistencia (decisión D4 del usuario)
+
 ## Variables de Entorno y Secrets (MANDATORIO)
 
 ### Estrategia híbrida

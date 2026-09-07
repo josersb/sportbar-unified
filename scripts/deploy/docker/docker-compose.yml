@@ -1,0 +1,76 @@
+# ── SportBar v2 (State Broker) — Docker Compose (producción) ──
+# Delta vs v1.1.0:
+#   - Container/image nuevos (no pisan al legacy hasta el cutover)
+#   - Volumen extra: logs del fileLogger del broker (/app/server/logs)
+#   - Healthcheck sobre /healthz leyendo PORT desde process.env
+#     (el legacy fallaba: $PORT no se expande dentro de comillas simples)
+#   - Memoria 512M (el broker mantiene snapshots + SSE en RAM)
+#   - PORT / volumen de datos / VITE_MOCK_ARRANGER parametrizables por .env:
+#       PREP (sin hardware):    PORT=3052, VITE_MOCK_ARRANGER=1, DATA_VOLUME=sportbar-broker-mock-data
+#       CUTOVER (ventana):      PORT=3051, VITE_MOCK_ARRANGER=,  DATA_VOLUME=sportbar-v1.1.0-data
+#       (en cutover el store migra el state legacy v2→v3 con backup automático)
+
+services:
+  sportbar:
+    build:
+      context: ../../..                          # /root/sportbar (release layout)
+      dockerfile: scripts/deploy/docker/Dockerfile
+    image: sportbar-broker:latest
+    container_name: ${CONTAINER_NAME:-sportbar-broker}
+    ports:
+      - "${PORT:-3052}:${PORT:-3052}"
+    volumes:
+      # Solo state/backup y logs escribibles (filesystem readonly)
+      # Referencia por CLAVE declarada; el nombre final va en el mapa de abajo
+      - data:/app/data
+      - logs:/app/server/logs
+    environment:
+      - PORT=${PORT:-3052}
+      - NODE_ENV=production
+      - ARRANGER_HOST=192.168.2.254
+      - ARRANGER_PORT=80
+      - VITE_ARRANGER_TOKEN=${VITE_ARRANGER_TOKEN}
+      - VITE_MOCK_ARRANGER=${VITE_MOCK_ARRANGER:-}
+      - BROKER_FILE_LOG=1
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:'+(process.env.PORT||3052)+'/healthz',r=>process.exit(r.statusCode===200?0:1))\" "]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # ── Docker Security (Capa 2 + 3 + 4) ──
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # ── Red ──
+    networks:
+      - sportbar_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  data:
+    name: ${DATA_VOLUME:-sportbar-broker-data}
+  logs:
+    name: ${LOG_VOLUME:-sportbar-broker-logs}
+
+networks:
+  sportbar_net:
+    name: ${NETWORK_NAME:-sportbar-net}
+    driver: bridge

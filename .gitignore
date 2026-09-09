@@ -303,3 +303,11 @@ arranger-state-*.json
 .obsidian/templates.json
 .obsidian/starred.json
 .obsidian/daily-notes.json
+
+# Vendor installer artifacts (docs de equipamiento — cientos de MB, nunca versionar)
+Docs/**/*.exe
+Docs/**/*.zip
+Docs/**/*.apk
+
+# Tooling caches
+.playwright-cli/

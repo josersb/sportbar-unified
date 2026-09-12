@@ -87,8 +87,8 @@ function makeLog(silent) {
  * escucha: devuelve { app, broker } para que el caller decida (main) o para
  * verificación sin levantar server visible (verify).
  *
- * options: { dbPath, backupPath, token, mock, mockMode, silent,
- *            reconcilerIntervalMs }
+ * options: { dbPath, backupPath, token, mock, mockMode, mockLagSettleMs, silent,
+ *            reconcilerIntervalMs, client }
  */
 async function createServer(options = {}) {
   const log = makeLog(options.silent);
@@ -101,7 +101,10 @@ async function createServer(options = {}) {
   }
 
   // ── 1. Broker: client → store (migración v3 / fresh-start) → bus → cola → reconciler ──
-  const client = createArrangerClient({ token, mock: options.mock, mockMode: options.mockMode, log });
+  // Seam de test: el verify puede inyectar un cliente fake (p.ej. con settling
+  // configurable) sin tocar el hardware ni el mock global. Default: el cliente
+  // real/mock de siempre — behavior-preserving.
+  const client = options.client || createArrangerClient({ token, mock: options.mock, mockMode: options.mockMode, mockLagSettleMs: options.mockLagSettleMs, log });
   const store = await createStore({
     dbPath: options.dbPath,
     backupPath: options.backupPath,
@@ -201,46 +204,76 @@ async function createServer(options = {}) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  // ── Ventana de confirmación por tipo de comando (settling Arranger v1.3.4) ──
+  // El firmware v1.3.4 refleja el join recién tras el settling medido en
+  // hardware (39/39 trials, determinístico ±20 ms): `join av` ~3340 ms y
+  // `join video`/`join audio` ~2302 ms. La ventana espera ese settling con
+  // margen ≥300 ms. ⚠ Re-medir el settling si se actualiza el firmware
+  // (v1.3.4 → ≥1.4.0.0) o se reemplaza el hardware.
+  const CONFIRM_SETTLE_AV_MS = 3700;     // join av: 3340 ms medido + 360 ms
+  const CONFIRM_SETTLE_STREAM_MS = 2700; // join video/audio: 2302 ms medido + 398 ms
+  const CONFIRM_FIRST_READ_MS = 200;     // piso del read definitivo / fast-path no-op
+  const CONFIRM_POLICY = Object.freeze({
+    av: { settleMs: CONFIRM_SETTLE_AV_MS },
+    video: { settleMs: CONFIRM_SETTLE_STREAM_MS },
+    audio: { settleMs: CONFIRM_SETTLE_STREAM_MS },
+  });
+
   /**
-   * Confirmación post-join con retry (fix real-hardware, Arranger v1.3.4).
+   * Confirmación post-join por ventana del comando (fix real-hardware, v1.3.4).
    *
    * El firmware necesita settling time entre `join` y `get encoder`: la
    * lectura INMEDIATA puede devolver el valor ANTERIOR aunque el comando ya
    * se aplicó físicamente (el TV cambia, pero el routing table aún no
-   * refleja el join). Hasta 3 lecturas con backoff 250/500/750ms; corta
-   * apenas `reported` coincide con `source`.
+   * refleja el join). La ventana depende del comando emitido: mayor para
+   * `join av` (CONFIRM_SETTLE_AV_MS) que para `join video`/`join audio`
+   * (CONFIRM_SETTLE_STREAM_MS).
    *
-   * HOTFIX 4 (one-join-lag): contra el hardware físico el lag es POR COMANDO,
-   * no por tiempo (evidence w-001..w-008: 3 retries en 1.4s leen stale el
-   * 100% de las veces). Si agota los intentos, devuelve
+   * Secuencia: read#1 inmediato (fast-path no-op/ya-settleado) y, si quedó
+   * stale, un read definitivo anclado al settling del comando. El ancla es
+   * `startMs` (post-join): si un read#1 tardío por congestión del semáforo ya
+   * consumió la ventana, el read#2 sale enseguida (ya settleado) — nunca antes
+   * del settling.
+   *
+   * HOTFIX 4 (one-join-lag): si agota la ventana sin coincidir, devuelve
    * `{ value, confirmed: false }` — el caller NO debe guardar ese valor como
    * reported (no envenenar); queda para el re-read postergado (3s/9s) o el
    * scan del reconciler.
    *
-   * Total max wait ~1.5s por stream.
-   *
+   * @param {{ settleMs: number }} [policy] política del comando emitido
    * @returns {{ value: string|null, confirmed: boolean }}
    */
-  async function confirmEncoder(dest, sub, source, writeId) {
-    let reported = null;
-    let confirmed = false;
+  async function confirmEncoder(dest, sub, source, writeId, policy = CONFIRM_POLICY.video) {
+    const settleMs = policy && Number.isFinite(policy.settleMs) ? policy.settleMs : CONFIRM_SETTLE_STREAM_MS;
     const startMs = Date.now();
-    for (let attempt = 0; attempt < 3; attempt++) {
-      reported = await client.getEncoder(dest, sub);
-      confirmed = reported === source;
-      if (writeId) {
-        const elapsed = Date.now() - startMs;
-        const staleTag = confirmed ? "✓ (settled)" : `(stale, retry ${250 * (attempt + 1)}ms)`;
-        writeLog(writeId, "CONFIRM", `get#${attempt + 1} ${dest}/${sub} → "${reported}" ${staleTag} (t+${elapsed}ms)`);
-      }
-      if (confirmed) break;
-      await sleep(250 * (attempt + 1)); // 250ms, 500ms, 750ms
+
+    // Read#1 inmediato: resuelve el no-op/ya-settleado sin esperar la ventana.
+    let reported = await client.getEncoder(dest, sub);
+    let confirmed = reported === source;
+    if (writeId) {
+      const elapsed = Date.now() - startMs;
+      const tag = confirmed ? "✓ (settled)" : "(stale, espera settling)";
+      writeLog(writeId, "CONFIRM", `get#1 ${dest}/${sub} → "${reported}" ${tag} (t+${elapsed}ms)`);
+    }
+    if (confirmed) return { value: reported, confirmed };
+
+    // Read#2 definitivo anclado a la ventana del comando: nunca antes del
+    // settling; si el read#1 tardó más que la ventana (semáforo congestionado),
+    // lee enseguida porque el destino ya settleó.
+    const remaining = Math.max(CONFIRM_FIRST_READ_MS, settleMs - (Date.now() - startMs));
+    await sleep(remaining);
+    reported = await client.getEncoder(dest, sub);
+    confirmed = reported === source;
+    if (writeId) {
+      const elapsed = Date.now() - startMs;
+      const tag = confirmed ? "✓ (settled)" : "(stale, ventana agotada)";
+      writeLog(writeId, "CONFIRM", `get#2 ${dest}/${sub} → "${reported}" ${tag} (t+${elapsed}ms)`);
     }
     return { value: reported, confirmed };
   }
 
   // ── Hotfix 4 (one-join-lag): re-read postergado de writes unconfirmed ──
-  // Cuando confirmEncoder agota los retries sin coincidir, el read stale NO
+  // Cuando confirmEncoder agota la ventana sin coincidir, el read stale NO
   // se guarda como reported y se agenda una lectura de ese destino a los 3s
   // y, si sigue sin coincidir, otra a los 9s (máx 2 por write). La lectura es
   // safe (get encoder no modifica estado) y NO encola en writeQueue. Si
@@ -348,35 +381,39 @@ async function createServer(options = {}) {
       store.bumpVersion(domain);
     }
 
-    // 2. Comando al Arranger
+    // 2. Comando al Arranger — `joinKind` es la ÚNICA fuente de verdad: decide
+    //    el dispatch del join y la política de confirmación (settling por comando).
+    const joinKind = domain === "tvs" || linked ? "av" : sub === "audio" ? "audio" : "video";
     const joinStart = Date.now();
     const joinResult =
-      domain === "tvs" || linked
+      joinKind === "av"
         ? await client.joinAv(source, dest, writeId)
-        : sub === "audio"
+        : joinKind === "audio"
           ? await client.joinAudio(source, dest, writeId)
           : await client.joinVideo(source, dest, writeId);
     t.joinMs = Date.now() - joinStart;
     if (!joinResult.ok) {
-      wlog("ARRANGER", `→ join ${linked ? "av" : sub} ${source} ${dest} FAILED: ${joinResult.error || joinResult.text || "?"}`);
+      wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} FAILED: ${joinResult.error || joinResult.text || "?"}`);
       await store.write();
       return { ok: false, dest, source, sub, error: joinResult.error || "join falló" };
     }
-    wlog("ARRANGER", `→ join ${linked ? "av" : sub} ${source} ${dest} ok (${joinResult.text || ""})`);
+    wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} ok (${joinResult.text || ""})`);
 
-    // 3. Lectura post-comando (confirmación) — retry con backoff por el
-    //    settling time del firmware v1.3.4 (ver confirmEncoder). En linked,
-    //    ambos streams en paralelo. HOTFIX 4 (one-join-lag): si agota los
-    //    retries SIN coincidir, el valor leído es stale y NO se guarda como
-    //    reported (no envenenar); queda el reported anterior y se agenda el
-    //    re-read postergado (3s/9s) para converger en segundos.
+    // 3. Lectura post-comando (confirmación) — ventana por tipo de comando
+    //    (ver confirmEncoder/CONFIRM_POLICY): read#1 inmediato + read#2 anclado
+    //    al settling. En linked, ambos streams en paralelo con la política `av`.
+    //    HOTFIX 4 (one-join-lag): si agota la ventana SIN coincidir, el valor
+    //    leído es stale y NO se guarda como reported (no envenenar); queda el
+    //    reported anterior y se agenda el re-read postergado (3s/9s) para
+    //    converger en segundos.
+    const confirmPolicy = CONFIRM_POLICY[joinKind];
     const confirmStart = Date.now();
     const confirm = linked
       ? await Promise.all([
-          confirmEncoder(dest, "video", source, writeId),
-          confirmEncoder(dest, "audio", source, writeId),
+          confirmEncoder(dest, "video", source, writeId, confirmPolicy),
+          confirmEncoder(dest, "audio", source, writeId, confirmPolicy),
         ]).then(([video, audio]) => ({ video, audio }))
-      : await confirmEncoder(dest, sub, source, writeId);
+      : await confirmEncoder(dest, sub, source, writeId, confirmPolicy);
     t.confirmMs = Date.now() - confirmStart;
 
     // 4. reported ← SOLO lecturas confirmadas. El valor stale del one-join-lag

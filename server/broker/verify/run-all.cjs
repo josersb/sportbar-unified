@@ -24,6 +24,7 @@ const steps = [
   ["verify-writequeue", "writeQueue FIFO por destino: serie, última intención gana"],
   ["verify-reconciler", "reconciler: auto-adopt, null no pisa, single-flight, intervalo, sync-status post-scan"],
   ["verify-write-confirm", "write-confirm: retry getEncoder post-join (settle) → reported correcto"],
+  ["verify-confirm-settling", "confirm-settling: ventana por comando (av/stream) + no-op + unconfirmed"],
   ["verify-composition", "composition server.js: endpoints nuevos + legacy + SSE + stale→synced"],
 ];
 

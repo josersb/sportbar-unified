@@ -393,11 +393,11 @@ async function createServer(options = {}) {
           : await client.joinVideo(source, dest, writeId);
     t.joinMs = Date.now() - joinStart;
     if (!joinResult.ok) {
-      wlog("ARRANGER", `→ join ${linked ? "av" : sub} ${source} ${dest} FAILED: ${joinResult.error || joinResult.text || "?"}`);
+      wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} FAILED: ${joinResult.error || joinResult.text || "?"}`);
       await store.write();
       return { ok: false, dest, source, sub, error: joinResult.error || "join falló" };
     }
-    wlog("ARRANGER", `→ join ${linked ? "av" : sub} ${source} ${dest} ok (${joinResult.text || ""})`);
+    wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} ok (${joinResult.text || ""})`);
 
     // 3. Lectura post-comando (confirmación) — ventana por tipo de comando
     //    (ver confirmEncoder/CONFIRM_POLICY): read#1 inmediato + read#2 anclado

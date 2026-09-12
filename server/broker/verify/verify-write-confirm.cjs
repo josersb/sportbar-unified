@@ -72,7 +72,7 @@ async function waitForConvergence(base, domain, predicate, timeoutMs = 5000) {
   return { ok: false, elapsed: Date.now() - start };
 }
 
-async function runScenario({ mode, label, mockMode = "settle" }) {
+async function runScenario({ mode, label, mockMode = "settle", lagSettleMs }) {
   console.log(`\n── Escenario ${label} (BROKER_BACKGROUND_CONFIRM=${mode === "background" ? "1" : "0"}, mock=${mockMode}) ──`);
   process.env.BROKER_BACKGROUND_CONFIRM = mode === "background" ? "1" : "0";
   // Forzar re-require para que el flag se relea (jest-style isolation).
@@ -91,7 +91,8 @@ async function runScenario({ mode, label, mockMode = "settle" }) {
   const { app, broker } = await createServerFresh({
     dbPath,
     silent: true,
-    mockMode, // settle: primera lectura stale | oneJoinLag: stale hasta +3s del join
+    mockMode, // settle: primera lectura stale | oneJoinLag: stale hasta el lag del mock
+    mockLagSettleMs: lagSettleMs, // oneJoinLag: lag del routing table (debe superar la ventana de confirmación)
   });
   const server = app.listen(0);
   const port = server.address().port;
@@ -101,9 +102,9 @@ async function runScenario({ mode, label, mockMode = "settle" }) {
     if (mockMode === "oneJoinLag") {
       // ── Escenario C (hotfix 4): one-join-lag del firmware v1.3.4 ──
       // El mock devuelve el valor del join ANTERIOR en TODAS las lecturas
-      // durante 3s (los 3 retries de confirmEncoder leen stale SIEMPRE,
-      // como contra el hardware físico, evidence w-001..w-008). El
-      // fresh-start del store hidrata reported desde el mock (todo DTV1),
+      // durante `lagSettleMs` (5000 > ventana av 3700, así el write queda
+      // unconfirmed), como contra el hardware físico (evidence w-001..w-008).
+      // El fresh-start del store hidrata reported desde el mock (todo DTV1),
       // así que primero se CONFIRMA un write baseline para tener un
       // reported distinguible del stale.
       const postTv = async (source) =>
@@ -123,9 +124,10 @@ async function runScenario({ mode, label, mockMode = "settle" }) {
         return false;
       };
 
-      // W1 (baseline): POST TV05 → DTV2. Los retries leen stale DTV1 ×3
-      // (unconfirmed, response confirmed:false) y el RE-READ POSTERGADO
-      // converge cuando el mock asienta a los 3s del join.
+      // W1 (baseline): POST TV05 → DTV2. La confirmación hace read#1 inmediato
+      // + read#2 a ~3700 ms (ventana av); con lag 5000 ambos leen stale DTV1
+      // (unconfirmed, response confirmed:false) y el RE-READ POSTERGADO (3s)
+      // converge cuando el mock asienta a los 5s del join.
       const res1 = await postTv("DTV2");
       const body1 = await res1.json();
       check(`[lag] W1 POST TV05 → 200 ok`, res1.status === 200 && body1.ok === true);
@@ -339,7 +341,15 @@ async function runScenario429() {
   const server2 = brokerApp.listen(0);
   const base2 = `http://127.0.0.1:${server2.address().port}`;
   try {
-    // Estado base del store (fresh-start hidrató reported desde el mock).
+    // El scan de arranque del reconciler hidrata `reported` en background (el
+    // fresh-start NO lo hace síncrono): esperar a que asiente evita capturar
+    // un baseline vacío y comparar contra `undefined` — race expuesta por la
+    // ventana av más larga (el primer write tarda más en asentar).
+    const hydrateStart = Date.now();
+    while (broker.store.getDomain("tvs").reported.TV01 == null && Date.now() - hydrateStart < 3000) {
+      await sleep(50);
+    }
+    // Estado base del store (reconciler hidrató reported desde el mock).
     const before = broker.store.getDomain("tvs");
     const reportedBefore = before.reported.TV01;
     const desiredBefore = before.desired.TV01;
@@ -472,12 +482,16 @@ async function runScenarioFileLogger() {
     return origStdoutWrite(chunk, enc, cb);
   };
   try {
-    // lagSettleMs=60s: los 3 retries (~1.5s) Y el re-read a los 3s leen
-    // stale → el write queda unconfirmed sin converger dentro del verify.
+    // mockLagSettleMs=5000: el lag del mock DEBE superar la ventana de
+    // confirmación av (CONFIRM_SETTLE_AV_MS=3700) para que el write quede
+    // `unconfirmed` y se ejerza el SKIP del setReported; y DEBE ser < ~6,9s
+    // (re-read postergado a los 3s tras el executeWrite de ~3,94s) para que
+    // la convergencia de abajo siga ocurriendo. 5000 deja margen en ambos lados.
     const { app: app2, broker: broker2 } = await createServerFresh({
       dbPath: dbPath2,
       silent: true,
       mockMode: "oneJoinLag",
+      mockLagSettleMs: 5000,
       reconcilerIntervalMs: 3_600_000, // sin scans que adopten durante el verify
     });
     const server3 = app2.listen(0);
@@ -539,7 +553,7 @@ async function runScenarioFileLogger() {
 (async () => {
   await runScenario({ mode: "sync", label: "A (síncrono, regresión)" });
   await runScenario({ mode: "background", label: "B (background, hotfix C)" });
-  await runScenario({ mode: "background", label: "C (one-join-lag, hotfix 4)", mockMode: "oneJoinLag" });
+  await runScenario({ mode: "background", label: "C (one-join-lag, hotfix 4)", mockMode: "oneJoinLag", lagSettleMs: 5000 });
   await runScenario429();
   await runScenarioFileLogger();
   // Reset del flag y módulo

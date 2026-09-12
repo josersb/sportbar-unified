@@ -50,7 +50,7 @@ function resolveMaxConcurrent(explicit) {
   return Number.isFinite(env) && env >= 1 ? env : 1;
 }
 
-/** Crea el cliente. options: { baseUrl, token, retries, baseDelayMs, mock, mockMode, log, maxConcurrent, semaphoreTimeoutMs }. */
+/** Crea el cliente. options: { baseUrl, token, retries, baseDelayMs, mock, mockMode, mockBlipEvery, mockLagSettleMs, log, maxConcurrent, semaphoreTimeoutMs }. */
 function createArrangerClient(options = {}) {
   const baseUrl = options.baseUrl || process.env.ARRANGER_BASE || "http://192.168.2.254:80";
   const token = options.token || process.env.VITE_ARRANGER_TOKEN || process.env.ARRANGER_TOKEN;
@@ -58,7 +58,7 @@ function createArrangerClient(options = {}) {
   const baseDelayMs = options.baseDelayMs != null ? options.baseDelayMs : 1000;
   const log = options.log || console;
   const useMock = isMockEnabled(options.mock);
-  const mock = useMock ? createMockArranger({ mode: options.mockMode, blipEvery: options.mockBlipEvery }) : null;
+  const mock = useMock ? createMockArranger({ mode: options.mockMode, blipEvery: options.mockBlipEvery, lagSettleMs: options.mockLagSettleMs }) : null;
 
   // ── HOTFIX 6: semáforo global de comandos al Arranger ──
   // Cola FIFO + contador in-flight. TODO comando al hardware (join av/video/

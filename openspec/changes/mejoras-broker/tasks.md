@@ -34,11 +34,11 @@ Chain strategy: stacked-to-main
 
 ## WS2 — canales-favoritos (PR 1 · hash 96ea351c)
 
-- [ ] **T-2.1** Exportar `CANAL_ALLOWLIST` (Set de `ch.canal`) en `src/data/canalesFavoritos.js`. Acepta: contiene 1624. Test: extender `src/hooks/verify/verify-broker-core.mjs`.
-- [ ] **T-2.2** Validar en `src/componentes/Canales.jsx:32` contra `CANAL_ALLOWLIST.has(String(canal))`. Acepta: canal de la grilla siempre ejecuta (CF-1).
-- [ ] **T-2.3** `src/componentes/Canales.jsx:45-48`: reemplazar reset silencioso por `toast.warning("canal no válido")`, sin mutar placeholder. Acepta: CF-2.
-- [ ] **T-2.4** Reconciliar drift de `estado.favoritos` contra la allowlist al hidratar/grilla. Acepta: CF-3.
-- [ ] **T-2.5** Extender `src/componentes/Canales.test.jsx`: válido ejecuta; inválido toastea sin reset; drift.
+- [x] **T-2.1** Exportar `CANAL_ALLOWLIST` (Set de `ch.canal`) en `src/data/canalesFavoritos.js`. Acepta: contiene 1624. Test: extender `src/hooks/verify/verify-broker-core.mjs`.
+- [x] **T-2.2** Validar en `src/componentes/Canales.jsx:32` contra `CANAL_ALLOWLIST.has(String(canal))`. Acepta: canal de la grilla siempre ejecuta (CF-1).
+- [x] **T-2.3** `src/componentes/Canales.jsx:45-48`: reemplazar reset silencioso por `toast.warning("canal no válido")`, sin mutar placeholder. Acepta: CF-2.
+- [x] **T-2.4** Reconciliar drift de `estado.favoritos` contra la allowlist al hidratar/grilla. Acepta: CF-3.
+- [x] **T-2.5** Extender `src/componentes/Canales.test.jsx`: válido ejecuta; inválido toastea sin reset; drift.
 
 **DoD WS2**: 1624 aceptado; inválido toastea sin reset; `pnpm test` verde; un solo consumidor documentado.
 

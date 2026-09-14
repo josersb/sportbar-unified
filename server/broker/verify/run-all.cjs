@@ -25,6 +25,7 @@ const steps = [
   ["verify-reconciler", "reconciler: auto-adopt, null no pisa, single-flight, intervalo, sync-status post-scan"],
   ["verify-write-confirm", "write-confirm: retry getEncoder post-join (settle) → reported correcto"],
   ["verify-confirm-settling", "confirm-settling: ventana por comando (av/stream) + no-op + unconfirmed"],
+  ["verify-channel-intent", "WS3 channel-intent: intención+ACK, noop sin IR, reported null, reload, snapshot"],
   ["verify-composition", "composition server.js: endpoints nuevos + legacy + SSE + stale→synced"],
 ];
 

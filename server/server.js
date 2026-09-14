@@ -517,6 +517,9 @@ async function createServer(options = {}) {
     let payload;
     if (domain === "presets") {
       payload = d.desired;
+    } else if (domain === "channelIntent") {
+      // App-only (CD-5): se difunde el desired (intención), nunca reported (null).
+      payload = d.desired;
     } else if (domain === "tvrack") {
       payload = {
         ...(d.reported || {}),
@@ -553,6 +556,7 @@ async function createServer(options = {}) {
         tvrack: snap.domains.tvrack.version,
         zonasFuera: snap.domains.zonasFuera.version,
         presets: snap.domains.presets.version,
+        channelIntent: snap.domains.channelIntent ? snap.domains.channelIntent.version : 1,
       },
       domains: snap.domains,
       appOnly: snap.appOnly,
@@ -716,8 +720,9 @@ async function createServer(options = {}) {
       domains: {},
       appOnly: snap.appOnly,
     };
-    for (const name of ["tvs", "tvrack", "zonasFuera", "presets"]) {
+    for (const name of ["tvs", "tvrack", "zonasFuera", "presets", "channelIntent"]) {
       const d = snap.domains[name];
+      if (!d) continue; // seed sin backfill — dominio nuevo, se omite
       body.versions[name] = d.version;
       if (!since[name] || d.version > since[name]) {
         body.domains[name] = d;
@@ -859,6 +864,79 @@ async function createServer(options = {}) {
 
     for (const domain of ["tvs", "tvrack", "zonasFuera"]) broadcastDomain(domain);
     res.json({ ok: failed === 0, applied: results.length - failed, failed, results });
+  });
+
+  // ── WS3 — Intención de canal DTV (app-only, CD-1..CD-5) ──
+  // El canal se modela como INTENCIÓN server-side, nunca como estado confirmado
+  // del deco: la API V210826 no permite leer el canal; `send ir` solo da ACK del
+  // controlador. Los dígitos IR siguen client-side (transporte /api/command) y el
+  // cliente reporta el resultado del controlador vía el endpoint de ACK.
+  const DECO_ID_RE = /^DTV[1-8]$/;
+
+  app.post("/api/decos/:id/channel", writesLimiter, async (req, res) => {
+    const { id } = req.params;
+    if (!DECO_ID_RE.test(id)) {
+      return res.status(400).json({ error: `Decodificador inválido: ${id}` });
+    }
+    const canal = req.body && req.body.canal != null ? String(req.body.canal).trim() : "";
+    if (!canal) {
+      return res.status(400).json({ error: "canal requerido" });
+    }
+
+    // CD-2: mismo canal vigente → "canal ya sintonizado" sin emitir IR (el
+    // cliente NO envía dígitos) y sin bump de versión.
+    const current = store.getDomain("channelIntent")?.desired[id];
+    if (current && current.canalActual === canal) {
+      return res.json({
+        ok: true,
+        noop: true,
+        reason: "canal ya sintonizado",
+        decoId: id,
+        canalActual: canal,
+        intent: current,
+      });
+    }
+
+    const writeId = nextWriteId();
+    writeLog(writeId, "WRITE", `channel intent ${id} → ${canal} (IR client-side, ACK pendiente)`);
+    store.setChannelIntentEntry(id, {
+      canalActual: canal,
+      lastSentAt: new Date().toISOString(),
+      ack: "pending",
+    });
+    await store.write();
+    broadcastDomain("channelIntent", writeId);
+    const d = store.getDomain("channelIntent");
+    res.json({
+      ok: true,
+      noop: false,
+      message: `cambiando al canal ${canal}`,
+      decoId: id,
+      canalActual: canal,
+      intent: d.desired[id],
+      version: d.version,
+    });
+  });
+
+  // ACK del controlador (resultado del IR client-side, CD-1): accepted
+  // (`send ir success`) o rejected (fallo del controlador).
+  app.post("/api/decos/:id/channel/ack", writesLimiter, async (req, res) => {
+    const { id } = req.params;
+    if (!DECO_ID_RE.test(id)) {
+      return res.status(400).json({ error: `Decodificador inválido: ${id}` });
+    }
+    const { ack } = req.body || {};
+    if (ack !== "accepted" && ack !== "rejected") {
+      return res.status(400).json({ error: "ack debe ser 'accepted' o 'rejected'" });
+    }
+    if (!store.getDomain("channelIntent")?.desired[id]) {
+      return res.status(404).json({ error: `Sin intención de canal para ${id}` });
+    }
+    store.setChannelIntentEntry(id, { ack });
+    await store.write();
+    broadcastDomain("channelIntent");
+    const d = store.getDomain("channelIntent");
+    res.json({ ok: true, decoId: id, intent: d.desired[id], version: d.version });
   });
 
   // ══════════════════════════════════════════════════════════════════════

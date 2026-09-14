@@ -39,7 +39,54 @@ Branch: `feat/mejoras-broker-ws2` (desde tracker `feat/mejoras-broker`). Fecha: 
 
 `git revert 4f02c2e e547425` — restaura la validación vieja (con drift). No toca `server/`, ni `confirmEncoder`, ni la secuencia IR (`sendChannelDigits` sin cambios).
 
-## WS3 — canales-dtv-intent (PR 2) ⬜ pendiente
+## WS3 — canales-dtv-intent (PR 2) ✅ COMPLETADO
+
+Branch: `feat/mejoras-broker-ws3` (desde `feat/mejoras-broker-ws2`). Fecha: 2026-09-14.
+
+### Tasks
+
+- [x] **T-3.1** Dominio `channelIntent` en `defaultSchemaV3` (`{desired, reported: null, version, lastUpdated}`). Backfill **idempotente** con nueva función `normalizeV3(seed)` (store.js) aplicada en `createStore` sobre TODAS las ramas de seed (v3 viejo en disco recibe el dominio sin backup ni rescan). `migrateV2ToV3`/`freshStartV3` lo incluyen; fresh-start conserva la intención si el legacy v3 la traía.
+- [x] **T-3.2** App-domain setters (patrón presets): `getChannelIntent()` / `setChannelIntentEntry(decoId, entry)` — merge por entrada: el ACK solo pisa `ack`, conserva `canalActual`/`lastSentAt`.
+- [x] **T-3.3** `POST /api/decos/:id/channel` (`DTV1..DTV8`): CD-2 noop (mismo canal vigente → `{ok, noop:true, reason:"canal ya sintonizado"}`, sin bump de versión) o setDesired `{canalActual, lastSentAt, ack:"pending"}` + `broadcastDomain("channelIntent")` + respuesta `{message:"cambiando al canal X"}`. `POST /api/decos/:id/channel/ack` persiste `accepted`/`rejected` (404 sin intención, 400 ack inválido). Dominio incluido en `/api/broker/state`, `buildBrokerSnapshot.versions` y `broadcastDomain` (payload = desired).
+- [x] **T-3.4** Rehidratación al startup: la intención persiste en state.json y sobrevive reload (verify F2); evento SSE incremental vía broadcastDomain → bus.
+- [x] **T-3.5** `setChannelIntent(deco, canal)` + `setChannelIntentAck(deco, ack)` en `arrangerApi.js` (con `writeError` y status HTTP).
+- [x] **T-3.6** `brokerClientCore.js`: `DOMAIN_KEYS` +`channelIntent`; `DESIRED_KEY_DOMAINS` (presets, channelIntent) para la key del evento incremental; `deriveUiState` expone `channelIntent`; nuevo export puro `rehydrateDecosFromIntent(estado, snapshot)`.
+- [x] **T-3.7** `App.jsx`: rehidrata `decos`/`dispositivos` desde `channelIntent.desired` con precedencia server en el efecto del snapshot (puro, sin loop: depende de snapshot, no de estado).
+- [x] **T-3.8** `Canales.jsx` write-through: optimistic local → POST intención → noop "canal ya sintonizado" (SIN IR, sin ACK) / "cambiando al canal X" → `sendChannelDigits` (IR client-side intacto) → ACK accepted; catch del IR → ACK rejected + "error al cambiar canal, volvé a intentar"; catch del POST → mismo toast de reintento. El toast success viejo se reemplazó por los toasts exactos del spec UXF-1.
+- [x] **T-3.9** Nuevo `server/broker/verify/verify-channel-intent.cjs`: 28 checks (A intención pending, B ack accepted, C ack rejected, D noop sin bump, E reported null, F snapshot+reload+2º server, G validaciones 400/404, H broadcast bus).
+- [x] **T-3.10** Registrado en `run-all.cjs` (todas las verificaciones pasan); `verify-store.cjs` +T5 (backfill idempotente, normalizeV3, setter/merge ACK); `Canales.test.jsx` +4 tests WS3 (196/196 total).
+
+### Commits (work-unit)
+
+| Hash | Mensaje |
+|---|---|
+| `18e3132` | feat(broker): dominio channelIntent en el store v3 con backfill idempotente |
+| `5da48ab` | feat(broker): intencion de canal DTV con ACK, noop sin IR y broadcast SSE |
+| `f55d17d` | feat(canales): write-through de intencion de canal con ACK y toasts del spec |
+
+### Verificación (sin hardware)
+
+- `pnpm test` → **196/196 tests, 15 archivos** (192 de WS2 + 4 nuevos WS3).
+- `node server/broker/verify/run-all.cjs` → **✓ TODAS LAS VERIFICACIONES PASARON** (incluye `verify-channel-intent` nuevo y `verify-store` extendido).
+- `node src/hooks/verify/verify-broker-core.mjs` → **80/80 verificaciones OK**.
+- `executeWrite`/`confirmEncoder`/settling de PR #13: **sin tocar** (verify-confirm-settling sigue verde en run-all).
+
+### Cambios acumulados
+
+~580 líneas authored (376 código en diff stat + ~200 en artefactos/verify nuevo) — sobre el presupuesto de 400 por PR individual, coherente con el forecast auto-chain del change (PR2 = slice WS3 completo).
+
+### Desviaciones / notas
+
+1. **`normalizeV3` no existía**: el task referenciaba ":325" (rama v3 de `createStore`, que usaba el seed tal cual). Se creó la función exportada y se aplicó en `createStore` — mismo efecto (backfill idempotente), mejor testeable.
+2. **ACK `pending|accepted|rejected`** (spec CD-1) sobre `"acked"|"error"` del boceto de interfaces del design — prevalece el spec.
+3. **Toast success viejo eliminado**: "Canal X enviado a DTV1" reemplazado por "cambiando al canal X" (UXF-1 exige esos toasts exactos; el success era redundante).
+4. **Canal local = optimistic**: Canales sigue actualizando decos/dispositivos localmente (tests WS2 intactos) pero la fuente de verdad es el server — App rehidrata con precedencia server por SSE/snapshot.
+5. **Lockfile drift**: `server/pnpm-lock.yaml` quedó modificado (instalación de deps, transitivo `ip-address` 10.5.0→10.7.0); NO se incluyó en los commits de WS3.
+
+### Rollback boundary
+
+`git revert f55d17d 5da48ab 18e3132` — quita el dominio `channelIntent` (store/server/api/hook/App/Canales). No toca `executeWrite`, `confirmEncoder` ni la secuencia IR (`sendChannelDigits` intacto). Un state.json con `channelIntent` cargan igual sin el dominio (los clientes viejos ignoran dominios desconocidos; el backfill solo agrega).
+
 ## WS4a — port groups (PR 3) ⬜ pendiente
 ## WS4b — matrix-groups write-through (PR 4) ⬜ pendiente
 ## WS5 — dedupe (PR 5) ⬜ pendiente

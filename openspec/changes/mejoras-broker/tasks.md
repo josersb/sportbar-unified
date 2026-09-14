@@ -42,18 +42,18 @@ Chain strategy: stacked-to-main
 
 **DoD WS2**: 1624 aceptado; inválido toastea sin reset; `pnpm test` verde; un solo consumidor documentado.
 
-## WS3 — canales-dtv-intent (PR 2 · hash 097af26b)
+## WS3 — canales-dtv-intent (PR 2 · commits 18e3132, 5da48ab, f55d17d)
 
-- [ ] **T-3.1** `server/broker/store.js:74` `defaultSchemaV3` + dominio `channelIntent` `{desired,reported:null,version,lastUpdated}`; backfill idempotente en `normalizeV3` (:325). Acepta: state v3 viejo carga.
-- [ ] **T-3.2** Setter/getter app-domain de `channelIntent` (reusar patrón `presets`).
-- [ ] **T-3.3** `server/server.js` `POST /api/decos/:id/channel`: setDesired + `ack` (`accepted`/`rejected`) desde `send ir success`; `broadcastDomain`; incluir en `/api/broker/state` (:719). Acepta: CD-1/CD-3/CD-4.
-- [ ] **T-3.4** Rehidratar `channelIntent` al arranque + evento SSE incremental. Acepta: CD-5.
-- [ ] **T-3.5** `src/api/arrangerApi.js` `setChannelIntent(deco, canal)`.
-- [ ] **T-3.6** `src/hooks/brokerClientCore.js`: `DOMAIN_KEYS` +`channelIntent` (:21); desired-key (:212); `deriveUiState` expone.
-- [ ] **T-3.7** `src/App.jsx:56` rehidratar `dispositivos`/`decos` desde `channelIntent` con precedencia server.
-- [ ] **T-3.8** `src/componentes/Canales.jsx` write-through + ACK; IR queda client-side; toasts "ya sintonizado"/"cambiando al canal X"/error (CD-2).
-- [ ] **T-3.9** Nuevo `server/broker/verify/verify-channel-intent.cjs`: accepted/rejected/same-channel/sin `reported`.
-- [ ] **T-3.10** Registrar en `server/broker/verify/run-all.cjs`; extender `verify-store.cjs` + `Canales.test.jsx`.
+- [x] **T-3.1** `server/broker/store.js:74` `defaultSchemaV3` + dominio `channelIntent` `{desired,reported:null,version,lastUpdated}`; backfill idempotente en `normalizeV3` (nueva función, aplicada en `createStore` sobre TODAS las ramas de seed). Acepta: state v3 viejo carga (verify-store T5: sin backup, sin rescan, tvs intacto).
+- [x] **T-3.2** Setter/getter app-domain de `channelIntent` (patrón `presets`): `getChannelIntent()` / `setChannelIntentEntry(decoId, entry)` — el ACK mergea sin pisar canalActual/lastSentAt.
+- [x] **T-3.3** `server/server.js` `POST /api/decos/:id/channel`: noop CD-2 (mismo canal vigente → `{noop:true, reason:"canal ya sintonizado"}`, sin bump ni IR) o setDesired `{canalActual, lastSentAt, ack:"pending"}` + `broadcastDomain`; `POST /api/decos/:id/channel/ack` persiste `accepted`/`rejected`; incluido en `/api/broker/state` y `buildBrokerSnapshot.versions`. Acepta: CD-1/CD-3/CD-4.
+- [x] **T-3.4** Rehidratación al startup (persistencia state.json + backfill) + evento SSE incremental vía `broadcastDomain("channelIntent")` (payload = desired). Acepta: CD-5 (verify F1/F2: snapshot, reload y 2º server).
+- [x] **T-3.5** `src/api/arrangerApi.js` `setChannelIntent(deco, canal)` + `setChannelIntentAck(deco, ack)`.
+- [x] **T-3.6** `src/hooks/brokerClientCore.js`: `DOMAIN_KEYS` +`channelIntent`; key `desired` para dominios app-only (`DESIRED_KEY_DOMAINS`); `deriveUiState` expone `channelIntent`; nuevo `rehydrateDecosFromIntent`.
+- [x] **T-3.7** `src/App.jsx` rehidratar `dispositivos`/`decos` desde `channelIntent` con precedencia server (`rehydrateDecosFromIntent` en el efecto del snapshot).
+- [x] **T-3.8** `src/componentes/Canales.jsx` write-through: POST intención → noop "canal ya sintonizado" SIN IR / "cambiando al canal X" → IR client-side → ACK accepted|rejected; toasts exactos CD-2/CD-3/CD-4.
+- [x] **T-3.9** Nuevo `server/broker/verify/verify-channel-intent.cjs`: accepted/rejected/same-channel/sin `reported`/reload/snapshot/validaciones/broadcast (28 checks).
+- [x] **T-3.10** Registrado en `server/broker/verify/run-all.cjs`; `verify-store.cjs` +T5 (backfill, setter, merge ACK); `Canales.test.jsx` +4 tests WS3.
 
 **DoD WS3**: CD-1…CD-5; `node server/broker/verify/run-all.cjs` verde; reload y 2º cliente rehidratan.
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ProviderUser } from "../contexto/Contexto";
+import { ToastProvider } from "./Toast";
 import Canales from "./Canales";
 
 // vi.mock is hoisted to top of file — use vi.hoisted for variables the factory needs
@@ -27,18 +28,19 @@ const baseState = {
   tvs: {},
 };
 
-function renderWithContext(overrideValue = {}) {
+function renderWithContext(overrideValue = {}, { withToasts = false } = {}) {
   const contextValue = {
     estado: baseState,
     handleChangeEstadoDecos: vi.fn(),
     handleUpdateDispositivo: vi.fn(),
     ...overrideValue,
   };
-  return render(
+  const ui = (
     <ProviderUser value={contextValue}>
       <Canales />
     </ProviderUser>
   );
+  return withToasts ? render(<ToastProvider>{ui}</ToastProvider>) : render(ui);
 }
 
 describe("Canales submitCanal", () => {
@@ -78,5 +80,59 @@ describe("Canales submitCanal", () => {
 
     // State should always be updated (handleChangeEstadoDecos is outside try/catch)
     expect(handleChangeEstadoDecos).toHaveBeenCalled();
+  });
+
+  it("accepts 1624 even when estado.favoritos drifted (CF-1: allowlist is the source)", async () => {
+    const handleChangeEstadoDecos = vi.fn();
+    // favoritos con drift: NO incluye 1624 — la validación ya no lo lee.
+    const estadoDrift = { ...baseState, favoritos: [1603, 1614, 1625] };
+    renderWithContext({ estado: estadoDrift, handleChangeEstadoDecos });
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "DTV1" } });
+    const input = screen.getByPlaceholderText("numero a ingresar");
+    fireEvent.change(input, { target: { value: "1624" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    await vi.waitFor(() => {
+      expect(mockSendChannelDigits).toHaveBeenCalledWith("DTV1", "1624");
+    });
+    expect(handleChangeEstadoDecos).toHaveBeenCalled();
+    expect(handleChangeEstadoDecos.mock.calls[0][0][0]).toEqual({ canalDeco: "1624" });
+  });
+
+  it("invalid channel shows a warning toast without resetting the input (CF-2)", async () => {
+    const handleChangeEstadoDecos = vi.fn();
+    renderWithContext({ handleChangeEstadoDecos }, { withToasts: true });
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "DTV1" } });
+    const input = screen.getByPlaceholderText("numero a ingresar");
+    fireEvent.change(input, { target: { value: "9999" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    // Advertencia explícita (no silencio)
+    expect(await screen.findByText("canal no válido")).toBeTruthy();
+
+    // Sin reset silencioso: el input conserva el valor ingresado
+    expect(input.value).toBe("9999");
+
+    // No se envía nada al Arranger ni se muta el estado
+    expect(mockSendChannelDigits).not.toHaveBeenCalled();
+    expect(handleChangeEstadoDecos).not.toHaveBeenCalled();
+    expect(mockLoadChannelPreset).not.toHaveBeenCalled();
+  });
+
+  it("rejects 1614 — obsolete favorite absent from the grid allowlist", async () => {
+    // 1614 estaba en el default de estado.favoritos pero NO en CANALES_FAVORITOS
+    const handleChangeEstadoDecos = vi.fn();
+    renderWithContext({ handleChangeEstadoDecos }, { withToasts: true });
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "DTV1" } });
+    const input = screen.getByPlaceholderText("numero a ingresar");
+    fireEvent.change(input, { target: { value: "1614" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    expect(await screen.findByText("canal no válido")).toBeTruthy();
+    expect(mockSendChannelDigits).not.toHaveBeenCalled();
+    expect(handleChangeEstadoDecos).not.toHaveBeenCalled();
   });
 });

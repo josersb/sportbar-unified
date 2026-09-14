@@ -429,6 +429,24 @@ function check(name, cond) {
   );
 }
 
+// ── 12. CANAL_ALLOWLIST (WS2, spec canales-favoritos CF-1) ──
+// canalesFavoritos.js importa imágenes (svg/png) que Node puro no resuelve,
+// así que el contrato se verifica leyendo el source y extrayendo los canales.
+import { readFileSync } from "node:fs";
+{
+  const src = readFileSync(new URL("../../data/canalesFavoritos.js", import.meta.url), "utf8");
+  const canales = [...src.matchAll(/canal:\s*"([^"]+)"/g)].map((m) => m[1]);
+  const allowlist = new Set(canales);
+  check("allowlist: 21 canales en la grilla (sin duplicados)", canales.length === 21 && allowlist.size === 21);
+  check("allowlist: 1624 presente (fix del drift que lo rechazaba)", allowlist.has("1624"));
+  check("allowlist: exporta CANAL_ALLOWLIST derivado de la grilla", /export const CANAL_ALLOWLIST\s*=\s*new Set\(CANALES_FAVORITOS\.map/.test(src));
+  check("allowlist: exporta reconcileFavoritos (CF-3)", /export function reconcileFavoritos/.test(src));
+  // Canales.jsx ya no valida contra estado.favoritos ni contra el rango 100–2000
+  const canalesSrc = readFileSync(new URL("../../componentes/Canales.jsx", import.meta.url), "utf8");
+  check("allowlist: Canales valida contra CANAL_ALLOWLIST", canalesSrc.includes("CANAL_ALLOWLIST.has(canal)"));
+  check("allowlist: Canales sin drift de favoritos (no lee estado.favoritos)", !canalesSrc.includes("estado.favoritos"));
+}
+
 const failed = checks.filter((c) => !c.ok).length;
 console.log(`\n${checks.length - failed}/${checks.length} verificaciones OK`);
 if (failed > 0) process.exit(1);

@@ -1,7 +1,7 @@
 import { useRef, useContext, useState } from "react";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
-import { CANALES_FAVORITOS } from "../data/canalesFavoritos";
+import { CANALES_FAVORITOS, CANAL_ALLOWLIST } from "../data/canalesFavoritos";
 import { sendChannelDigits } from "../api/arrangerApi";
 import "./Toast.css";
 import { useToast } from "./Toast";
@@ -13,7 +13,6 @@ const Canales = () => {
   const { estado, handleChangeEstadoDecos, handleUpdateDispositivo } = useContext(ContextoUser);
 
   const decos = estado.decos;
-  const favoritos = estado.favoritos;
   const toast = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -29,8 +28,9 @@ const Canales = () => {
       e.preventDefault();
       setLoading(true);
       const canal = inputRef.current.value;
-      const esUnCanalFavorito = favoritos.filter((x) => x == canal).length;
-      if (canal >= 100 && canal <= 2000 && esUnCanalFavorito) {
+      // CF-1: la validación consume la MISMA allowlist que la grilla
+      // (CANALES_FAVORITOS) — un canal de la grilla siempre ejecuta.
+      if (CANAL_ALLOWLIST.has(canal)) {
         const selectedDeco = selectRef.current.value;
         // Update dispositivo state directly
         handleUpdateDispositivo(selectedDeco, { canalActual: canal });
@@ -43,8 +43,9 @@ const Canales = () => {
         await sendChannelDigits(selectedDeco, canal);
         toast.success(`Canal ${canal} enviado a ${selectedDeco}`);
       } else {
-        inputRef.current.value = "";
-        inputRef.current.placeholder = "numero canal no valido";
+        // CF-2: rechazo explícito — toast de advertencia, sin reset
+        // silencioso del input ni del placeholder.
+        toast.warning("canal no válido");
       }
     } catch {
       toast.error("Error al comunicar con el Arranger");

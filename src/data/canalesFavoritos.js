@@ -39,3 +39,20 @@ export const CANALES_FAVORITOS = [
   { canal: "0000A", img: null, nombre: "(1629) TyC Sports" },
   { canal: "0000B", img: null, nombre: "(1614) DTV 3 Sports HD" },
 ];
+
+/**
+ * Allowlist única de canales favoritos (spec canales-favoritos, CF-1).
+ * La grilla y la validación de `submitCanal` consumen este MISMO Set:
+ * no hay lista paralela, así un canal de la grilla siempre se acepta.
+ */
+export const CANAL_ALLOWLIST = new Set(CANALES_FAVORITOS.map((ch) => ch.canal));
+
+/**
+ * CF-3 — reconciliación de drift: elimina de `favoritos` toda entrada
+ * ausente de la allowlist (ej. canales removidos de la grilla que quedaron
+ * persistidos en `estado.favoritos`). Conserva los valores válidos.
+ */
+export function reconcileFavoritos(favoritos) {
+  if (!Array.isArray(favoritos)) return favoritos;
+  return favoritos.filter((f) => CANAL_ALLOWLIST.has(String(f)));
+}

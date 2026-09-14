@@ -57,9 +57,13 @@ export const estadoInicial = {
     ])
   ),
   _version: 1,
+  // Favoritos realineados con la grilla (CANALES_FAVORITOS, allowlist CF-1):
+  // sin canales obsoletos (1614/1625/1629) e incluyendo 1624. La validación
+  // de Canales ya no lee este campo (usa CANAL_ALLOWLIST); se conserva por
+  // persistencia.
   favoritos: [
-    1603, 1604, 1605, 1608, 1609, 1610, 1612, 1613, 1614, 1620, 1621, 1622, 1623, 1625, 1628, 1629,
-    1631, 1639, 1644, 1677,
+    1603, 1604, 1605, 1608, 1609, 1610, 1612, 1613, 1620, 1621, 1622, 1623, 1624, 1628, 1631,
+    1639, 1644, 1677,
   ],
   // tvs: solo destinos de matriz del broker (TV01-TV26 + VWN/VWC/VWS).
   // PR 3: se eliminaron las keys legacy TvsBarra*, TvsEscalera* y TVRACK —

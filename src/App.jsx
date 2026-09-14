@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
+import { reconcileFavoritos } from "./data/canalesFavoritos";
 import { useBrokerState } from "./hooks/useBrokerState";
 import { deriveUiState, buildDiffsInfo, writeErrorMessage } from "./hooks/brokerClientCore";
 import {
@@ -26,13 +27,16 @@ const App = () => {
   // El server es dueño del estado app (appOnly.appState); la UI lo mantiene en
   // memoria y persiste cambios con POST /api/app-state (merge parcial).
   const [estado, setEstado] = useState(() => {
+    let initial = estadoInicial;
     try {
       const saved = localStorage.getItem(ESTADO_APP_KEY);
-      if (saved) return { ...estadoInicial, ...JSON.parse(saved), _version: 1 };
+      if (saved) initial = { ...estadoInicial, ...JSON.parse(saved), _version: 1 };
     } catch {
       // localStorage corrupto → estado inicial
     }
-    return estadoInicial;
+    // CF-3: reconciliar favoritos contra la allowlist de la grilla al
+    // hidratar — los canales obsoletos persistidos se eliminan.
+    return { ...initial, favoritos: reconcileFavoritos(initial.favoritos) };
   });
   const [tvrackState, setTvrackState] = useState({ video: "DTV1", audio: "DTV1", link: false });
   const [zonasFueraState, setZonasFueraState] = useState({});
@@ -73,7 +77,10 @@ const App = () => {
       if (!parsed || typeof parsed !== "object") return;
       const patch = {};
       for (const key of ["decos", "dispositivos", "favoritos", "audio", "descripcionPreset"]) {
-        if (parsed[key] !== undefined) patch[key] = parsed[key];
+        if (parsed[key] !== undefined) {
+          // CF-3: no propagar favoritos obsoletos al broker en la migración
+          patch[key] = key === "favoritos" ? reconcileFavoritos(parsed[key]) : parsed[key];
+        }
       }
       if (Object.keys(patch).length > 0) {
         setAppState(patch).catch(() => {});

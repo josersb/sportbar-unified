@@ -5,14 +5,18 @@ import { ToastProvider } from "./Toast";
 import Canales from "./Canales";
 
 // vi.mock is hoisted to top of file — use vi.hoisted for variables the factory needs
-const { mockLoadChannelPreset, mockSendChannelDigits } = vi.hoisted(() => ({
+const { mockLoadChannelPreset, mockSendChannelDigits, mockSetChannelIntent, mockSetChannelIntentAck } = vi.hoisted(() => ({
   mockLoadChannelPreset: vi.fn().mockResolvedValue(undefined),
   mockSendChannelDigits: vi.fn().mockResolvedValue(undefined),
+  mockSetChannelIntent: vi.fn().mockResolvedValue({ ok: true, noop: false, message: "cambiando al canal" }),
+  mockSetChannelIntentAck: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 vi.mock("../api/arrangerApi", () => ({
   loadChannelPreset: mockLoadChannelPreset,
   sendChannelDigits: mockSendChannelDigits,
+  setChannelIntent: mockSetChannelIntent,
+  setChannelIntentAck: mockSetChannelIntentAck,
 }));
 
 // 8 decos with empty initial channels
@@ -134,5 +138,67 @@ describe("Canales submitCanal", () => {
     expect(await screen.findByText("canal no válido")).toBeTruthy();
     expect(mockSendChannelDigits).not.toHaveBeenCalled();
     expect(handleChangeEstadoDecos).not.toHaveBeenCalled();
+  });
+});
+
+describe("Canales WS3 — write-through de intención de canal", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSetChannelIntent.mockResolvedValue({ ok: true, noop: false, message: "cambiando al canal 1603" });
+    mockSetChannelIntentAck.mockResolvedValue({ ok: true });
+  });
+
+  function submit(dtv, canal) {
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: dtv } });
+    const input = screen.getByPlaceholderText("numero a ingresar");
+    fireEvent.change(input, { target: { value: canal } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+  }
+
+  it("cambio de canal: registra intención, emite IR y ACK accepted (CD-1/CD-3)", async () => {
+    renderWithContext({}, { withToasts: true });
+    submit("DTV1", "1603");
+
+    await vi.waitFor(() => {
+      expect(mockSetChannelIntent).toHaveBeenCalledWith("DTV1", "1603");
+    });
+    expect(mockSendChannelDigits).toHaveBeenCalledWith("DTV1", "1603");
+    await vi.waitFor(() => {
+      expect(mockSetChannelIntentAck).toHaveBeenCalledWith("DTV1", "accepted");
+    });
+  });
+
+  it("canal ya sintonizado: toast informativo y SIN emitir IR (CD-2)", async () => {
+    mockSetChannelIntent.mockResolvedValue({ ok: true, noop: true, reason: "canal ya sintonizado" });
+    renderWithContext({}, { withToasts: true });
+    submit("DTV1", "1603");
+
+    expect(await screen.findByText("canal ya sintonizado")).toBeTruthy();
+    expect(mockSendChannelDigits).not.toHaveBeenCalled();
+    expect(mockSetChannelIntentAck).not.toHaveBeenCalled();
+  });
+
+  it("fallo del controlador: ACK rejected y toast de reintento (CD-4)", async () => {
+    mockSendChannelDigits.mockRejectedValueOnce(new Error("Arranger rechazó el comando"));
+    renderWithContext({}, { withToasts: true });
+    submit("DTV1", "1603");
+
+    await vi.waitFor(() => {
+      expect(mockSendChannelDigits).toHaveBeenCalled();
+    });
+    await vi.waitFor(() => {
+      expect(mockSetChannelIntentAck).toHaveBeenCalledWith("DTV1", "rejected");
+    });
+    expect(await screen.findByText("error al cambiar canal, volvé a intentar")).toBeTruthy();
+  });
+
+  it("fallo del POST de intención: toast de reintento, sin IR ni ACK", async () => {
+    mockSetChannelIntent.mockRejectedValueOnce(Object.assign(new Error("rate limit"), { status: 429 }));
+    renderWithContext({}, { withToasts: true });
+    submit("DTV1", "1603");
+
+    expect(await screen.findByText("error al cambiar canal, volvé a intentar")).toBeTruthy();
+    expect(mockSendChannelDigits).not.toHaveBeenCalled();
+    expect(mockSetChannelIntentAck).not.toHaveBeenCalled();
   });
 });

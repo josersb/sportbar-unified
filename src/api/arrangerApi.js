@@ -217,6 +217,52 @@ export async function deletePresetServer(n) {
   return response.json();
 }
 
+// ── WS3: Intención de canal DTV (app-only, server-owned) ──
+
+/**
+ * Registra la intención de canal de un decodificador (write-through, CD-1/CD-3).
+ * El server persiste {canalActual, lastSentAt, ack:"pending"} y lo difunde por
+ * SSE. CD-2: si el canal ya es el vigente responde {noop:true, reason:"canal ya
+ * sintonizado"} y el cliente NO debe emitir IR.
+ *
+ * @param {string} decoId — DTV1..DTV8
+ * @param {string|number} canal
+ * @returns {Promise<object>} { ok, noop?, message?, intent?, version? }
+ */
+export async function setChannelIntent(decoId, canal) {
+  const response = await fetch(`/api/decos/${encodeURIComponent(decoId)}/channel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ canal }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw writeError(response.status, body.error || `Failed to set channel intent for ${decoId}: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Reporta el resultado del IR client-side para que el server persista el ACK
+ * del controlador en channelIntent.ack (CD-1/CD-4).
+ *
+ * @param {string} decoId — DTV1..DTV8
+ * @param {"accepted"|"rejected"} ack — resultado de `send ir success`
+ * @returns {Promise<object>} { ok, decoId, intent, version }
+ */
+export async function setChannelIntentAck(decoId, ack) {
+  const response = await fetch(`/api/decos/${encodeURIComponent(decoId)}/channel/ack`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ack }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw writeError(response.status, body.error || `Failed to ack channel for ${decoId}: ${response.status}`);
+  }
+  return response.json();
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Proxy de comandos del Arranger (IR / serial / preset-deco)
 // ═══════════════════════════════════════════════════════════════════════════

@@ -3,7 +3,7 @@ import { BrowserRouter as Router } from "react-router-dom";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
 import { reconcileFavoritos } from "./data/canalesFavoritos";
 import { useBrokerState } from "./hooks/useBrokerState";
-import { deriveUiState, buildDiffsInfo, writeErrorMessage } from "./hooks/brokerClientCore";
+import { deriveUiState, buildDiffsInfo, writeErrorMessage, rehydrateDecosFromIntent } from "./hooks/brokerClientCore";
 import {
   setAppState,
   setZonasFueraVideo,
@@ -55,6 +55,10 @@ const App = () => {
     if (!snapshot) return;
     setTvrackState(brokerTvrack);
     setZonasFueraState(brokerZonas);
+    // CD-5 (WS3): rehidratar decos/dispositivos desde la intención de canal del
+    // server con precedencia server — el canal DTV vive en el broker, el
+    // cliente lo recibe (nunca lo persiste como fuente de verdad).
+    setEstado((prev) => rehydrateDecosFromIntent(prev, snapshot));
     setEstadoLoaded(true);
     setErrorDecos(false);
   }, [snapshot, brokerTvrack, brokerZonas]);

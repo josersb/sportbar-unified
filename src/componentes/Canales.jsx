@@ -2,7 +2,7 @@ import { useRef, useContext, useState } from "react";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import { CANALES_FAVORITOS, CANAL_ALLOWLIST } from "../data/canalesFavoritos";
-import { sendChannelDigits } from "../api/arrangerApi";
+import { sendChannelDigits, setChannelIntent, setChannelIntentAck } from "../api/arrangerApi";
 import "./Toast.css";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
@@ -32,7 +32,8 @@ const Canales = () => {
       // (CANALES_FAVORITOS) — un canal de la grilla siempre ejecuta.
       if (CANAL_ALLOWLIST.has(canal)) {
         const selectedDeco = selectRef.current.value;
-        // Update dispositivo state directly
+        // Optimistic local (legacy decos + dispositivos). La fuente de verdad
+        // del canal es el server (channelIntent); el SSE rehidrata y confirma.
         handleUpdateDispositivo(selectedDeco, { canalActual: canal });
         // Also keep legacy decos array in sync for backward compat
         const decoNumber = parseInt(selectedDeco.replace("DTV", ""), 10);
@@ -40,15 +41,34 @@ const Canales = () => {
           i === decoNumber - 1 ? { ...deco, canalDeco: canal } : deco
         );
         handleChangeEstadoDecos(newDecos);
-        await sendChannelDigits(selectedDeco, canal);
-        toast.success(`Canal ${canal} enviado a ${selectedDeco}`);
+
+        // WS3 write-through: el server decide ANTES de emitir IR. CD-2: si el
+        // canal ya es el vigente responde noop y NO se emite IR.
+        const intent = await setChannelIntent(selectedDeco, canal);
+        if (intent.noop) {
+          toast.info("canal ya sintonizado");
+          return;
+        }
+        // CD-3: cambio de canal → feedback inmediato + IR client-side (los
+        // dígitos siguen viajando por /api/command, transport client-side).
+        toast.info(`cambiando al canal ${canal}`);
+        try {
+          await sendChannelDigits(selectedDeco, canal);
+          // CD-1: ACK del controlador (send ir success) persistido en el server.
+          await setChannelIntentAck(selectedDeco, "accepted");
+        } catch {
+          // CD-4: fallo del controlador → ACK rejected persistido + reintento.
+          await setChannelIntentAck(selectedDeco, "rejected").catch(() => {});
+          toast.error("error al cambiar canal, volvé a intentar");
+        }
       } else {
         // CF-2: rechazo explícito — toast de advertencia, sin reset
         // silencioso del input ni del placeholder.
         toast.warning("canal no válido");
       }
     } catch {
-      toast.error("Error al comunicar con el Arranger");
+      // Fallo del POST de intención (red/429/5xx): el write no se procesó.
+      toast.error("error al cambiar canal, volvé a intentar");
     } finally {
       setLoading(false);
     }

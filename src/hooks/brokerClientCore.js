@@ -18,7 +18,10 @@
 
 export const SYNC_STATES = ["synced", "stale", "out_of_sync", "offline"];
 
-export const DOMAIN_KEYS = ["tvs", "tvrack", "zonasFuera", "presets"];
+export const DOMAIN_KEYS = ["tvs", "tvrack", "zonasFuera", "presets", "channelIntent"];
+
+/** Dominios app-only: el evento incremental trae `desired` (no `reported`). */
+const DESIRED_KEY_DOMAINS = new Set(["presets", "channelIntent"]);
 
 /** Ring buffer de los últimos N eventos SSE + operaciones optimistic. */
 const LOG_BUFFER_SIZE = 50;
@@ -209,7 +212,7 @@ export function applyStateEvent(prev, evt) {
   if (!evt || !evt.domain || !DOMAIN_KEYS.includes(evt.domain)) return prev;
   const domain = evt.domain;
   const cur = prev.domains?.[domain] || { desired: {}, reported: {}, version: 0, lastUpdated: null };
-  const key = domain === "presets" ? "desired" : "reported";
+  const key = DESIRED_KEY_DOMAINS.has(domain) ? "desired" : "reported";
   const payload = evt.payload && typeof evt.payload === "object" ? evt.payload : {};
   const nextAppOnly = { ...(prev.appOnly || {}) };
   const optimistic = { ...(prev.optimistic || {}) };
@@ -613,7 +616,51 @@ export function deriveUiState(snapshot) {
     };
   }
 
-  return { tvs, tvrackState, zonasFueraState };
+  // channelIntent (WS3, app-only): la intención de canal por deco expuesta tal
+  // cual para que App rehidrate decos/dispositivos (CD-5).
+  const channelIntent = domains.channelIntent?.desired || {};
+
+  return { tvs, tvrackState, zonasFueraState, channelIntent };
+}
+
+/**
+ * CD-5 (WS3): rehidrata decos/dispositivos desde domains.channelIntent.desired
+ * con PRECEDENCIA SERVER — el server es la única fuente de verdad del canal
+ * DTV (el canal se modela como intención, nunca como estado confirmado del
+ * deco). Devuelve el mismo objeto si no hay intención persistida o nada
+ * cambió (evita re-render innecesario).
+ *
+ * @param {object} estado - estado app previo ({decos, dispositivos, ...})
+ * @param {object} snapshot - snapshot del broker
+ * @returns {object} estado con decos/dispositivos actualizados o el mismo objeto
+ */
+export function rehydrateDecosFromIntent(estado, snapshot) {
+  const desired = snapshot?.domains?.channelIntent?.desired;
+  if (!desired || typeof desired !== "object" || !estado || typeof estado !== "object") return estado;
+  const decos = Array.isArray(estado.decos) ? estado.decos : [];
+  const dispositivos = estado.dispositivos && typeof estado.dispositivos === "object" ? estado.dispositivos : {};
+  let changed = false;
+  const nextDecos = decos.map((deco) => {
+    const intent = deco && deco.nombreDeco ? desired[deco.nombreDeco] : null;
+    if (intent && intent.canalActual != null && intent.canalActual !== deco.canalDeco) {
+      changed = true;
+      return { ...deco, canalDeco: intent.canalActual };
+    }
+    return deco;
+  });
+  const nextDispositivos = { ...dispositivos };
+  for (const [decoId, intent] of Object.entries(desired)) {
+    if (
+      nextDispositivos[decoId] &&
+      intent &&
+      intent.canalActual != null &&
+      nextDispositivos[decoId].canalActual !== intent.canalActual
+    ) {
+      changed = true;
+      nextDispositivos[decoId] = { ...nextDispositivos[decoId], canalActual: intent.canalActual };
+    }
+  }
+  return changed ? { ...estado, decos: nextDecos, dispositivos: nextDispositivos } : estado;
 }
 
 /**

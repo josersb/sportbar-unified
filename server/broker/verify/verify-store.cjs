@@ -10,7 +10,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { createStore } = require("../store.js");
+const { createStore, normalizeV3 } = require("../store.js");
 const { createMockArranger } = require("../mockArranger.js");
 
 const checks = [];
@@ -122,6 +122,47 @@ function fixtureV2() {
     check("T4: reported null no pisa", store.data.domains.tvs.reported.TV01 === "DTV4");
     check("T4: reported null no bumpa", store.data.domains.tvs.version === before);
     check("T4: setReportedAll con lecturas válidas", (() => { store.setReportedAll("tvs", { TV01: "DTV4", TV02: null }); return store.data.domains.tvs.reported.TV02 === undefined; })());
+
+    // ── T5 (WS3, T-3.1/3.2): dominio channelIntent + backfill idempotente ──
+    check("T5: migración v2→v3 incluye channelIntent", !!store.data.domains.channelIntent);
+    check("T5: channelIntent reported null", store.data.domains.channelIntent.reported === null);
+    check("T5: normalizeV3 agrega dominio faltante (idempotente)", (() => {
+      const seed = { schemaVersion: 3, domains: { tvs: { desired: {}, reported: {}, version: 5, lastUpdated: "x" } }, appOnly: {} };
+      const out = normalizeV3(seed);
+      return !!(out.domains.channelIntent && out.domains.tvs.version === 5);
+    })());
+    check("T5: normalizeV3 no toca dominio existente", (() => {
+      const intent = { desired: { DTV1: { canalActual: "1624", lastSentAt: "y", ack: "accepted" } }, reported: null, version: 7, lastUpdated: "z" };
+      const out = normalizeV3({ schemaVersion: 3, domains: { channelIntent: intent }, appOnly: {} });
+      return out.domains.channelIntent.version === 7;
+    })());
+    check("T5: normalizeV3 ignora seeds no-v3", normalizeV3({ schemaVersion: 2 })?.schemaVersion === 2);
+
+    // v3 anterior a WS3 en disco (sin channelIntent) → backfill al abrir, sin backup
+    const dbPath4 = path.join(tmp, "state4.json");
+    const backup4 = path.join(tmp, "state4.backup.json");
+    fs.writeFileSync(dbPath4, JSON.stringify({
+      schemaVersion: 3,
+      domains: { tvs: { desired: { TV01: "DTV3" }, reported: {}, version: 2, lastUpdated: "x" } },
+      appOnly: { tvrack: { link: false } },
+      sync: { status: "synced", lastSync: "y" },
+    }));
+    const st4 = await createStore({ dbPath: dbPath4, backupPath: backup4, log: { info: () => {}, warn: () => {} } });
+    check("T5: v3 viejo carga con backfill channelIntent", !!st4.data.domains.channelIntent && st4.data.domains.channelIntent.desired !== null);
+    check("T5: v3 viejo sin backup (sin rescan)", !fs.existsSync(backup4));
+    check("T5: v3 viejo conserva tvs intacto", st4.data.domains.tvs.desired.TV01 === "DTV3" && st4.data.domains.tvs.version === 2);
+
+    // T5b: setter app-domain (patrón presets): entrada mergeada + version bump
+    const vCi0 = st4.data.domains.channelIntent.version;
+    st4.setChannelIntentEntry("DTV1", { canalActual: "1624", lastSentAt: "2026-09-14T00:00:00.000Z", ack: "pending" });
+    const entry1 = st4.data.domains.channelIntent.desired.DTV1;
+    check("T5b: setChannelIntentEntry persiste intención", entry1.canalActual === "1624" && entry1.ack === "pending");
+    check("T5b: setChannelIntentEntry bumpa versión", st4.data.domains.channelIntent.version === vCi0 + 1);
+    st4.setChannelIntentEntry("DTV1", { ack: "accepted" });
+    const entry2 = st4.data.domains.channelIntent.desired.DTV1;
+    check("T5b: ACK mergea sin pisar canalActual/lastSentAt", entry2.ack === "accepted" && entry2.canalActual === "1624" && entry2.lastSentAt === "2026-09-14T00:00:00.000Z");
+    check("T5b: reported sigue null tras writes", st4.data.domains.channelIntent.reported === null);
+    check("T5b: getChannelIntent expone el dominio", st4.getChannelIntent().desired.DTV1.canalActual === "1624");
 
     const failed = checks.filter((c) => !c.ok).length;
     console.log(`\n${failed === 0 ? "✓ STORE OK" : `✗ ${failed} chequeos fallaron`}`);

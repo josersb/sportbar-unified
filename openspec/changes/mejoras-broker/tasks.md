@@ -115,8 +115,8 @@ Reencuadre aprobado: modelo declarativo único `zones→subgroups{key,dir,screen
 
 ### WS4e — expansión server-side (PR 7)
 
-- [ ] **T-4e.1** `src/componentes/MatrizVideo.jsx`: submit → `setMatrixGroups(values)` (POST `/api/matrix-groups`); eliminar el switch (:146-433) y el batch de `setTvSource`; optimistic con `applyOptimistic("matrixGroups", values)`; toasts de error existentes.
-- [ ] **T-4e.2** Extender `MatrizVideo.test.jsx`: submit llama `setMatrixGroups` una vez; no llama `setTvSource` por TV.
+- [x] **T-4e.1** `src/componentes/MatrizVideo.jsx`: submit → `setMatrixGroups(values)` (POST `/api/matrix-groups`); eliminar el switch (:146-433) y el batch de `setTvSource`; optimistic con `applyOptimistic("matrixGroups", values)`; toasts de error existentes.
+- [x] **T-4e.2** Extender `MatrizVideo.test.jsx`: submit llama `setMatrixGroups` una vez; no llama `setTvSource` por TV.
 
 **DoD WS4e**: MG-1; cliente read-only; un solo POST por submit.
 

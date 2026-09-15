@@ -251,6 +251,47 @@ Branch: `feat/mejoras-broker-ws4d` (desde `feat/mejoras-broker-ws4c`). Fecha: 20
 
 `git revert 564ee06` — restaura los bloques hardcodeados de selects, la key legacy `TvsBarraLivertador` y la coacción `|| "DTV1"` de W-1/W-2. El server (WS4a/WS4b) y el plumbing (WS4c) quedan intactos; un cliente viejo ignora `matrixGroups`/`matrixModel`. No toca `executeWrite`, `confirmEncoder` ni la secuencia IR.
 
-## WS4e — submit server-side (PR 7) ⬜ pendiente
+## WS4e — submit server-side (PR 7) ✅ COMPLETADO
+
+Branch: `feat/mejoras-broker-ws4e` (desde `feat/mejoras-broker-ws4d`). Fecha: 2026-09-15.
+
+### Tasks
+
+- [x] **T-4e.1** `MatrizVideo.jsx`: el submit construye el INTENT por subgrupo a partir de `groupZones`/values del form (solo valores `isSourceValue`), lo aplica como overlay optimista (`applyOptimistic("matrixGroups", intent)`, capturando `getOptimisticDomain` previo) y lo envía con UN único POST vía `setMatrixGroups(intent)` → `/api/matrix-groups`. El server valida contra `optionsFor(size)` (MG-5), expande (`expandGroups`, MG-4), persiste, broadcastea y hace el write-through por `writeQueue`. ELIMINADOS: el switch de expansión por grupo (~288 líneas), el batch de 29 POSTs por-TV (`setTvSource` + `sortTvsByGroup` + `DESTINOS_TV` + BATCH_SIZE), sus rollbacks parciales y toasts de conteo. Toasts: éxito "Matriz de video actualizada"; error del POST → `revertOptimistic("matrixGroups", ...)` + `writeErrorMessage(err, "Matriz de video")` (hotfix 5, evidencia #908). Subgrupos en estado **Mixto (`__mixto__`)** o **Sin datos (`""`)** se OMITEN del intent (no hay intención expandible; el merge shallow del server conserva las entradas previas). TVRACK y Zonas Fuera intactos (fuera del form). **W-1 del verify WS4d CERRADO**: `enableReinitialize` en el Formik — el form se reinicializa cuando `initialValues` cambia de contenido (deep-compare interno de Formik 2.2.9, verificado en `formik.cjs.development.js:556-567`; el churn de identidad no resetea), así que los selects montados tarde reflejan el valor real al llegar el snapshot async, y tras un submit el broadcast SSE de `matrixGroups` resincroniza el form con el desired aceptado.
+- [x] **T-4e.2** `brokerClientCore.js` `deriveUiState`: el overlay optimista de `matrixGroups` ahora gana sobre `desired` (merge spread, mismo patrón que tvs/tvrack/zonasFuera — hace REAL el optimistic de T-4e.1: feedback visual inmediato y revert funcional en error). `MatrizVideo.test.jsx`: 5 tests de submit legacy reemplazados por 9 tests WS4e (un solo POST con payload exacto de 10 subgrupos; NO llama `setTvSource`; omite Mixto/Sin datos del intent; intent vacío cuando todos están Sin datos; optimistic antes del POST; revert + error en 429; key renombrada con combo elegido; grupo Mixto no viaja) + test W-1 de llegada async con `rerender` (cierra S-2 del verify WS4d). `verify-broker-core.mjs` +sección 15 (10 checks WS4e: contrato funcional del merge del overlay + parsing del submit).
+
+### Commits (work-unit)
+
+| Hash | Mensaje |
+|---|---|
+| `b489225` | feat(broker-client): submit server-side de matrixGroups en MatrizVideo con optimistic y enableReinitialize |
+
+### Verificación (sin hardware)
+
+- `pnpm test -- src/componentes/MatrizVideo.test.jsx` → **39/39**.
+- `pnpm test` → **207/207 tests, 15 archivos** (204 + 3 netos: 5 submit tests reemplazados por 9 WS4e + 1 W-1 async).
+- `node src/hooks/verify/verify-broker-core.mjs` → **130/130 verificaciones OK** (120 + 10 de la sección 15 WS4e).
+- `node server/broker/verify/run-all.cjs` → **✓ TODAS LAS VERIFICACIONES PASARON** (server sin cambios en esta slice; `verify-confirm-settling` de PR #13 sigue verde; `executeWrite`/`confirmEncoder` intactos).
+- `npx eslint` sobre archivos tocados → solo errores **preexistentes** (`brokerClientCore.js:41,47` no-undef `__DEV__`/`process` en `isLoggingEnabled`, código no tocado).
+- Sin hardware real: todo contra mock; el Arranger real NO fue golpeado; pseudo-canales 0000/0000A/0000B deshabilitados.
+
+### Cambios acumulados
+
+750 líneas en diff-stat (263 insertions, 487 deletions en código + tests + verify). El diff-stat total excede el presupuesto de 400 → recomendación `size:exception` para PR7: las 487 deletions son el switch legacy (~288 líneas) + el batch de 29 POSTs + sus rollbacks que el task T-4e.1 exige ELIMINAR, y las reescrituras de tests son parte del contrato. No se minificó el diff (comentarios de contrato, checks del verify y tests intactos). La cadena auto-chain ya asigna PR7 = WS4e como slice propia.
+
+### Desviaciones / notas
+
+1. **`deriveUiState` ahora mergea `optimistic.matrixGroups`** (1 línea + comentario): el task pide `applyOptimistic("matrixGroups", values)` pero sin el merge el overlay era invisible para la UI (deriveUiState exponía `desired` tal cual). Con el merge, el optimistic sigue el patrón exacto de tvs/tvrack/zonasFuera (fix real-hardware A + revert hotfix 5 funcionales). MG-1 intacto: sin overlay, expone desired tal cual (check `ws4e: deriveUiState sin overlay expone desired tal cual`).
+2. **Formik 2.2.9 deep-compara `initialValues`** en el effect de `enableReinitialize` (`formik.cjs.development.js:556-567`: `!isEqual(initialValues.current, props.initialValues)`): el reset NO se dispara por churn de identidad (tvs del snapshot crea objetos nuevos cada poll) sino solo por cambio de contenido. Riesgo residual aceptado: si otro operador (o un preset load) cambia `matrixGroups` mientras alguien edita el form sin submittear, el form se resincroniza al server (server-authoritative, precedencia de MG-1/MG-2).
+3. **El batch ordering (hotfix 6, `sortTvsByGroup`) desaparece del cliente**: el orden de los writes es ahora responsabilidad del server (`writeQueue` serializa por destino en el orden de expansión de `expandGroups`). El orden de expansión del server recorre los subgrupos del modelo — mismo agrupamiento físico que el hotfix 6 ordenaba cliente-side. No requería cambios en server.
+4. **Intent vacío (todos los grupos Mixto/Sin datos) se envía igual** (`{}`): el endpoint lo acepta (merge no-op + bump de versión + broadcast). Comportamiento elegido por simplicidad — un submit siempre da feedback (toast éxito) y el server es quien decide que no hay nada que escribir. Test "envía intent vacío cuando todos los grupos están Sin datos".
+5. **Toasts de conteo del batch eliminados** ("N de 29 órdenes no fueron procesadas..."): ya no aplica a un POST único; el error usa `writeErrorMessage` que distingue 429/5xx/network (mismo helper que TVRACK/Zonas Fuera).
+6. **act() warnings en tests**: preexistentes del suite (documentados desde WS2), no introducidos.
+7. **`server/pnpm-lock.yaml` NO incluido** (drift preexistente de WS3, intacto).
+
+### Rollback boundary
+
+`git revert b489225` — restaura el switch legacy de expansión por grupo, el batch de 29 POSTs por-TV, `sortTvsByGroup`/`DESTINOS_TV` y los tests WS4d de submit; quita `enableReinitialize` y el merge del overlay en `deriveUiState`. El server (WS4a/WS4b) y el plumbing (WS4c) quedan intactos — el endpoint `/api/matrix-groups` sigue operativo para clientes futuros. No toca `executeWrite`, `confirmEncoder` ni la secuencia IR.
+
 ## WS5 — dedupe (PR 8) ⬜ pendiente
 ## WS1 — auditoría read-only (PR 6) ⬜ pendiente

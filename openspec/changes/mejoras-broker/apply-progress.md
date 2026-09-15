@@ -87,7 +87,43 @@ Branch: `feat/mejoras-broker-ws3` (desde `feat/mejoras-broker-ws2`). Fecha: 2026
 
 `git revert f55d17d 5da48ab 18e3132` — quita el dominio `channelIntent` (store/server/api/hook/App/Canales). No toca `executeWrite`, `confirmEncoder` ni la secuencia IR (`sendChannelDigits` intacto). Un state.json con `channelIntent` cargan igual sin el dominio (los clientes viejos ignoran dominios desconocidos; el backfill solo agrega).
 
-## WS4a — port groups (PR 3) ⬜ pendiente
+## WS4a — modelo declarativo + groups derivado (PR 3, REESCRITA) ✅ COMPLETADO
+
+Branch: `feat/mejoras-broker-ws4a` (desde `feat/mejoras-broker-ws3b`). Fecha: 2026-09-15. **Historia reescrita localmente** (rama sin pushear): el port viejo (`c75669f`, GROUP_DEFS hardcodeado + `values[0]` mixed) se descartó vía `git reset --soft f49cd7c` y la slice se rehizo derivada del modelo data-driven. Verify-report WS4a viejo eliminado (stale tras el reencuadre).
+
+### Tasks
+
+- [x] **T-4a.1** `server/broker/matrixModel.js` creado: `MATRIX_MODEL` = 3 zonas / 10 subgrupos `{key,dir,screens}` (videowall: VWN/VWC/VWS de 1 pantalla; perimetro: Escalera N/C/S; barra: Norte/Libertador/Sur/Pista — 29 pantallas) + `combosBySize{3,4}` (5 combos de 3 + 6 de 4, opciones completas "DTVxyz" según contrato de interfaces del design). Helpers puros: `subgroups`, `subgroupKeys`, `findSubgroup`, `screensOf`, `optionsFor`, `decodeCombo`, `SOURCES`. MG-3/MG-4.
+- [x] **T-4a.2** `server/broker/groups.js` reescrito: `GROUP_DEFS`/`GROUP_PATTERNS` **derivados** de `matrixModel` (cero literales duplicados); `expandGroups(values)` mismo contrato `{tvs, matrixGroups}` — VWN/VWC/VWS ahora son subgrupos de 1 pantalla **incluidos** en `matrixGroups` (sin caso especial de passthrough; destinos reales no-subgrupo como TVRACK siguen pasando directas); `collapseGroup(tvs, screens)` → patrón / valor único / **`null` en mixto** (MG-6, nunca `values[0]`; `undefined` reservado a entrada inválida o pantallas faltantes); `optionsFor` reexportado; MG-5: combo de longitud incorrecta se rechaza (clave omitida de tvs y matrixGroups); key `TvsBarraLibertador` (label "Libertador", MG-7).
+- [x] **T-4a.3** `server/broker/verify/verify-groups.cjs` reescrito: 60 checks (A modelo MG-3: 3 zonas/10 subgrupos/29 pantallas canónicas sin solapamiento + dirs; B combos y decodificación; C optionsFor(1)/(3)/(4) exactos + derivación de groups.js; D expansión incl. rechazo MG-5 y VWall en matrixGroups (C8 invertido); E collapse con mixed→`null` (D6 invertido); F round-trips incl. VWall; G submit total 10 subgrupos→29 pantallas). Label actualizado en `run-all.cjs`.
+- [ ] **T-4a.4** Extender `verify-broker-core.mjs` con helpers de `matrixModel` — **fuera del alcance de esta pasada** (el prompt del slice acota a matrixModel/groups/verify-groups/run-all + eliminar report). Queda para re-apply o se absorbe en WS4c (T-4c.4 también extiende ese verify).
+
+### Commits (work-unit)
+
+| Hash | Mensaje |
+|---|---|
+| `0a0bca3` | docs(sdd): reencuadrar WS4 al modelo dinamico de grupos |
+| `55885ed` | feat(broker): modelo declarativo matrixModel con groups derivado, mixed a null y VWall en matrixGroups |
+
+### Verificación (sin hardware)
+
+- `node server/broker/verify/verify-groups.cjs` → **✓ verify-groups OK (60 checks)**.
+- `node server/broker/verify/run-all.cjs` → **✓ TODAS LAS VERIFICACIONES PASARON** (14 steps; `verify-confirm-settling` de PR #13 sigue verde; `executeWrite`/`confirmEncoder` intactos).
+- `pnpm test` → **196/196 tests, 15 archivos** (sin regresión; la slice no toca frontend).
+- `server.js` SIN TOCAR (sin wiring, eso es WS4b). Pseudo-canales 0000/0000A/0000B sin habilitar.
+
+### Cambios acumulados
+
+406 líneas authored (404 insertions, 2 deletions: matrixModel.js 124 + groups.js 121 + verify-groups.cjs 156 + run-all.cjs 5) — marginalmente sobre el presupuesto de 400 → recomendación `size:exception` para el PR3 (no se minificó el diff: comentarios y checks son parte del contrato).
+
+### Desviaciones / notas
+
+1. **Formato de `combosBySize`**: el prompt del slice listaba los combos sin prefijo (`["1234",…]`) pero el contrato de interfaces del design (actualizado en el reencuadre) los define **con prefijo** (`["DTV1234",…]`) como opciones completas del select. Prevalece el design — así `optionsFor(size)` devuelve valores homogéneos "DTV*" listos para el select y para `matrixGroups.desired`.
+2. **Rechazo MG-5 en el módulo puro**: `expandGroups` omite la clave (ni tvs ni matrixGroups) cuando el combo existe pero su longitud no coincide con el subgrupo — sin canal de error. La validación con respuesta 400 la agrega WS4b en `POST /api/matrix-groups` (T-4b.3) validando contra `optionsFor(size)` antes de expandir.
+3. **Secuencia de git**: el commit de reencuadre (`d08dfb2`) se había creado ENCIMA del port viejo; la secuencia de tasks.md asumía lo inverso. Se ejecutó `git reset --soft f49cd7c && git reset` y se re-commiteó: docs de reencuadre (`0a0bca3`, mismo contenido) + slice (`55885ed`). `verify-report-ws4a.md` y el commit de docs intermedio quedaron fuera de la historia. `server/pnpm-lock.yaml` NO incluido (drift preexistente de WS3).
+4. **`collapseGroup` conserva `undefined` para pantallas faltantes** (igual que el port viejo): WS4b lo distingue de `null` (mixto) al derivar matrixGroups del preset.
+5. **Rollback boundary**: `git revert 55885ed` elimina matrixModel/groups/verify (ningún módulo del server los requiere aún — wiring en WS4b). Los docs (`0a0bca3`) son independientes.
+
 ## WS4b — matrix-groups write-through (PR 4) ⬜ pendiente
 ## WS5 — dedupe (PR 5) ⬜ pendiente
 ## WS1 — auditoría read-only (PR 6) ⬜ pendiente

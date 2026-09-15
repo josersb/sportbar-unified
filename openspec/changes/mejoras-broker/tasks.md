@@ -78,9 +78,9 @@ Reencuadre aprobado: modelo declarativo único `zones→subgroups{key,dir,screen
 
 ### WS4a — modelo declarativo + `groups` derivado (PR 3)
 
-- [ ] **T-4a.1** Crear `server/broker/matrixModel.js`: `MATRIX_MODEL` = 3 zonas / 10 subgrupos `{key,dir,screens}` (VWN/VWC/VWS = 1 pantalla) + `combosBySize{3,4}`; helpers puros `screensOf`, `optionsFor(model,size)`, `subgroupKeys`. Acepta MG-3/MG-4.
-- [ ] **T-4a.2** Reescribir `server/broker/groups.js`: `GROUP_DEFS`/`GROUP_PATTERNS` **derivados** de `matrixModel`; `expandGroups` recorre subgrupos (VWall incluido en `matrixGroups`); `collapseGroup` → `null` en mixed (nunca `values[0]`); `optionsFor(size)`; key `TvsBarraLibertador`.
-- [ ] **T-4a.3** Reescribir `server/broker/verify/verify-groups.cjs`: A = 10 subgrupos, C8 = VWall SÍ en `matrixGroups`, D6 = mixed → `null`, F = 10 subgrupos/29 pantallas, + rechazo de combo de tamaño incorrecto. Actualizar label en `run-all.cjs`.
+- [x] **T-4a.1** Crear `server/broker/matrixModel.js`: `MATRIX_MODEL` = 3 zonas / 10 subgrupos `{key,dir,screens}` (VWN/VWC/VWS = 1 pantalla) + `combosBySize{3,4}`; helpers puros `screensOf`, `optionsFor(model,size)`, `subgroupKeys`. Acepta MG-3/MG-4.
+- [x] **T-4a.2** Reescribir `server/broker/groups.js`: `GROUP_DEFS`/`GROUP_PATTERNS` **derivados** de `matrixModel`; `expandGroups` recorre subgrupos (VWall incluido en `matrixGroups`); `collapseGroup` → `null` en mixed (nunca `values[0]`); `optionsFor(size)`; key `TvsBarraLibertador`.
+- [x] **T-4a.3** Reescribir `server/broker/verify/verify-groups.cjs`: A = 10 subgrupos, C8 = VWall SÍ en `matrixGroups`, D6 = mixed → `null`, F = 10 subgrupos/29 pantallas, + rechazo de combo de tamaño incorrecto. Actualizar label en `run-all.cjs`.
 - [ ] **T-4a.4** Extender `src/hooks/verify/verify-broker-core.mjs` con los helpers de `matrixModel` (read-only sobre server).
 
 **DoD WS4a**: `node server/broker/verify/verify-groups.cjs` verde; `run-all.cjs` verde; sin wiring en `server.js`.

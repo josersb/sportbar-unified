@@ -87,11 +87,11 @@ Reencuadre aprobado: modelo declarativo único `zones→subgroups{key,dir,screen
 
 ### WS4b — dominio `matrixGroups` + endpoint + snapshot (PR 4)
 
-- [ ] **T-4b.1** `server/broker/store.js`: `defaultMatrixGroups()` (`{desired:{},reported:null,version,lastUpdated}`); añadirlo a `defaultSchemaV3` (:85), `migrateV2ToV3`, `freshStartV3` y backfill idempotente en `normalizeV3` (:107); `getMatrixGroups()`/`setMatrixGroups(values)` (patrón `presets`).
-- [ ] **T-4b.2** `server/server.js`: `broadcastDomain("matrixGroups")` → payload `desired`; `versions.matrixGroups` + `matrixModel` top-level en `buildBrokerSnapshot` (:549) y en el evento SSE `snapshot`.
-- [ ] **T-4b.3** `server/server.js`: `POST /api/matrix-groups {values}` — validar cada valor contra `optionsFor(size)` (rechazo de tamaño incorrecto) → `expandGroups` → dedupe → `writeQueue`; persistir + `broadcastDomain`. Acepta MG-1/MG-5.
-- [ ] **T-4b.4** `server/server.js` `POST /api/presets/:n/load` (:806): derivar `matrixGroups` de `preset.tvs` con `collapseGroup` (mixed → `null`), persistir y difundir. Acepta MG-2/MG-6.
-- [ ] **T-4b.5** Nuevo `server/broker/verify/verify-matrix-groups.cjs`: accept/reject-tamaño, snapshot con `matrixModel`+`matrixGroups`, broadcast, preset mixed → `null`, `reported:null`. Extender `verify-store.cjs` (T6 backfill/setter), `verify-composition.cjs` (endpoint+snapshot) y `run-all.cjs`.
+- [x] **T-4b.1** `server/broker/store.js`: `defaultMatrixGroups()` (`{desired:{},reported:null,version,lastUpdated}`); añadirlo a `defaultSchemaV3` (:85), `migrateV2ToV3`, `freshStartV3` y backfill idempotente en `normalizeV3` (:107); `getMatrixGroups()`/`setMatrixGroups(values)` (patrón `presets`).
+- [x] **T-4b.2** `server/server.js`: `broadcastDomain("matrixGroups")` → payload `desired`; `versions.matrixGroups` + `matrixModel` top-level en `buildBrokerSnapshot` (:549) y en el evento SSE `snapshot`.
+- [x] **T-4b.3** `server/server.js`: `POST /api/matrix-groups {values}` — validar cada valor contra `optionsFor(size)` (rechazo de tamaño incorrecto) → `expandGroups` → dedupe → `writeQueue`; persistir + `broadcastDomain`. Acepta MG-1/MG-5.
+- [x] **T-4b.4** `server/server.js` `POST /api/presets/:n/load` (:806): derivar `matrixGroups` de `preset.tvs` con `collapseGroup` (mixed → `null`), persistir y difundir. Acepta MG-2/MG-6.
+- [x] **T-4b.5** Nuevo `server/broker/verify/verify-matrix-groups.cjs`: accept/reject-tamaño, snapshot con `matrixModel`+`matrixGroups`, broadcast, preset mixed → `null`, `reported:null`. Extender `verify-store.cjs` (T6 backfill/setter), `verify-composition.cjs` (endpoint+snapshot) y `run-all.cjs`.
 
 **DoD WS4b**: MG-1…MG-6 server-side; `run-all.cjs` verde.
 

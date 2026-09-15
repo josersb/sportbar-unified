@@ -124,6 +124,50 @@ Branch: `feat/mejoras-broker-ws4a` (desde `feat/mejoras-broker-ws3b`). Fecha: 20
 4. **`collapseGroup` conserva `undefined` para pantallas faltantes** (igual que el port viejo): WS4b lo distingue de `null` (mixto) al derivar matrixGroups del preset.
 5. **Rollback boundary**: `git revert 55885ed` elimina matrixModel/groups/verify (ningún módulo del server los requiere aún — wiring en WS4b). Los docs (`0a0bca3`) son independientes.
 
-## WS4b — matrix-groups write-through (PR 4) ⬜ pendiente
+## WS4b — matrix-groups write-through (PR 4) ✅ COMPLETADO
+
+Branch: `feat/mejoras-broker-ws4b` (desde `feat/mejoras-broker-ws4a`). Fecha: 2026-09-15.
+
+### Tasks
+
+- [x] **T-4b.1** `server/broker/store.js`: dominio `matrixGroups` (`{desired:{}, reported:null, version, lastUpdated}`) en `defaultSchemaV3`, `migrateV2ToV3`, `freshStartV3` (fresh-start conserva la intención si el legacy v3 la traía, igual que `channelIntent`) y backfill idempotente en `normalizeV3`. Setters patrón app-domain: `getMatrixGroups()` / `setMatrixGroups(values)` — MERGE shallow por clave de subgrupo (submit parcial conserva las demás entradas; la derivación desde preset escribe las 10 claves). `reported` queda null SIEMPRE (MG-1) — el estado por pantalla real vive en `domains.tvs`.
+- [x] **T-4b.2** `server/server.js`: `broadcastDomain("matrixGroups")` → payload `desired` (app-only, igual que `channelIntent`); `versions.matrixGroups` + `matrixModel` top-level en `buildBrokerSnapshot` Y en el body real de `/api/broker/state` (que construía inline, sin pasar por buildBrokerSnapshot) Y en el evento SSE `snapshot` (el bus se crea con `getSnapshot: () => ({...store.getSnapshot(), matrixModel: MATRIX_MODEL})`).
+- [x] **T-4b.3** `POST /api/matrix-groups {values}`: valida CADA entrada contra el modelo ANTES de tocar store/expandir — clave = subgrupo conocido (`matrixModel.findSubgroup`), valor ∈ `optionsFor(screens.length)` o null explícito → 400 con `{error, details[]}` si algo falla (rechaza DTV9, combo de tamaño incorrecto, key vieja `Livertador`, body malformado). Luego `expandGroups(valid)` → `setMatrixGroups` → `broadcastDomain("matrixGroups")` inmediato (el cliente ve la intención YA) → write-through por pantalla vía `writeInBackground` (claves app → `toArranger`, igual que preset load). La dedupe no-op pre-join queda para WS5 (guard en `executeWrite`); acá el writeQueue serializa por destino.
+- [x] **T-4b.4** `POST /api/presets/:n/load`: deriva `matrixGroups` de `preset.tvs` server-side con `collapseGroup` para los 10 subgrupos del modelo — patrón → combo, uniforme → fuente única, mixed → null (MG-6, NUNCA `values[0]`), pantallas faltantes del preset → null (no representable). Persiste junto a los links app-only (un solo `store.write()`) y difunde `matrixGroups` en el broadcast final del load.
+- [x] **T-4b.5** Nuevo `server/broker/verify/verify-matrix-groups.cjs`: 33 checks (A submit válido + expansión + convergencia reported; B rechazos MG-5 sin mutar store; C snapshot con matrixModel/versions/reported null; D broadcast bus; E preset mixed→null/uniforme/patrón/faltantes; F reload; G SSE snapshot con matrixModel+matrixGroups). `verify-store.cjs` +T6 (backfill idempotente, setter merge/bump, null mixto, rechazo no-objeto); `verify-composition.cjs` +2 checks (matrixModel top-level, versions.matrixGroups) +1 (preset load deriva matrixGroups); `run-all.cjs` +step.
+
+### Commits (work-unit)
+
+| Hash | Mensaje |
+|---|---|
+| `470fa9d` | feat(broker): dominio matrixGroups en el store v3 con backfill idempotente |
+| `242254d` | feat(broker): endpoint matrix-groups con validacion optionsFor, snapshot matrixModel y preset server-side |
+| `c6a5627` | docs(sdd): progreso WS4b y tareas T-4b marcadas |
+
+### Verificación (sin hardware)
+
+- `node server/broker/verify/verify-matrix-groups.cjs` → **✓ MATRIX-GROUPS OK (33 checks)**.
+- `node server/broker/verify/run-all.cjs` → **✓ TODAS LAS VERIFICACIONES PASARON** (15 steps; `verify-confirm-settling` de PR #13 sigue verde; `executeWrite`/`confirmEncoder` intactos).
+- `pnpm test` → **196/196 tests, 15 archivos** (sin regresión; la slice no toca frontend).
+- Sin hardware real: todo contra mock (`VITE_MOCK_ARRANGER=1`); pseudo-canales 0000/0000A/0000B sin habilitar.
+
+### Cambios acumulados
+
+~490 líneas authored (199 insertions/10 deletions en código modificado + verify-matrix-groups.cjs nuevo ~230 + ~60 docs) — sobre el presupuesto de 400 → recomendación `size:exception` para PR4 (no se minificó el diff: checks/comentarios son parte del contrato).
+
+### Desviaciones / notas
+
+1. **`buildBrokerSnapshot` era código muerto**: `/api/broker/state` construía su body inline sin llamarlo. Se actualizó AMBOS (task T-4b.2 pide :549, pero el path real es el body inline) — mismo contrato: `versions.matrixGroups` + `matrixModel` top-level.
+2. **Endpoint `toArranger` por pantalla**: el patch de `expandGroups` usa claves app (VWN..TV26); el write-through las convierte con `toArranger` + `isDestination` (VWN viaja como VW-Norte), igual que el preset load. Detectado por el mock ("destino inválido: VWN") en la primera corrida del verify.
+3. **Dedupe (T-4b.3)**: el word "dedupe" del task se resuelve con la serialización por destino del writeQueue; el guard no-op pre-join explícito es WS5 (T-5.1) y NO se adelantó para no rozar `executeWrite`/`confirmEncoder` (PR #13).
+4. **Setter merge, no replace**: `setMatrixGroups` hace merge shallow — un submit parcial no borra las otras entradas y la derivación de preset (10 claves) cubre todo el dominio.
+5. **`server/pnpm-lock.yaml`** NO incluido (drift preexistente de WS3).
+6. **T-4a.4 sigue pendiente** (fuera de este slice, se absorbe en WS4c).
+
+### Rollback boundary
+
+`git revert` de los 2 commits feat — quita el dominio `matrixGroups` (store/server/verify). Un state.json con `matrixGroups` carga igual sin el dominio (backfill solo agrega; clientes viejos ignoran dominios desconocidos). No toca `executeWrite`, `confirmEncoder`, la secuencia IR ni el cliente (WS4c/d/e pendientes).
+
+## WS5 — dedupe (PR 5) ⬜ pendiente
 ## WS5 — dedupe (PR 5) ⬜ pendiente
 ## WS1 — auditoría read-only (PR 6) ⬜ pendiente

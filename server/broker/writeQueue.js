@@ -23,6 +23,11 @@
 function createWriteQueue({ log = console } = {}) {
   /** key (destino Arranger) → promise "cola" (tail de la cadena). */
   const chains = new Map();
+  // WS5-DEDUPE: tareas encoladas SIN arrancar por key. `chains.has(key)` es
+  // true también mientras la tarea ACTUAL corre (el propio executeWrite vive
+  // dentro de la cadena), así que el guard pre-join necesita distinguir
+  // "hay writes pendientes detrás mío" de "yo soy el que corre".
+  const queuedCounts = new Map();
 
   /**
    * Encola una tarea para una key. Devuelve la promise del trabajo encolado.
@@ -35,14 +40,23 @@ function createWriteQueue({ log = console } = {}) {
       throw new Error("[writeQueue] task debe ser una función");
     }
     const prev = chains.get(key) || Promise.resolve();
+    queuedCounts.set(key, (queuedCounts.get(key) || 0) + 1);
+
+    // Marca el arranque de ESTA tarea (sale de "encolada" a "corriendo").
+    const started = () => {
+      const n = (queuedCounts.get(key) || 1) - 1;
+      if (n <= 0) queuedCounts.delete(key);
+      else queuedCounts.set(key, n);
+      return task();
+    };
 
     // Ejecuta después de la tarea anterior (o en paralelo si no había cola).
     // Si la anterior falló, la cadena continúa: cada tarea es autónoma.
     const run = prev.then(
-      () => task(),
+      started,
       (err) => {
         log.warn(`[writeQueue] trabajo previo para "${key}" falló, continuando: ${err.message}`);
-        return task();
+        return started();
       },
     );
 
@@ -58,7 +72,10 @@ function createWriteQueue({ log = console } = {}) {
     // tardío rechazaba tras el cleanup del escenario).
     run
       .finally(() => {
-        if (chains.get(key) === run) chains.delete(key);
+        if (chains.get(key) === run) {
+          chains.delete(key);
+          queuedCounts.delete(key);
+        }
       })
       .catch(() => {});
 
@@ -70,9 +87,21 @@ function createWriteQueue({ log = console } = {}) {
     return chains.has(key);
   }
 
+  /**
+   * WS5-DEDUPE: true si hay tareas ENCOLADAS (sin arrancar) para la key,
+   * además de la que esté corriendo. Dentro de una tarea en ejecución,
+   * `isBusy(key)` es siempre true (la tarea vive en la cadena); este método
+   * responde la pregunta real del guard pre-join: "¿hay writes pendientes
+   * detrás mío para este destino?".
+   */
+  function hasPending(key) {
+    return (queuedCounts.get(key) || 0) > 0;
+  }
+
   return {
     enqueue,
     isBusy,
+    hasPending,
     /** Cantidad de destinos con cola activa. */
     get pendingCount() {
       return chains.size;

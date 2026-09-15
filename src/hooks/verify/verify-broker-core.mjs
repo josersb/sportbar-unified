@@ -648,6 +648,67 @@ import { readFileSync } from "node:fs";
   );
 }
 
+// ── 15. WS4e: submit server-side de MatrizVideo (MG-1, un POST por submit) ──
+function verifyWs4e() {
+  console.log("\n── 15. WS4e — submit server-side de MatrizVideo ──");
+
+  // Contrato funcional del merge del overlay optimista en deriveUiState:
+  // el intent del submit (applyOptimistic "matrixGroups") gana sobre desired
+  // hasta que el SSE lo confirma; con overlay vacío es desired tal cual.
+  const st = {
+    domains: { matrixGroups: { desired: { VWN: "DTV1", TvsBarraSur: null }, reported: null } },
+    optimistic: { matrixGroups: { VWN: "DTV2" } },
+  };
+  const uiOpt = deriveUiState(st);
+  check(
+    "ws4e: deriveUiState overlay optimistic gana sobre desired (intent del submit)",
+    uiOpt.matrixGroups.VWN === "DTV2" && uiOpt.matrixGroups.TvsBarraSur === null,
+  );
+  const uiClean = deriveUiState({ domains: st.domains });
+  check(
+    "ws4e: deriveUiState sin overlay expone desired tal cual (MG-1)",
+    uiClean.matrixGroups.VWN === "DTV1" && uiClean.matrixGroups.TvsBarraSur === null,
+  );
+
+  // Contrato del submit (por parsing del source — JSX no resoluble en node puro).
+  const mvSrc = readFileSync(new URL("../../componentes/MatrizVideo.jsx", import.meta.url), "utf8");
+  check(
+    "ws4e: submit llama setMatrixGroups (POST /api/matrix-groups)",
+    mvSrc.includes("setMatrixGroups(intent)"),
+  );
+  check(
+    "ws4e: submit sin setTvSource por TV (expansión 100% server-side)",
+    !mvSrc.includes("setTvSource"),
+  );
+  check(
+    "ws4e: submit aplica optimistic matrixGroups antes del POST",
+    mvSrc.includes('applyOptimistic("matrixGroups", intent)') &&
+      mvSrc.includes('getOptimisticDomain("matrixGroups")'),
+  );
+  check(
+    "ws4e: error del POST revierte el optimistic (hotfix 5)",
+    mvSrc.includes('revertOptimistic("matrixGroups", intent, prevOverlay)'),
+  );
+  check(
+    "ws4e: grupos Mixto/Sin datos se omiten del intent (no se envían)",
+    mvSrc.includes("if (isSourceValue(values[g.key])) intent[g.key] = values[g.key];"),
+  );
+  check(
+    "ws4e: switch de expansión por grupo eliminado (~288 líneas, MG-4)",
+    !mvSrc.includes("switch (values.TvsBarra"),
+  );
+  check(
+    "ws4e: enableReinitialize presente (W-1 verify WS4d: llegada async del snapshot)",
+    /<Formik[\s\S]*?enableReinitialize[\s\S]*?onSubmit=/.test(mvSrc),
+  );
+  check(
+    "ws4e: sin batch sortTvsByGroup ni DESTINOS_TV (el server ordena la expansión)",
+    !mvSrc.includes("sortTvsByGroup") && !mvSrc.includes("DESTINOS_TV"),
+  );
+}
+
+verifyWs4e();
+
 const failed = checks.filter((c) => !c.ok).length;
 console.log(`\n${checks.length - failed}/${checks.length} verificaciones OK`);
 if (failed > 0) process.exit(1);

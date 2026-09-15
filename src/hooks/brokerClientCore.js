@@ -626,11 +626,17 @@ export function deriveUiState(snapshot) {
   const channelIntent = domains.channelIntent?.desired || {};
 
   // matrixGroups (WS4c, MG-1): dominio server-authoritative — el cliente es
-  // read-only y lo refleja tal cual (desired). `matrixModel` (MG-4) viaja
-  // top-level en el snapshot: única fuente de las opciones/expansión en la UI.
-  // Sin modelo servido → null (degradación segura: selects deshabilitados en
+  // read-only y lo refleja tal cual (desired). WS4e: el overlay optimista del
+  // submit (applyOptimistic("matrixGroups", intent)) gana sobre desired hasta
+  // que el broadcast SSE del server lo confirma o el revert del error lo
+  // restaura (mismo patrón que tvs/tvrack/zonasFuera). `matrixModel` (MG-4)
+  // viaja top-level en el snapshot: única fuente de las opciones/expansión en
+  // la UI. Sin modelo servido → null (degradación segura: sin selects en
   // WS4d, nunca literales propios).
-  const matrixGroups = domains.matrixGroups?.desired || {};
+  const matrixGroups = {
+    ...(domains.matrixGroups?.desired || {}),
+    ...(optimistic.matrixGroups || {}),
+  };
   const matrixModel = snapshot?.matrixModel || null;
 
   return { tvs, tvrackState, zonasFueraState, channelIntent, matrixGroups, matrixModel };

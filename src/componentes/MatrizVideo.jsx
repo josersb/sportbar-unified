@@ -3,9 +3,8 @@ import { Formik, Form } from "formik";
 import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
-import { setTvSource, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
+import { setMatrixGroups, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
 import { collapseGroup, writeErrorMessage } from "../hooks/brokerClientCore";
-import { sortTvsByGroup } from "../data/tvGroups";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
@@ -29,15 +28,6 @@ const ZONAS_FUERA_IDS = [
   'RACK-VIP-PANTALLABATACA', 'aMas-15-Barra', 'a-Menos1-Escenario',
   'a-Menos1-Escenario2', 'a-QMR75-Menos1-TV1', 'a-QMR75-Menos1-TV2',
   'a-QMC65-Menos1-TV2',
-];
-
-// Destinos de matriz reales del broker (TV01-TV26 + VWN/VWC/VWS). Los grupos
-// TvsBarra*/TvsEscalera* del form se expanden a estas TVs individuales.
-const DESTINOS_TV = [
-  "VWN", "VWC", "VWS",
-  "TV01", "TV02", "TV03", "TV04", "TV05", "TV06", "TV07", "TV08", "TV09", "TV10",
-  "TV11", "TV12", "TV13", "TV14", "TV15", "TV16", "TV17", "TV18", "TV19", "TV20",
-  "TV21", "TV22", "TV23", "TV24", "TV25", "TV26",
 ];
 
 // WS4d: títulos de zona para display (las OPCIONES y subgrupos vienen del
@@ -206,389 +196,47 @@ const MatrizVideo = () => {
         )}
         <Formik
           initialValues={initialValues}
+          // W-1 (verify WS4d): los selects de grupos se montan tarde cuando el
+          // snapshot async llega después del mount (hard reload en /matrizvideo)
+          // y Formik no inicializa campos registrados tarde. Con
+          // enableReinitialize el form se reinicializa cuando initialValues
+          // cambia de contenido (deep-compare interno de Formik: no resetea por
+          // churn de identidad) — los selects reflejan el valor real del
+          // server apenas llega. Efecto colateral deseado: tras un submit, el
+          // broadcast SSE de matrixGroups resincroniza el form con el desired
+          // aceptado por el server (MG-1).
+          enableReinitialize
           onSubmit={async (values) => {
-            // WS4d: submit legacy por-TV (WS4e lo reemplaza por
-            // POST /api/matrix-groups). Cambios de esta slice:
-            //  - key del form renombrada TvsBarraLivertador → TvsBarraLibertador
-            //    (MG-3/MG-7 — la que el modelo y el endpoint esperan).
-            //  - Grupos en estado no representable ("Mixto / Personalizado" o
-            //    sin datos) NO escriben: no hay intención expandible, se
-            //    conservan las TVs como están.
-            const newTvs = { ...tvs };
-            if (isSourceValue(values.VWN)) newTvs.VWN = values.VWN;
-            if (isSourceValue(values.VWC)) newTvs.VWC = values.VWC;
-            if (isSourceValue(values.VWS)) newTvs.VWS = values.VWS;
-            if (isSourceValue(values.TvsBarraLibertador)) {
-            newTvs.TvsBarraLibertador = values.TvsBarraLibertador;
-            switch (values.TvsBarraLibertador) {
-              case "DTV123":
-                newTvs.TV01 = "DTV1";
-                newTvs.TV02 = "DTV2";
-                newTvs.TV03 = "DTV3";
-                break;
-              case "DTV121":
-                newTvs.TV01 = "DTV1";
-                newTvs.TV02 = "DTV2";
-                newTvs.TV03 = "DTV1";
-                break;
-              case "DTV542":
-                newTvs.TV01 = "DTV5";
-                newTvs.TV02 = "DTV4";
-                newTvs.TV03 = "DTV2";
-                break;
-              case "DTV143":
-                newTvs.TV01 = "DTV1";
-                newTvs.TV02 = "DTV4";
-                newTvs.TV03 = "DTV3";
-                break;
-              case "DTV153":
-                newTvs.TV01 = "DTV1";
-                newTvs.TV02 = "DTV5";
-                newTvs.TV03 = "DTV3";
-                break;
-              default:
-                newTvs.TV01 = values.TvsBarraLibertador;
-                newTvs.TV02 = values.TvsBarraLibertador;
-                newTvs.TV03 = values.TvsBarraLibertador;
-            }
-            }
-            if (isSourceValue(values.TvsBarraSur)) {
-            newTvs.TvsBarraSur = values.TvsBarraSur;
-            switch (values.TvsBarraSur) {
-              case "DTV1234":
-                newTvs.TV04 = "DTV1";
-                newTvs.TV05 = "DTV2";
-                newTvs.TV06 = "DTV3";
-                newTvs.TV07 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV04 = "DTV1";
-                newTvs.TV05 = "DTV2";
-                newTvs.TV06 = "DTV1";
-                newTvs.TV07 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV04 = "DTV1";
-                newTvs.TV05 = "DTV2";
-                newTvs.TV06 = "DTV3";
-                newTvs.TV07 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV04 = "DTV5";
-                newTvs.TV05 = "DTV4";
-                newTvs.TV06 = "DTV3";
-                newTvs.TV07 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV04 = "DTV3";
-                newTvs.TV05 = "DTV2";
-                newTvs.TV06 = "DTV5";
-                newTvs.TV07 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV04 = "DTV1";
-                newTvs.TV05 = "DTV3";
-                newTvs.TV06 = "DTV5";
-                newTvs.TV07 = "DTV4";
-                break;
-              default:
-                newTvs.TV04 = values.TvsBarraSur;
-                newTvs.TV05 = values.TvsBarraSur;
-                newTvs.TV06 = values.TvsBarraSur;
-                newTvs.TV07 = values.TvsBarraSur;
-            }
-            }
-            if (isSourceValue(values.TvsBarraPista)) {
-            newTvs.TvsBarraPista = values.TvsBarraPista;
-            switch (values.TvsBarraPista) {
-              case "DTV123":
-                newTvs.TV08 = "DTV1";
-                newTvs.TV09 = "DTV2";
-                newTvs.TV10 = "DTV3";
-                break;
-              case "DTV121":
-                newTvs.TV08 = "DTV1";
-                newTvs.TV09 = "DTV2";
-                newTvs.TV10 = "DTV1";
-                break;
-              case "DTV542":
-                newTvs.TV08 = "DTV5";
-                newTvs.TV09 = "DTV4";
-                newTvs.TV10 = "DTV2";
-                break;
-              case "DTV143":
-                newTvs.TV08 = "DTV1";
-                newTvs.TV09 = "DTV4";
-                newTvs.TV10 = "DTV3";
-                break;
-              case "DTV153":
-                newTvs.TV08 = "DTV1";
-                newTvs.TV09 = "DTV5";
-                newTvs.TV10 = "DTV3";
-                break;
-              default:
-                newTvs.TV08 = values.TvsBarraPista;
-                newTvs.TV09 = values.TvsBarraPista;
-                newTvs.TV10 = values.TvsBarraPista;
-            }
-            }
-            if (isSourceValue(values.TvsBarraNorte)) {
-            newTvs.TvsBarraNorte = values.TvsBarraNorte;
-            switch (values.TvsBarraNorte) {
-              case "DTV1234":
-                newTvs.TV11 = "DTV1";
-                newTvs.TV12 = "DTV2";
-                newTvs.TV13 = "DTV3";
-                newTvs.TV14 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV11 = "DTV1";
-                newTvs.TV12 = "DTV2";
-                newTvs.TV13 = "DTV1";
-                newTvs.TV14 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV11 = "DTV1";
-                newTvs.TV12 = "DTV2";
-                newTvs.TV13 = "DTV3";
-                newTvs.TV14 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV11 = "DTV5";
-                newTvs.TV12 = "DTV4";
-                newTvs.TV13 = "DTV3";
-                newTvs.TV14 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV11 = "DTV3";
-                newTvs.TV12 = "DTV2";
-                newTvs.TV13 = "DTV5";
-                newTvs.TV14 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV11 = "DTV1";
-                newTvs.TV12 = "DTV3";
-                newTvs.TV13 = "DTV5";
-                newTvs.TV14 = "DTV4";
-                break;
-              default:
-                newTvs.TV11 = values.TvsBarraNorte;
-                newTvs.TV12 = values.TvsBarraNorte;
-                newTvs.TV13 = values.TvsBarraNorte;
-                newTvs.TV14 = values.TvsBarraNorte;
-            }
-            }
-            if (isSourceValue(values.TvsEscaleraNorte)) {
-            newTvs.TvsEscaleraNorte = values.TvsEscaleraNorte;
-            switch (values.TvsEscaleraNorte) {
-              case "DTV1234":
-                newTvs.TV23 = "DTV1";
-                newTvs.TV24 = "DTV2";
-                newTvs.TV25 = "DTV3";
-                newTvs.TV26 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV23 = "DTV1";
-                newTvs.TV24 = "DTV2";
-                newTvs.TV25 = "DTV1";
-                newTvs.TV26 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV23 = "DTV1";
-                newTvs.TV24 = "DTV2";
-                newTvs.TV25 = "DTV3";
-                newTvs.TV26 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV23 = "DTV5";
-                newTvs.TV24 = "DTV4";
-                newTvs.TV25 = "DTV3";
-                newTvs.TV26 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV23 = "DTV3";
-                newTvs.TV24 = "DTV2";
-                newTvs.TV25 = "DTV5";
-                newTvs.TV26 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV23 = "DTV1";
-                newTvs.TV24 = "DTV3";
-                newTvs.TV25 = "DTV5";
-                newTvs.TV26 = "DTV4";
-                break;
-              default:
-                newTvs.TV23 = values.TvsEscaleraNorte;
-                newTvs.TV24 = values.TvsEscaleraNorte;
-                newTvs.TV25 = values.TvsEscaleraNorte;
-                newTvs.TV26 = values.TvsEscaleraNorte;
-            }
-            }
-            if (isSourceValue(values.TvsEscaleraCentro)) {
-            newTvs.TvsEscaleraCentro = values.TvsEscaleraCentro;
-            switch (values.TvsEscaleraCentro) {
-              case "DTV1234":
-                newTvs.TV19 = "DTV1";
-                newTvs.TV20 = "DTV2";
-                newTvs.TV21 = "DTV3";
-                newTvs.TV22 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV19 = "DTV1";
-                newTvs.TV20 = "DTV2";
-                newTvs.TV21 = "DTV1";
-                newTvs.TV22 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV19 = "DTV1";
-                newTvs.TV20 = "DTV2";
-                newTvs.TV21 = "DTV3";
-                newTvs.TV22 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV19 = "DTV5";
-                newTvs.TV20 = "DTV4";
-                newTvs.TV21 = "DTV3";
-                newTvs.TV22 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV19 = "DTV3";
-                newTvs.TV20 = "DTV2";
-                newTvs.TV21 = "DTV5";
-                newTvs.TV22 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV19 = "DTV1";
-                newTvs.TV20 = "DTV3";
-                newTvs.TV21 = "DTV5";
-                newTvs.TV22 = "DTV4";
-                break;
-              default:
-                newTvs.TV19 = values.TvsEscaleraCentro;
-                newTvs.TV20 = values.TvsEscaleraCentro;
-                newTvs.TV21 = values.TvsEscaleraCentro;
-                newTvs.TV22 = values.TvsEscaleraCentro;
-            }
-            }
-            if (isSourceValue(values.TvsEscaleraSur)) {
-            newTvs.TvsEscaleraSur = values.TvsEscaleraSur;
-            switch (values.TvsEscaleraSur) {
-              case "DTV1234":
-                newTvs.TV15 = "DTV1";
-                newTvs.TV16 = "DTV2";
-                newTvs.TV17 = "DTV3";
-                newTvs.TV18 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV15 = "DTV1";
-                newTvs.TV16 = "DTV2";
-                newTvs.TV17 = "DTV1";
-                newTvs.TV18 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV15 = "DTV1";
-                newTvs.TV16 = "DTV2";
-                newTvs.TV17 = "DTV3";
-                newTvs.TV18 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV15 = "DTV5";
-                newTvs.TV16 = "DTV4";
-                newTvs.TV17 = "DTV3";
-                newTvs.TV18 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV15 = "DTV3";
-                newTvs.TV16 = "DTV2";
-                newTvs.TV17 = "DTV5";
-                newTvs.TV18 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV15 = "DTV1";
-                newTvs.TV16 = "DTV3";
-                newTvs.TV17 = "DTV5";
-                newTvs.TV18 = "DTV4";
-                break;
-              default:
-                newTvs.TV15 = values.TvsEscaleraSur;
-                newTvs.TV16 = values.TvsEscaleraSur;
-                newTvs.TV17 = values.TvsEscaleraSur;
-                newTvs.TV18 = values.TvsEscaleraSur;
-            }
+            // WS4e (MG-1/MG-2): submit server-side — el cliente solo REPORTA
+            // la intención por subgrupo (un único POST /api/matrix-groups vía
+            // setMatrixGroups). El server valida cada valor contra
+            // optionsFor(size) (MG-5), expande a las pantallas (MG-4) y hace
+            // el write-through por writeQueue. El cliente NO expande ni
+            // decide: read-only sobre matrixGroups.
+            // Subgrupos en estado no representable ("Mixto / Personalizado"
+            // o sin datos) se OMITEN del intent: no hay intención expandible
+            // y el merge shallow del server conserva las entradas previas.
+            const intent = {};
+            for (const zone of groupZones) {
+              for (const g of zone.subgroups) {
+                if (isSourceValue(values[g.key])) intent[g.key] = values[g.key];
+              }
             }
 
-            // Escrituras confirmed-only vía broker (writeQueue serializa por
-            // destino): POST /api/tvs/:id/source por cada TV real, en batches.
-            // Overlay optimista ANTES del POST (fix real-hardware A): feedback
-            // visual inmediato. El SSE event del broker confirma/corrige y lo
-            // limpia. Sin estado local optimista en setEstado — el snapshot
-            // SSE es la fuente de verdad.
-            // Hotfix 5: los POSTs que fallan (429/5xx/network) se revierten
-            // del optimistic individualmente + toast con el conteo — la UI
-            // nunca muestra cambios que el server rechazó (evidencia #908).
-            // Hotfix 6: el batch se ORDENA por grupos físicos (video-wall →
-            // escaleras → barras) ANTES de disparar los POSTs — el orden de
-            // envío = orden de enqueue = orden de ejecución con el semáforo
-            // global del server. Pantallas relacionadas cambian juntas y lo
-            // más visible primero (evidencia #908: los del final del batch
-            // esperaban minutos).
-            const mappings = sortTvsByGroup(DESTINOS_TV).map((tv) => ({ dest: tv, source: newTvs[tv] }));
-            const prevOverlay = getOptimisticDomain("tvs");
-            const appliedPatches = [];
+            // Optimistic ANTES del POST (mismo patrón fix real-hardware A):
+            // overlay de matrixGroups con la intención del operador para
+            // feedback visual inmediato; el SSE del server (broadcast inmediato
+            // en POST /api/matrix-groups) la confirma y limpia. Error en el
+            // POST (429/5xx/network) → revert al overlay previo + toast
+            // (hotfix 5, evidencia #908).
+            const prevOverlay = getOptimisticDomain("matrixGroups");
+            applyOptimistic("matrixGroups", intent);
             try {
-              // Aplicar optimistic de TODAS las TVs del submit en una sola
-              // pasada (UI se actualiza instantáneamente con la intención del
-              // operador, sin esperar el batch).
-              const tvsOptimisticPatch = {};
-              for (const { dest, source } of mappings) {
-                if (source) tvsOptimisticPatch[dest] = source;
-              }
-              if (Object.keys(tvsOptimisticPatch).length > 0) {
-                applyOptimistic("tvs", tvsOptimisticPatch);
-                appliedPatches.push(tvsOptimisticPatch);
-              }
-              const BATCH_SIZE = 8;
-              const failures = [];
-              for (let i = 0; i < mappings.length; i += BATCH_SIZE) {
-                const batch = mappings.slice(i, i + BATCH_SIZE);
-                const results = await Promise.allSettled(
-                  batch.map(({ dest, source }) => setTvSource(dest, source))
-                );
-                results.forEach((r, j) => {
-                  if (r.status === "rejected") failures.push({ ...batch[j], err: r.reason });
-                });
-              }
-              if (failures.length === 0) {
-                toast.success("Matriz de video actualizada");
-              } else {
-                // Rollback de SOLO los fallidos: revert del patch completo
-                // contra el overlay previo capturado antes del batch restaura
-                // las claves fallidas a su valor pre-submit; los exitosos
-                // conservan su optimistic hasta la confirmación SSE.
-                const failedPatch = {};
-                for (const { dest, source } of failures) {
-                  if (source) failedPatch[dest] = source;
-                }
-                if (Object.keys(failedPatch).length > 0) {
-                  revertOptimistic("tvs", failedPatch, prevOverlay);
-                }
-                const rateLimited = failures.some((f) => f.err && f.err.status === 429);
-                if (rateLimited) {
-                  toast.error(
-                    `${failures.length} de ${mappings.length} órdenes no fueron procesadas por límite de tasa — esperá unos segundos y reenviá`,
-                  );
-                } else {
-                  toast.error(
-                    `${failures.length} de ${mappings.length} órdenes no fueron procesadas — revisá la conexión y reintentá`,
-                  );
-                }
-              }
-            } catch {
-              // Rollback total (defensa: allSettled no debería rechazar).
-              for (const patch of appliedPatches) {
-                revertOptimistic("tvs", patch, prevOverlay);
-              }
-              toast.error("Error al actualizar la matriz de video");
+              await setMatrixGroups(intent);
+              toast.success("Matriz de video actualizada");
+            } catch (err) {
+              revertOptimistic("matrixGroups", intent, prevOverlay);
+              toast.error(writeErrorMessage(err, "Matriz de video"));
             }
           }}
         >

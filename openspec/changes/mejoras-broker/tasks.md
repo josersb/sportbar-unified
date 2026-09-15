@@ -106,10 +106,10 @@ Reencuadre aprobado: modelo declarativo único `zones→subgroups{key,dir,screen
 
 ### WS4d — MatrizVideo renderiza del modelo (PR 6)
 
-- [ ] **T-4d.1** `src/componentes/MatrizVideo.jsx`: selects desde `matrixModel` (loop zonas→subgrupos, label desde `dir`, opciones = DTV1..DTV8 + `optionsFor(size)`); borrar los bloques hardcodeados (:513-630). Sin `matrixModel` → selects deshabilitados (nunca literales).
-- [ ] **T-4d.2** `initialValues` desde `domains.matrixGroups.desired` con fallback `collapseGroup` del modelo (:119-130); renombrar el campo del switch `TvsBarraLivertador`→`TvsBarraLibertador` (submit transitorio intacto).
-- [ ] **T-4d.3** Mostrar `"Mixto / Personalizado"` cuando el valor derivado es `null` (MG-6); `undefined` → fallback/sin selección.
-- [ ] **T-4d.4** Extender `src/componentes/MatrizVideo.test.jsx`: render desde modelo, Mixto, fallback sin modelo.
+- [x] **T-4d.1** `src/componentes/MatrizVideo.jsx`: selects desde `matrixModel` (loop zonas→subgrupos, label desde `dir`, opciones = DTV1..DTV8 + `optionsFor(size)`); borrar los bloques hardcodeados (:513-630). Sin `matrixModel` → selects deshabilitados (nunca literales).
+- [x] **T-4d.2** `initialValues` desde `domains.matrixGroups.desired` con fallback `collapseGroup` del modelo (:119-130); renombrar el campo del switch `TvsBarraLivertador`→`TvsBarraLibertador` (submit transitorio intacto).
+- [x] **T-4d.3** Mostrar `"Mixto / Personalizado"` cuando el valor derivado es `null` (MG-6); `undefined` → fallback/sin selección.
+- [x] **T-4d.4** Extender `src/componentes/MatrizVideo.test.jsx`: render desde modelo, Mixto, fallback sin modelo.
 
 **DoD WS4d**: MG-6; comportamiento de escritura sin cambios (submit sigue por-TV).
 

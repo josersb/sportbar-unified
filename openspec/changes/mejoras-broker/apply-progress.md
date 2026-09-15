@@ -209,5 +209,48 @@ Branch: `feat/mejoras-broker-ws4c` (desde `feat/mejoras-broker-ws4b`). Fecha: 20
 
 `git revert 54c7157` — restaura `GROUP_DEFS`/`GROUP_PATTERNS` hardcodeados en el cliente y la firma vieja de `collapseGroup`. El server (WS4a/WS4b) queda intacto y un cliente viejo ignora `matrixGroups`/`matrixModel` (dominios desconocidos). No toca `executeWrite`, `confirmEncoder` ni la secuencia IR.
 
+## WS4d — MatrizVideo renderiza del modelo (PR 6) ✅ COMPLETADO
+
+Branch: `feat/mejoras-broker-ws4d` (desde `feat/mejoras-broker-ws4c`). Fecha: 2026-09-15.
+
+### Tasks
+
+- [x] **T-4d.1** `MatrizVideo.jsx`: selects generados por loop `zonas→subgrupos` del `matrixModel` SERVIDO — label = `dir` del subgrupo (MG-7: "Libertador" viene del modelo), opciones = `getByCapability('videoSource')` (DTV1..8, fuente de dispositivos ya existente) + `matrixModel.combosBySize[size]` (MG-4: cero literales de combos). Los 3 bloques hardcodeados de selects ELIMINADOS (~120 líneas). Títulos de zona en mapa `ZONE_TITLES` (display, no duplica opciones). Sin modelo → mensaje "Modelo de matriz no disponible", SIN selects de grupos y botón Enviar `disabled` (nunca literales ni selects adivinados); TVRACK y Zonas Fuera siguen operativos.
+- [x] **T-4d.2** `initialValues` con PRECEDENCIA SERVER: `matrixGroups.desired[key] !== undefined ? serverValue : collapseGroup(tvs, screens, combosBySize)`. Key del form renombrada `TvsBarraLivertador` → `TvsBarraLibertador` en TODAS las referencias (render data-driven + submit legacy) — cierra W-2: el futuro `POST /api/matrix-groups` ya no recibiría 400 por key vieja.
+- [x] **T-4d.3** Representación honesta (MG-6, cierra W-1): derivado `null` → opción `__mixto__` "Mixto / Personalizado" (renderizada solo cuando aplica); derivado `undefined` (sin datos: pantallas faltantes) → opción "" "Sin datos" (sin selección, nunca DTV1 coaccionado). Submit legacy: `isSourceValue()` (regex `DTV\d+`) como guard por grupo — grupo Mixto/Sin datos NO expande (sin intención representable); las TVs de ese grupo conservan su fuente real (re-escritura no-op en el batch de 29, comportamiento de escritura SIN cambios).
+- [x] **T-4d.4** `MatrizVideo.test.jsx` +8 tests WS4d (36 total en el archivo, 204/204 suite): render 3 zonas/10 subgrupos con labels `dir` (y "Livertador" ausente), opciones por tamaño (VWN=8, Libertador=13 con DTV542 sí y DTV1234 no, Barra Norte=14 con DTV1234 sí y DTV123 no), Mixto con `null` (precedencia server sobre collapse), precedencia server (desired DTV542 gana sobre collapse DTV123), "Sin datos" con tvs vacío, submit expande con key renombrada (DTV542 → TV01=DTV5/TV02=DTV4/TV03=DTV2), submit conserva fuente real del grupo Mixto (anti-W-1), y degradación sin modelo (sin selects, Enviar disabled, TVRACK intacto).
+
+### Commits (work-unit)
+
+| Hash | Mensaje |
+|---|---|
+| `564ee06` | feat(broker-client): MatrizVideo renderiza desde el modelo servido con Mixto y rename Libertador |
+
+### Verificación (sin hardware)
+
+- `pnpm test -- src/componentes/MatrizVideo.test.jsx` → **36/36** (28 previos + 8 nuevos WS4d).
+- `pnpm test` → **204/204 tests, 15 archivos** (196 + 8; sin regresiones).
+- `node src/hooks/verify/verify-broker-core.mjs` → **120/120 verificaciones OK** (checks `ws4c: MatrizVideo sin GROUP_DEFS` y anti-duplicación siguen verdes).
+- `node server/broker/verify/run-all.cjs` → **✓ TODAS LAS VERIFICACIONES PASARON** (server sin cambios; `verify-confirm-settling` de PR #13 sigue verde; `executeWrite`/`confirmEncoder` intactos).
+
+### Cambios acumulados
+
+469 líneas authored (313 insertions, 156 deletions) — sobre el presupuesto de 400 → recomendación `size:exception` para PR6 (no se minificó el diff: los 156 deletions son los 3 bloques hardcodeados de selects que MG-4 exige eliminar; los 8 tests nuevos son parte del contrato de la entrega; la cadena auto-chain ya asigna PR6 = WS4d como slice propia).
+
+### Desviaciones / notas
+
+1. **Degradación sin modelo = "sin selects" (no "selects deshabilitados")**: sin `matrixModel` no hay datos para renderizar selects (¿cuántos?, ¿con qué opciones?) — renderizarlos requeriría hardcodear, prohibido por MG-4. Se muestra un aviso y Enviar queda `disabled`; TVRACK/Zonas Fuera siguen operativos. Variante permitida por el task ("selects deshabilitados / sin opciones").
+2. **Opciones de fuentes desde `getByCapability('videoSource')`**, no de un literal DTV1..8 del cliente: el snapshot `matrixModel` solo sirve `zones`+`combosBySize` (SOURCES vive server-side); la lista de dispositivos con capability `videoSource` es la fuente de DTVs que ya usaba el componente (TVRACK la sigue usando). Combos: 100% del modelo servido.
+3. **Labels de subgrupo = `dir` plano** ("Norte", "Libertador", "Pista"...): el modelo no tiene campo de nombre largo; los títulos de zona (mapa `ZONE_TITLES`) dan el contexto. El título de la zona Barra corregido a "Libertador" (MG-7, antes "Livertador").
+4. **Grupo Mixto en submit legacy**: NO expande, pero las TVs del grupo se re-envían con su fuente actual dentro del batch de 29 (no-op funcional; WS5 dedupe los absorberá). Alternativa descartada (filtrar 4 writes del batch) porque cambiaba el comportamiento de escritura, vetado por el DoD de WS4d.
+5. **Indentación del submit legacy sin re-indentar**: los switches envueltos en `if (isSourceValue(...))` conservan su indentación original — son transitorios y se ELIMINAN en WS4e (T-4e.1); re-indentar habría inflado ~300 líneas el diff.
+6. **`server/pnpm-lock.yaml` NO incluido** (drift preexistente de WS3, intacto).
+7. **Pseudo-canales 0000/0000A/0000B** deshabilitados; `confirmEncoder`/`executeWrite` (PR #13) sin tocar.
+
+### Rollback boundary
+
+`git revert 564ee06` — restaura los bloques hardcodeados de selects, la key legacy `TvsBarraLivertador` y la coacción `|| "DTV1"` de W-1/W-2. El server (WS4a/WS4b) y el plumbing (WS4c) quedan intactos; un cliente viejo ignora `matrixGroups`/`matrixModel`. No toca `executeWrite`, `confirmEncoder` ni la secuencia IR.
+
+## WS4e — submit server-side (PR 7) ⬜ pendiente
 ## WS5 — dedupe (PR 8) ⬜ pendiente
 ## WS1 — auditoría read-only (PR 6) ⬜ pendiente

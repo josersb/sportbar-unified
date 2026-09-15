@@ -27,6 +27,7 @@ const steps = [
   ["verify-confirm-settling", "confirm-settling: ventana por comando (av/stream) + no-op + unconfirmed"],
   ["verify-channel-intent", "WS3 channel-intent: intención+ACK, noop sin IR, reported null, reload, snapshot"],
   ["verify-groups", "WS4a matrixModel+groups: modelo declarativo (3 zonas/10 subgrupos), opciones, expansión, mixed→null, round-trip"],
+  ["verify-matrix-groups", "WS4b matrix-groups: dominio server-authoritative, validación optionsFor, snapshot matrixModel, preset server-side"],
   ["verify-composition", "composition server.js: endpoints nuevos + legacy + SSE + stale→synced"],
 ];
 

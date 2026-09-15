@@ -23,6 +23,10 @@ const {
   toArranger,
   isDestination,
 } = require("./broker/destinations.js");
+// WS4a/WS4b — modelo declarativo único + helpers de grupos (MG-4: única fuente
+// de opciones/expansión; el server es dueño de matrixGroups).
+const matrixModel = require("./broker/matrixModel.js");
+const { expandGroups, collapseGroup } = require("./broker/groups.js");
 
 // Leer configuración específica del worktree (gitignored)
 let wtConfig = { vitePort: 5173, expressPort: 3101 };
@@ -41,6 +45,10 @@ const ARRANGER_BASE = `http://${ARRANGER_HOST}:${ARRANGER_PORT}`;
 // Antes divergían: línea 20 usaba VITE_ARRANGER_TOKEN y la 460 usaba
 // ARRANGER_TOKEN || "TOKEN_REMOVED". Ahora UN solo token, fail-fast al arranque.
 const ARRANGER_TOKEN = process.env.VITE_ARRANGER_TOKEN || process.env.ARRANGER_TOKEN;
+
+// Modelo declarativo servido read-only en el snapshot (design WS4: el cliente
+// renderiza los selects desde `matrixModel` — sin copias cliente-side).
+const MATRIX_MODEL = matrixModel.MATRIX_MODEL;
 
 // Intervalo de reconciliación (env var, default 300000 ms = 5 min, post-design)
 const RECONCILER_INTERVAL_MS = parseInt(process.env.RECONCILER_INTERVAL_MS || "", 10) || 300000;
@@ -111,7 +119,12 @@ async function createServer(options = {}) {
     readEncoder: (dest, sub) => client.getEncoder(dest, sub),
     log,
   });
-  const bus = createEventBus({ getSnapshot: () => store.getSnapshot(), log });
+  const bus = createEventBus({
+    // T-4b.2: el snapshot SSE lleva `matrixModel` top-level además del store,
+    // para que el cliente (WS4c/d) renderice desde el modelo servido.
+    getSnapshot: () => ({ ...store.getSnapshot(), matrixModel: MATRIX_MODEL }),
+    log,
+  });
   const writeQueue = createWriteQueue({ log });
   const reconciler = createReconciler({
     client,
@@ -520,6 +533,10 @@ async function createServer(options = {}) {
     } else if (domain === "channelIntent") {
       // App-only (CD-5): se difunde el desired (intención), nunca reported (null).
       payload = d.desired;
+    } else if (domain === "matrixGroups") {
+      // App-only (MG-1): se difunde el desired (intención de grupos),
+      // nunca reported (null).
+      payload = d.desired;
     } else if (domain === "tvrack") {
       payload = {
         ...(d.reported || {}),
@@ -557,9 +574,11 @@ async function createServer(options = {}) {
         zonasFuera: snap.domains.zonasFuera.version,
         presets: snap.domains.presets.version,
         channelIntent: snap.domains.channelIntent ? snap.domains.channelIntent.version : 1,
+        matrixGroups: snap.domains.matrixGroups ? snap.domains.matrixGroups.version : 1,
       },
       domains: snap.domains,
       appOnly: snap.appOnly,
+      matrixModel: MATRIX_MODEL,
     };
   }
 
@@ -719,8 +738,9 @@ async function createServer(options = {}) {
       versions: {},
       domains: {},
       appOnly: snap.appOnly,
+      matrixModel: MATRIX_MODEL,
     };
-    for (const name of ["tvs", "tvrack", "zonasFuera", "presets", "channelIntent"]) {
+    for (const name of ["tvs", "tvrack", "zonasFuera", "presets", "channelIntent", "matrixGroups"]) {
       const d = snap.domains[name];
       if (!d) continue; // seed sin backfill — dominio nuevo, se omite
       body.versions[name] = d.version;
@@ -816,6 +836,17 @@ async function createServer(options = {}) {
     // El snapshot puede transportar el link app-only. Se persiste antes de
     // encolar, mientras executeWrite vuelve a leerlo dentro de cada tarea.
     applySnapshotLinks(preset);
+
+    // MG-2: resolver los valores de grupo EXCLUSIVAMENTE en el server,
+    // derivando matrixGroups de las TVs individuales del preset con
+    // collapseGroup. Mixed → null ("Mixto / Personalizado", MG-6); pantallas
+    // faltantes del preset → null (no representable como opción conocida).
+    const derived = {};
+    for (const sg of matrixModel.subgroups()) {
+      const v = collapseGroup(preset.tvs || {}, sg.screens);
+      derived[sg.key] = v === undefined ? null : v;
+    }
+    store.setMatrixGroups(derived);
     await store.write();
 
     const writes = [];
@@ -862,7 +893,7 @@ async function createServer(options = {}) {
       }
     }
 
-    for (const domain of ["tvs", "tvrack", "zonasFuera"]) broadcastDomain(domain);
+    for (const domain of ["tvs", "tvrack", "zonasFuera", "matrixGroups"]) broadcastDomain(domain);
     res.json({ ok: failed === 0, applied: results.length - failed, failed, results });
   });
 
@@ -937,6 +968,83 @@ async function createServer(options = {}) {
     broadcastDomain("channelIntent");
     const d = store.getDomain("channelIntent");
     res.json({ ok: true, decoId: id, intent: d.desired[id], version: d.version });
+  });
+
+  // ── WS4b — matrixGroups (MG-1..MG-6) ──
+  // Dominio server-authoritative de la intención de grupos. El cliente envía
+  // SOLO valores de subgrupo; el server valida contra el modelo declarativo
+  // (MG-5: cada valor debe estar en optionsFor(size) del subgrupo — rechaza
+  // p. ej. DTV9 o un combo de longitud incorrecta), expande a TVs (MG-4) y
+  // encola los writes por el writeQueue. La dedupe no-op pre-join es WS5
+  // (guard dentro de executeWrite); acá el writeQueue serializa por destino.
+  app.post("/api/matrix-groups", writesLimiter, async (req, res) => {
+    const values = req.body && req.body.values ? req.body.values : null;
+    if (!values || typeof values !== "object" || Array.isArray(values)) {
+      return res.status(400).json({ error: "Se espera { values: { [subgroupKey]: valor } }" });
+    }
+
+    // Validación MG-5 contra el modelo: clave = subgrupo conocido, valor ∈
+    // optionsFor(size) o null (mixto explícito). Rechazo con 400 ANTES de
+    // tocar el store ni expandir (cierra la SUGGESTION de la verificación WS4a).
+    const errors = [];
+    const valid = {};
+    for (const [key, value] of Object.entries(values)) {
+      const sg = matrixModel.findSubgroup(key);
+      if (!sg) {
+        errors.push(`${key}: subgrupo desconocido`);
+        continue;
+      }
+      if (value === null) {
+        valid[key] = null;
+        continue;
+      }
+      if (!matrixModel.optionsFor(sg.screens.length).includes(value)) {
+        errors.push(`${key}: valor inválido ${JSON.stringify(value)} (opciones válidas: tamaño ${sg.screens.length})`);
+        continue;
+      }
+      valid[key] = value;
+    }
+    if (errors.length > 0) {
+      return res.status(400).json({ error: "valores de grupo inválidos", details: errors });
+    }
+    if (Object.keys(valid).length === 0) {
+      return res.json({ ok: true, noop: true, values: store.getMatrixGroups().desired });
+    }
+
+    // Expansión MG-4 (módulo puro): valores validados → patch de TVs.
+    const { tvs } = expandGroups(valid);
+
+    // Persistir la intención ANTES de encolar: los clientes ven matrixGroups
+    // ya (broadcast inmediato) mientras los joins asientan en background.
+    store.setMatrixGroups(valid);
+    await store.write();
+    const writeId = nextWriteId();
+    writeLog(
+      writeId,
+      "WRITE",
+      `POST /api/matrix-groups {${Object.entries(valid).map(([k, v]) => `${k}="${v}"`).join(", ")}} → ${Object.keys(tvs).length} writes`,
+    );
+    broadcastDomain("matrixGroups", writeId);
+
+    // Write-through por pantalla (mismo pipeline que el batch de MatrizVideo).
+    // Claves app del patch (VWN..TV26) → nomenclatura Arranger, igual que el
+    // preset load (VWN viaja como VW-Norte al hardware).
+    for (const [tvKey, source] of Object.entries(tvs)) {
+      const dest = toArranger(tvKey);
+      if (!isDestination(dest) || !source) continue;
+      writeInBackground(dest, "tvs", source, "video", nextWriteId());
+    }
+
+    const d = store.getDomain("matrixGroups");
+    res.json({
+      ok: true,
+      noop: false,
+      values: d.desired,
+      tvsPatch: tvs,
+      version: d.version,
+      lastUpdated: d.lastUpdated,
+      sync: store.getSync(),
+    });
   });
 
   // ══════════════════════════════════════════════════════════════════════

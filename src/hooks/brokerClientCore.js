@@ -18,10 +18,10 @@
 
 export const SYNC_STATES = ["synced", "stale", "out_of_sync", "offline"];
 
-export const DOMAIN_KEYS = ["tvs", "tvrack", "zonasFuera", "presets", "channelIntent"];
+export const DOMAIN_KEYS = ["tvs", "tvrack", "zonasFuera", "presets", "channelIntent", "matrixGroups"];
 
 /** Dominios app-only: el evento incremental trae `desired` (no `reported`). */
-const DESIRED_KEY_DOMAINS = new Set(["presets", "channelIntent"]);
+const DESIRED_KEY_DOMAINS = new Set(["presets", "channelIntent", "matrixGroups"]);
 
 /** Ring buffer de los últimos N eventos SSE + operaciones optimistic. */
 const LOG_BUFFER_SIZE = 50;
@@ -173,6 +173,10 @@ export function applySnapshot(prev, snapshot) {
     versions,
     domains: snapshot.domains || prev.domains || {},
     appOnly: snapshot.appOnly || prev.appOnly || {},
+    // WS4c (MG-4): `matrixModel` viaja top-level en el snapshot (read-only,
+    // no es un dominio). applySnapshot reconstruía el objeto y lo descartaba —
+    // se preserva: si el body lo trae, actualiza; si no, queda el previo.
+    matrixModel: snapshot.matrixModel ?? prev.matrixModel ?? null,
     optimistic: {},
   };
 }
@@ -579,7 +583,8 @@ export function nextPollDelay(attempt = 0, baseMs = 5000, maxMs = 30000) {
  * sobre reported: da feedback inmediato tras un write hasta que el evento SSE
  * del broker confirma/corrige (y lo limpia).
  *
- * @returns {{ tvs: object, tvrackState: {video, audio, link}, zonasFueraState: object }}
+ * @returns {{ tvs: object, tvrackState: {video, audio, link}, zonasFueraState: object,
+ *   channelIntent: object, matrixGroups: object, matrixModel: object|null }}
  */
 export function deriveUiState(snapshot) {
   const domains = snapshot?.domains || {};
@@ -620,7 +625,15 @@ export function deriveUiState(snapshot) {
   // cual para que App rehidrate decos/dispositivos (CD-5).
   const channelIntent = domains.channelIntent?.desired || {};
 
-  return { tvs, tvrackState, zonasFueraState, channelIntent };
+  // matrixGroups (WS4c, MG-1): dominio server-authoritative — el cliente es
+  // read-only y lo refleja tal cual (desired). `matrixModel` (MG-4) viaja
+  // top-level en el snapshot: única fuente de las opciones/expansión en la UI.
+  // Sin modelo servido → null (degradación segura: selects deshabilitados en
+  // WS4d, nunca literales propios).
+  const matrixGroups = domains.matrixGroups?.desired || {};
+  const matrixModel = snapshot?.matrixModel || null;
+
+  return { tvs, tvrackState, zonasFueraState, channelIntent, matrixGroups, matrixModel };
 }
 
 /**
@@ -705,52 +718,107 @@ export function buildDiffsInfo(snapshot) {
   return diffs;
 }
 
-// ── Grupos de TVs de MatrizVideo (collapse de TVs individuales) ──
+// ── Grupos de TVs de MatrizVideo (WS4c, derivados del matrixModel servido) ──
+//
+// MG-4: el modelo (`zones → subgroups{key,dir,screens}` + `combosBySize`) es
+// la ÚNICA fuente de opciones y expansión — lo SIRVE el server como snapshot
+// top-level `matrixModel` y el cliente NO duplica ningún literal de subgrupo.
+// Los helpers de abajo solo transforman valores a partir del modelo recibido.
+// Sin modelo servido → degradación segura (expandFromModel devuelve null;
+// la UI deshabilita los selects en WS4d, nunca adivina).
 
-export const GROUP_DEFS = {
-  TvsBarraLivertador: ["TV01", "TV02", "TV03"],
-  TvsBarraSur: ["TV04", "TV05", "TV06", "TV07"],
-  TvsBarraPista: ["TV08", "TV09", "TV10"],
-  TvsBarraNorte: ["TV11", "TV12", "TV13", "TV14"],
-  TvsEscaleraSur: ["TV15", "TV16", "TV17", "TV18"],
-  TvsEscaleraCentro: ["TV19", "TV20", "TV21", "TV22"],
-  TvsEscaleraNorte: ["TV23", "TV24", "TV25", "TV26"],
-};
+/** Combo "DTVxyz" → secuencia de fuentes por posición (null si malformado). */
+function decodeComboValue(combo) {
+  if (typeof combo !== "string" || !/^DTV\d+$/.test(combo)) return null;
+  return combo
+    .slice(3)
+    .split("")
+    .map((d) => `DTV${d}`);
+}
 
-/** Patrones de grupo → secuencia de TVs (inverso de los switch de MatrizVideo). */
-export const GROUP_PATTERNS = {
-  DTV123: ["DTV1", "DTV2", "DTV3"],
-  DTV121: ["DTV1", "DTV2", "DTV1"],
-  DTV542: ["DTV5", "DTV4", "DTV2"],
-  DTV143: ["DTV1", "DTV4", "DTV3"],
-  DTV153: ["DTV1", "DTV5", "DTV3"],
-  DTV1234: ["DTV1", "DTV2", "DTV3", "DTV4"],
-  DTV1212: ["DTV1", "DTV2", "DTV1", "DTV2"],
-  DTV1231: ["DTV1", "DTV2", "DTV3", "DTV1"],
-  DTV5432: ["DTV5", "DTV4", "DTV3", "DTV2"],
-  DTV3254: ["DTV3", "DTV2", "DTV5", "DTV4"],
-  DTV1354: ["DTV1", "DTV3", "DTV5", "DTV4"],
-};
+/** Subgrupos del modelo servido → mapa key → screens (MG-3). */
+function screensByKeyOf(model) {
+  const map = {};
+  for (const zone of model?.zones || []) {
+    for (const sg of zone?.subgroups || []) {
+      if (sg && sg.key) map[sg.key] = Array.isArray(sg.screens) ? sg.screens : [];
+    }
+  }
+  return map;
+}
 
 /**
- * Colapsa TVs individuales a su valor de grupo para el form de MatrizVideo
- * (inverso de la expansión del submit). Sin claves legacy en el estado: los
- * grupos se derivan del estado broker.
+ * Expande valores de grupo (los selects del form) a partir del MODELO SERVIDO
+ * — espejo cliente de `expandGroups` del server (mismo contrato, read-only).
+ *
+ * @param {object} values - p. ej. { TvsBarraLibertador: "DTV123", VWN: "DTV2" }
+ *   - Clave de subgrupo del modelo: expande a sus pantallas (patrón declarado
+ *     o valor único) y registra el valor en `matrixGroups`.
+ *   - Combo declarado con longitud incorrecta (MG-5): se rechaza (omitido).
+ *   - Valor null/undefined: se omite (null = "Mixto" no es expandible).
+ *   - Otra clave (destino real, p. ej. TVRACK): passthrough directo a `tvs`.
+ * @param {object} model - `matrixModel` servido por el broker
+ * @returns {{tvs: object, matrixGroups: object}|null}
+ *   `null` si el modelo no llegó (degradación segura); el patch {tvs, matrixGroups}.
+ */
+export function expandFromModel(values, model) {
+  if (!model || !Array.isArray(model.zones)) return null;
+  const screensByKey = screensByKeyOf(model);
+  const declaredCombos = new Set(Object.values(model.combosBySize || {}).flat());
+
+  const tvs = {};
+  const matrixGroups = {};
+  if (!values || typeof values !== "object") return { tvs, matrixGroups };
+
+  for (const [key, value] of Object.entries(values)) {
+    if (value == null) continue;
+    const screens = screensByKey[key];
+    if (!screens) {
+      // No es subgrupo del modelo: passthrough de destino real.
+      tvs[key] = value;
+      continue;
+    }
+    const seq = declaredCombos.has(value) ? decodeComboValue(value) : null;
+    if (seq && seq.length !== screens.length) continue; // MG-5: rechazo
+    matrixGroups[key] = value;
+    if (seq) {
+      // Patrón declarado: fuente por pantalla en orden físico.
+      screens.forEach((id, i) => {
+        tvs[id] = seq[i];
+      });
+    } else {
+      // Valor único: todas las pantallas al mismo destino.
+      screens.forEach((id) => {
+        tvs[id] = value;
+      });
+    }
+  }
+  return { tvs, matrixGroups };
+}
+
+/**
+ * Colapsa pantallas individuales a su valor de grupo (inverso de la
+ * expansión), a partir del MODELO SERVIDO — espejo de `collapseGroup` del
+ * server (MG-6: mixto → `null`, nunca `values[0]`).
  *
  * @param {object} tvs - tvs individuales del broker (TV01..TV26, VWN..)
- * @param {string[]} ids - TVs del grupo (GROUP_DEFS)
- * @returns {string|undefined} patrón (DTV1234), valor único, o undefined si faltan TVs
+ * @param {string[]} screens - pantallas del subgrupo (del `matrixModel`)
+ * @param {object} [combosBySize] - combos declarados del `matrixModel`
+ * @returns {string|null|undefined}
+ *   patrón (DTV1234) o valor único; `null` si es mixto (MG-6);
+ *   `undefined` si la entrada es inválida o falta alguna pantalla.
  */
-export function collapseGroup(tvs, ids) {
-  if (!tvs || !Array.isArray(ids) || ids.length === 0) return undefined;
-  const values = ids.map((id) => tvs[id]);
+export function collapseGroup(tvs, screens, combosBySize = {}) {
+  if (!tvs || !Array.isArray(screens) || screens.length === 0) return undefined;
+  const values = screens.map((id) => tvs[id]);
   if (values.some((v) => v == null)) return undefined;
 
-  for (const [pattern, seq] of Object.entries(GROUP_PATTERNS)) {
-    if (seq.length === ids.length && seq.every((v, i) => v === values[i])) return pattern;
+  for (const pattern of Object.values(combosBySize || {}).flat()) {
+    const seq = decodeComboValue(pattern);
+    if (seq && seq.length === screens.length && seq.every((v, i) => v === values[i])) return pattern;
   }
-  // Todos iguales → valor único
+  // Todas iguales → valor único
   if (values.every((v) => v === values[0])) return values[0];
-  // Mixto no-predeterminado → primer valor (el form lo expandirá igual)
-  return values[0];
+  // MG-6: mixto no-predeterminado → null ("Mixto / Personalizado")
+  return null;
 }

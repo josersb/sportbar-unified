@@ -4,7 +4,7 @@ import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import { setTvSource, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
-import { collapseGroup, GROUP_DEFS, writeErrorMessage } from "../hooks/brokerClientCore";
+import { collapseGroup, writeErrorMessage } from "../hooks/brokerClientCore";
 import { sortTvsByGroup } from "../data/tvGroups";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
@@ -51,6 +51,7 @@ const MatrizVideo = () => {
     applyOptimistic,
     getOptimisticDomain,
     revertOptimistic,
+    matrixModel,
   } = useContext(ContextoUser);
 
   const tvs = estado.tvs || {};
@@ -116,17 +117,32 @@ const MatrizVideo = () => {
 
   // Valores de grupo derivados de las TVs individuales del broker
   // (sin keys legacy en el estado). El form edita grupos; el submit expande.
+  // WS4c: el collapse se deriva del matrixModel SERVIDO (MG-4 — sin literales
+  // propios; sin modelo → degradación segura, el select cae al default).
+  // Transitorio hasta WS4d (T-4d.2): initialValues tomará matrixGroups.desired
+  // con precedencia server y el campo legacy "TvsBarraLivertador" se renombra
+  // junto al switch del submit (por eso la key del form y la del modelo
+  // difieren acá).
+  const combosBySize = matrixModel?.combosBySize || {};
+  const modelScreens = (key) => {
+    for (const zone of matrixModel?.zones || []) {
+      const sg = (zone.subgroups || []).find((s) => s.key === key);
+      if (sg) return sg.screens;
+    }
+    return null;
+  };
+
   const initialValues = {
     VWN: tvs.VWN || "DTV1",
     VWC: tvs.VWC || "DTV1",
     VWS: tvs.VWS || "DTV1",
-    TvsBarraLivertador: collapseGroup(tvs, GROUP_DEFS.TvsBarraLivertador) || "DTV1",
-    TvsBarraSur: collapseGroup(tvs, GROUP_DEFS.TvsBarraSur) || "DTV1",
-    TvsBarraPista: collapseGroup(tvs, GROUP_DEFS.TvsBarraPista) || "DTV1",
-    TvsBarraNorte: collapseGroup(tvs, GROUP_DEFS.TvsBarraNorte) || "DTV1",
-    TvsEscaleraNorte: collapseGroup(tvs, GROUP_DEFS.TvsEscaleraNorte) || "DTV1",
-    TvsEscaleraCentro: collapseGroup(tvs, GROUP_DEFS.TvsEscaleraCentro) || "DTV1",
-    TvsEscaleraSur: collapseGroup(tvs, GROUP_DEFS.TvsEscaleraSur) || "DTV1",
+    TvsBarraLivertador: collapseGroup(tvs, modelScreens("TvsBarraLibertador"), combosBySize) || "DTV1",
+    TvsBarraSur: collapseGroup(tvs, modelScreens("TvsBarraSur"), combosBySize) || "DTV1",
+    TvsBarraPista: collapseGroup(tvs, modelScreens("TvsBarraPista"), combosBySize) || "DTV1",
+    TvsBarraNorte: collapseGroup(tvs, modelScreens("TvsBarraNorte"), combosBySize) || "DTV1",
+    TvsEscaleraNorte: collapseGroup(tvs, modelScreens("TvsEscaleraNorte"), combosBySize) || "DTV1",
+    TvsEscaleraCentro: collapseGroup(tvs, modelScreens("TvsEscaleraCentro"), combosBySize) || "DTV1",
+    TvsEscaleraSur: collapseGroup(tvs, modelScreens("TvsEscaleraSur"), combosBySize) || "DTV1",
   };
 
   return (

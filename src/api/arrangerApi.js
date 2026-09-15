@@ -263,6 +263,31 @@ export async function setChannelIntentAck(decoId, ack) {
   return response.json();
 }
 
+// ── WS4c: Grupos de la matriz (server-authoritative, cliente read-only MG-1) ──
+
+/**
+ * Envía valores de subgrupo al broker: POST /api/matrix-groups {values}.
+ * El server valida cada valor contra optionsFor(size) (MG-5), expande al
+ * patch de TVs y encola los writes; persiste y difunde matrixGroups por SSE.
+ * El cliente NUNCA persiste ni decide matrixGroups (MG-1) — solo reporta la
+ * intención del operador. (El submit de MatrizVideo lo consume en WS4e.)
+ *
+ * @param {object} values — clave de subgrupo → combo "DTVxyz" | fuente única | null
+ * @returns {Promise<object>} { ok, accepted }
+ */
+export async function setMatrixGroups(values) {
+  const response = await fetch("/api/matrix-groups", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ values }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw writeError(response.status, body.error || `Failed to set matrix groups: ${response.status}`);
+  }
+  return response.json();
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Proxy de comandos del Arranger (IR / serial / preset-deco)
 // ═══════════════════════════════════════════════════════════════════════════

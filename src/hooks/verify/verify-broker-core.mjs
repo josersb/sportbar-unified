@@ -9,7 +9,10 @@
  *   - nextPollDelay (5s → 10s → 20s → 30s cap)
  *   - deriveUiState (reported gana, link app-only, TVRACK desde dominio)
  *   - buildDiffsInfo (solo reported confirmado)
- *   - collapseGroup (inverso de la expansión de MatrizVideo)
+ *   - collapseGroup / expandFromModel (derivados del matrixModel SERVIDO)
+ *   - matrixModel (helpers del modelo declarativo del server, T-4a.4)
+ *   - WS4c: preservación de matrixModel en snapshot/poll, dominio
+ *     matrixGroups (desired), exposición por deriveUiState, API setMatrixGroups
  *
  * Uso: node src/hooks/verify/verify-broker-core.mjs
  */
@@ -28,9 +31,13 @@ import {
   deriveUiState,
   buildDiffsInfo,
   collapseGroup,
-  GROUP_DEFS,
+  expandFromModel,
 } from "../brokerClientCore.js";
 import { TV_GROUPS, GROUP_ORDER, sortTvsByGroup } from "../../data/tvGroups.js";
+// matrixModel (WS4a) es CJS del server: el verify ESM lo importa por interop
+// default (module.exports) — el cliente lo recibe SERVIDO, nunca lo duplica.
+import matrixModel from "../../../server/broker/matrixModel.js";
+const MODEL = matrixModel.MATRIX_MODEL;
 
 const checks = [];
 function check(name, cond) {
@@ -371,19 +378,31 @@ function check(name, cond) {
   check("diffs: zona-video en diff", diffs.some((d) => d.type === "zona-video"));
 }
 
-// ── 10. collapseGroup ──
+// ── 10. collapseGroup (WS4c: derivado del matrixModel SERVIDO) ──
 {
+  const combosBySize = MODEL.combosBySize;
+  const screensOf = (key) => {
+    for (const zone of MODEL.zones) {
+      const sg = zone.subgroups.find((s) => s.key === key);
+      if (sg) return sg.screens;
+    }
+    return null;
+  };
   const tvs = {
     TV01: "DTV1", TV02: "DTV2", TV03: "DTV3",
     TV04: "DTV5", TV05: "DTV4", TV06: "DTV3", TV07: "DTV2",
     TV15: "DTV1", TV16: "DTV2", TV17: "DTV3", TV18: "DTV4",
     TV23: "DTV7",
   };
-  check("collapse: patrón DTV123 (3 TVs)", collapseGroup(tvs, GROUP_DEFS.TvsBarraLivertador) === "DTV123");
-  check("collapse: patrón DTV5432 (4 TVs)", collapseGroup(tvs, GROUP_DEFS.TvsBarraSur) === "DTV5432");
-  check("collapse: patrón DTV1234 (escalera sur)", collapseGroup(tvs, GROUP_DEFS.TvsEscaleraSur) === "DTV1234");
-  check("collapse: TVs faltantes → undefined", collapseGroup(tvs, GROUP_DEFS.TvsEscaleraNorte) === undefined);
-  check("collapse: todos iguales → valor único", collapseGroup({ TV08: "DTV2", TV09: "DTV2", TV10: "DTV2" }, GROUP_DEFS.TvsBarraPista) === "DTV2");
+  check("collapse: patrón DTV123 (barra libertador, 3 TVs)", collapseGroup(tvs, screensOf("TvsBarraLibertador"), combosBySize) === "DTV123");
+  check("collapse: patrón DTV5432 (barra sur, 4 TVs)", collapseGroup(tvs, screensOf("TvsBarraSur"), combosBySize) === "DTV5432");
+  check("collapse: patrón DTV1234 (escalera sur)", collapseGroup(tvs, screensOf("TvsEscaleraSur"), combosBySize) === "DTV1234");
+  check("collapse: TVs faltantes → undefined", collapseGroup(tvs, screensOf("TvsEscaleraNorte"), combosBySize) === undefined);
+  check("collapse: todos iguales → valor único", collapseGroup({ TV08: "DTV2", TV09: "DTV2", TV10: "DTV2" }, screensOf("TvsBarraPista"), combosBySize) === "DTV2");
+  // MG-6: mezcla sin patrón conocido → null ("Mixto / Personalizado"), nunca values[0]
+  check("collapse: mixto → null (MG-6, nunca values[0])", collapseGroup({ TV01: "DTV1", TV02: "DTV4", TV03: "DTV5" }, screensOf("TvsBarraLibertador"), combosBySize) === null);
+  check("collapse: sin combosBySize sigue colapsando el valor único", collapseGroup({ TV01: "DTV1", TV02: "DTV1", TV03: "DTV1" }, screensOf("TvsBarraLibertador")) === "DTV1");
+  check("collapse: screens fuera del modelo → undefined (degradación segura)", collapseGroup(tvs, screensOf("NoExiste"), combosBySize) === undefined);
 }
 
 // ── 11. sortTvsByGroup (hotfix 6: orden de batch por grupos físicos) ──
@@ -445,6 +464,188 @@ import { readFileSync } from "node:fs";
   const canalesSrc = readFileSync(new URL("../../componentes/Canales.jsx", import.meta.url), "utf8");
   check("allowlist: Canales valida contra CANAL_ALLOWLIST", canalesSrc.includes("CANAL_ALLOWLIST.has(canal)"));
   check("allowlist: Canales sin drift de favoritos (no lee estado.favoritos)", !canalesSrc.includes("estado.favoritos"));
+}
+
+// ── 13. matrixModel servido por el server (WS4a T-4a.4, read-only) ──
+// El cliente consume el modelo que el broker sirve como snapshot top-level:
+// acá se verifican sus helpers y el contrato MG-3/MG-4/MG-5/MG-7.
+{
+  check("model: 3 zonas (MG-3)", Array.isArray(MODEL.zones) && MODEL.zones.length === 3);
+  const subgroups = MODEL.zones.flatMap((z) => z.subgroups);
+  check("model: 10 subgrupos (MG-3)", subgroups.length === 10);
+  const allScreens = subgroups.flatMap((sg) => sg.screens);
+  check(
+    "model: 29 pantallas canónicas sin solapamiento (MG-3)",
+    allScreens.length === 29 && new Set(allScreens).size === 29,
+  );
+  check(
+    "model: dir es etiqueta y Libertador está bien escrito (MG-7)",
+    subgroups.find((sg) => sg.key === "TvsBarraLibertador")?.dir === "Libertador" &&
+      !subgroups.some((sg) => sg.dir === "Livertador"),
+  );
+  check(
+    "model: VWN/VWC/VWS subgrupos de 1 pantalla en matrixGroups (reencuadre WS4)",
+    ["VWN", "VWC", "VWS"].every((k) => matrixModel.findSubgroup(k)?.screens.length === 1),
+  );
+  check(
+    "model: combosBySize 3→5 y 4→6",
+    MODEL.combosBySize[3]?.length === 5 && MODEL.combosBySize[4]?.length === 6,
+  );
+  check(
+    "model: optionsFor(1) = solo DTV1..DTV8 (tamaño sin combos)",
+    JSON.stringify(matrixModel.optionsFor(1)) === JSON.stringify(["DTV1", "DTV2", "DTV3", "DTV4", "DTV5", "DTV6", "DTV7", "DTV8"]),
+  );
+  check("model: optionsFor(3) = 8 fuentes + 5 combos (MG-5)", matrixModel.optionsFor(3).length === 13);
+  check("model: optionsFor(4) = 8 fuentes + 6 combos (MG-5)", matrixModel.optionsFor(4).length === 14);
+  check(
+    "model: findSubgroup + screensOf (por key y por objeto)",
+    JSON.stringify(matrixModel.screensOf("TvsBarraLibertador")) === JSON.stringify(["TV01", "TV02", "TV03"]) &&
+      matrixModel.screensOf(matrixModel.findSubgroup("VWN"))?.[0] === "VWN",
+  );
+  check(
+    "model: decodeCombo por posición, malformado → null",
+    JSON.stringify(matrixModel.decodeCombo("DTV123")) === JSON.stringify(["DTV1", "DTV2", "DTV3"]) &&
+      matrixModel.decodeCombo("DTV12x") === null &&
+      matrixModel.decodeCombo("no-combo") === null,
+  );
+}
+
+// ── 14. WS4c: plumbing cliente de matrixModel/matrixGroups ──
+{
+  // applySnapshot preserva matrixModel top-level (hoy lo descartaba al
+  // reconstruir el objeto — MG-4: sin modelo servido no hay opciones).
+  const servedModel = { zones: [{ key: "videowall", subgroups: [] }], combosBySize: { 3: ["DTV123"] } };
+  const snap = applySnapshot({}, {
+    schemaVersion: 3,
+    sync: { status: "synced", lastSync: null },
+    versions: {},
+    domains: {},
+    appOnly: {},
+    matrixModel: servedModel,
+  });
+  check("ws4c: applySnapshot preserva matrixModel top-level", snap.matrixModel === servedModel);
+
+  const snap2 = applySnapshot(snap, {
+    schemaVersion: 3,
+    versions: {},
+    domains: { tvs: { desired: { TV01: "DTV1" }, reported: {}, version: 2 } },
+  });
+  check("ws4c: snapshot sin matrixModel conserva el previo (no lo descarta)", snap2.matrixModel === servedModel);
+
+  const snap3 = applyPollBody(snap2, {
+    sync: { status: "synced", lastSync: "t" },
+    versions: {},
+    domains: { tvs: { desired: { TV01: "DTV2" }, reported: {}, version: 3 } },
+    matrixModel: servedModel,
+  });
+  check("ws4c: applyPollBody preserva matrixModel del body", snap3.matrixModel === servedModel);
+
+  // Dominio matrixGroups: evento incremental trae desired (app-only).
+  let st = applySnapshot({}, {
+    schemaVersion: 3,
+    versions: {},
+    domains: {},
+    appOnly: {},
+    matrixModel: servedModel,
+  });
+  st = applyStateEvent(st, {
+    domain: "matrixGroups",
+    payload: { TvsBarraLibertador: "DTV123", TvsBarraSur: null },
+    version: 4,
+    lastUpdated: "x",
+  });
+  check(
+    "ws4c: evento matrixGroups mergea en desired (null mixto incluido)",
+    st.domains.matrixGroups.desired.TvsBarraLibertador === "DTV123" && st.domains.matrixGroups.desired.TvsBarraSur === null,
+  );
+  check("ws4c: matrixGroups es app-only (reported queda vacío, MG-1)", Object.keys(st.domains.matrixGroups.reported || {}).length === 0);
+  check("ws4c: matrixGroups versiona el dominio", st.domains.matrixGroups.version === 4);
+
+  st = applyStateEvent(st, { domain: "matrixGroups", payload: { VWN: "DTV2" }, version: 5, lastUpdated: "y" });
+  check(
+    "ws4c: evento parcial mergea sin pisar las demás claves",
+    st.domains.matrixGroups.desired.TvsBarraLibertador === "DTV123" && st.domains.matrixGroups.desired.VWN === "DTV2",
+  );
+  check("ws4c: evento de dominio desconocido sigue ignorado", applyStateEvent(st, { domain: "groups", payload: {} }) === st);
+
+  // deriveUiState expone matrixGroups + matrixModel (T-4c.1).
+  const ui = deriveUiState(st);
+  check(
+    "ws4c: deriveUiState expone matrixGroups (desired tal cual)",
+    ui.matrixGroups.TvsBarraLibertador === "DTV123" && ui.matrixGroups.TvsBarraSur === null && ui.matrixGroups.VWN === "DTV2",
+  );
+  check("ws4c: deriveUiState expone matrixModel servido", ui.matrixModel === servedModel);
+  check("ws4c: deriveUiState sin snapshot sin dominio → defaults seguros", deriveUiState({}).matrixModel === null && Object.keys(deriveUiState({}).matrixGroups).length === 0);
+
+  // expandFromModel: expansión cliente espejo del server, desde el modelo servido
+  // (la forma que viaja en el snapshot: { zones, combosBySize }).
+  const expanded = expandFromModel(
+    { TvsBarraLibertador: "DTV123", VWN: "DTV2", TvsBarraSur: null, TVRACK: "DTV7" },
+    MODEL,
+  );
+  check(
+    "ws4c: expandFromModel patrón por posición (TV01..03 = DTV1/2/3)",
+    expanded.tvs.TV01 === "DTV1" && expanded.tvs.TV02 === "DTV2" && expanded.tvs.TV03 === "DTV3",
+  );
+  check("ws4c: expandFromModel fuente única a la pantalla del subgrupo", expanded.tvs.VWN === "DTV2");
+  check(
+    "ws4c: expandFromModel null (mixto) se omite del patch (MG-6)",
+    expanded.matrixGroups.TvsBarraSur === undefined && expanded.tvs.TV04 === undefined,
+  );
+  check("ws4c: expandFromModel destino real no-subgrupo pasa directo", expanded.tvs.TVRACK === "DTV7");
+  check(
+    "ws4c: expandFromModel registra subgrupos en matrixGroups",
+    expanded.matrixGroups.TvsBarraLibertador === "DTV123" && expanded.matrixGroups.VWN === "DTV2",
+  );
+
+  const rejected = expandFromModel({ TvsBarraLibertador: "DTV1234" }, MODEL);
+  check(
+    "ws4c: MG-5 combo de tamaño incorrecto rechazado (omitido)",
+    rejected.tvs.TV01 === undefined && rejected.matrixGroups.TvsBarraLibertador === undefined,
+  );
+  const undeclared = expandFromModel({ TvsEscaleraSur: "DTV999" }, MODEL);
+  check(
+    "ws4c: combo no declarado → valor único (espejo del server, el endpoint valida MG-5)",
+    undeclared.tvs.TV15 === "DTV999" && undeclared.matrixGroups.TvsEscaleraSur === "DTV999",
+  );
+  check("ws4c: expandFromModel sin modelo → null (degradación segura)", expandFromModel({ VWN: "DTV1" }, null) === null);
+  const empty = expandFromModel(null, MODEL);
+  check("ws4c: expandFromModel sin values → patch vacío", Object.keys(empty.tvs).length === 0 && Object.keys(empty.matrixGroups).length === 0);
+
+  // Round-trip expand → collapse contra el modelo servido.
+  const values = { TvsBarraLibertador: "DTV123", TvsEscaleraNorte: "DTV1234" };
+  const rt = expandFromModel(values, MODEL);
+  const rtScreensOf = (key) => matrixModel.findSubgroup(key)?.screens;
+  check(
+    "ws4c: round-trip expand→collapse (barra libertador y escalera norte)",
+    collapseGroup(rt.tvs, rtScreensOf("TvsBarraLibertador"), MODEL.combosBySize) === "DTV123" &&
+      collapseGroup(rt.tvs, rtScreensOf("TvsEscaleraNorte"), MODEL.combosBySize) === "DTV1234",
+  );
+
+  // El cliente no duplica el modelo (MG-4): sin literales de grupos propios.
+  const coreSrc = readFileSync(new URL("../brokerClientCore.js", import.meta.url), "utf8");
+  check(
+    "ws4c: brokerClientCore sin GROUP_DEFS/GROUP_PATTERNS hardcodeados (MG-4)",
+    !coreSrc.includes("export const GROUP_DEFS") && !coreSrc.includes("export const GROUP_PATTERNS"),
+  );
+  const mvSrc = readFileSync(new URL("../../componentes/MatrizVideo.jsx", import.meta.url), "utf8");
+  check("ws4c: MatrizVideo sin GROUP_DEFS (colapsa del modelo servido)", !mvSrc.includes("GROUP_DEFS"));
+
+  // API: setMatrixGroups → POST /api/matrix-groups (por parsing del source,
+  // fetch no resoluble en node puro).
+  const apiSrc = readFileSync(new URL("../../api/arrangerApi.js", import.meta.url), "utf8");
+  check(
+    "ws4c: arrangerApi exporta setMatrixGroups → POST /api/matrix-groups",
+    apiSrc.includes("export async function setMatrixGroups") && apiSrc.includes('"/api/matrix-groups"'),
+  );
+  check("ws4c: setMatrixGroups envuelve el body como {values}", apiSrc.includes("JSON.stringify({ values })"));
+
+  // App inyecta matrixGroups/matrixModel al contexto con precedencia server (T-4c.4).
+  const appSrc = readFileSync(new URL("../../App.jsx", import.meta.url), "utf8");
+  check(
+    "ws4c: App deriva matrixGroups/matrixModel del snapshot y los inyecta al contexto",
+    appSrc.includes("matrixGroups, matrixModel") && appSrc.includes("matrixModel,") && appSrc.includes("matrixGroups,"),
+  );
 }
 
 const failed = checks.filter((c) => !c.ok).length;

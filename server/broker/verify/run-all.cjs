@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * Verificación PR 1 + PR 2 — State Broker foundation + composition.
+ * Verificación del state broker (slices WS2→WS3→WS4a→…, un step por PR).
  *
  * Sin test runner y sin hardware: cada script usa require directo contra los
  * módulos de server/broker/ (o createServer contra mock en puerto efímero).
@@ -26,6 +26,7 @@ const steps = [
   ["verify-write-confirm", "write-confirm: retry getEncoder post-join (settle) → reported correcto"],
   ["verify-confirm-settling", "confirm-settling: ventana por comando (av/stream) + no-op + unconfirmed"],
   ["verify-channel-intent", "WS3 channel-intent: intención+ACK, noop sin IR, reported null, reload, snapshot"],
+  ["verify-groups", "WS4a matrixModel+groups: modelo declarativo (3 zonas/10 subgrupos), opciones, expansión, mixed→null, round-trip"],
   ["verify-composition", "composition server.js: endpoints nuevos + legacy + SSE + stale→synced"],
 ];
 
@@ -40,5 +41,5 @@ for (const [name, label] of steps) {
   if (!ok) failed += 1;
 }
 
-console.log(`\n${failed === 0 ? "✓ TODAS LAS VERIFICACIONES PR 1 + PR 2 PASARON" : `✗ ${failed} verificación(es) fallaron`}`);
+console.log(`\n${failed === 0 ? "✓ TODAS LAS VERIFICACIONES PASARON" : `✗ ${failed} verificación(es) fallaron`}`);
 process.exit(failed === 0 ? 0 : 1);

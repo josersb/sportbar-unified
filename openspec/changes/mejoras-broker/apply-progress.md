@@ -293,5 +293,52 @@ Branch: `feat/mejoras-broker-ws4e` (desde `feat/mejoras-broker-ws4d`). Fecha: 20
 
 `git revert b489225` — restaura el switch legacy de expansión por grupo, el batch de 29 POSTs por-TV, `sortTvsByGroup`/`DESTINOS_TV` y los tests WS4d de submit; quita `enableReinitialize` y el merge del overlay en `deriveUiState`. El server (WS4a/WS4b) y el plumbing (WS4c) quedan intactos — el endpoint `/api/matrix-groups` sigue operativo para clientes futuros. No toca `executeWrite`, `confirmEncoder` ni la secuencia IR.
 
-## WS5 — dedupe (PR 8) ⬜ pendiente
-## WS1 — auditoría read-only (PR 6) ⬜ pendiente
+## WS5 — dedupe (PR 8) ✅ COMPLETADO
+
+Branch: `feat/mejoras-broker-ws5` (desde `feat/mejoras-broker-ws4e`). Fecha: 2026-09-15.
+
+### Tasks
+
+- [x] **T-5.1** Guard pre-join en `executeWrite` (server.js, ANTES de emitir el join): no-op iff el `reported` CONFIRMADO del destino ya es la fuente pedida (video+audio si linked; extracción por dominio: tvs `reported[key]`, tvrack `reported[sub]`, zonasFuera `reported[key][sub]`) && no hay writes pendientes detrás de esta tarea. Setea `desired` (sección 1 intacta), persiste, broadcastea y retorna `{ok:true, noop:true, confirmed:true, reported:<confirmado>}` SIN join. `confirmEncoder` y su ventana de settling (PR #13) SIN TOCAR — el guard termina antes del join.
+- [x] **T-5.2** `lastBatch` in-memory `Map<dest,{source,sub,at}>` (no persistido): se actualiza en CADA executeWrite (emita join o lo saltee) y marca resubmits idénticas para el `reason` del no-op ("resubmit idéntica (lastBatch)" vs "reported confirmado"). NO participa de la decisión de salteo — evitar no-ops falsos (decisión del prompt).
+- [x] **T-5.3** `force:true` saltea el guard: plomería `executeWrite(dest, source, sub, writeId, timings, opts)` ← `writeInBackground(..., opts)`. Expuesto en `/api/tvs/:id/source` (body `{force}`, log `[force]`), `/api/matrix-groups` (body `{force}` → todos los writes del submit) y respuestas sync de tvrack/zonas-fuera con `ok`/`noop` aditivos. API cliente: `setTvSource(id, source, {force})` y `setMatrixGroups(values, {force})`.
+- [x] **T-5.4** Cliente (`MatrizVideo.jsx`): submit extraído a `buildIntent(values)` + `submitIntent(values, {force})`. Pre-filtro: por subgrupo, `collapseGroup(estado.tvs, g.screens, combosBySize) !== valor` → viaja; iguales se omiten. `estado.tvs` es reported-wins (reportado confirmado u overlay propio en vuelo) → ante duda NO se saltea (one-join-lag re-envía). Intent vacío → `toast.info("sin cambios")` SIN POST ni optimistic (UXF-2). Botón "Forzar reenvío" (Formik render-prop, `variant="secondary"`) envía el intent COMPLETO con `force:true` — escape explícito del operador.
+- [x] **T-5.5** Nuevo `verify-dedupe.cjs` (30 checks, 6 escenarios): A no-op confirmado con reason lastBatch; B force reenvía; C matrix-groups un-solo-cambio (4 joins → resubmit idéntica 0 joins → 2 subgrupos 7 joins, solo destinos afectados); D one-join-lag NO genera no-op falso (reported stale → re-POST emite join, 2 joins, re-read converge); E intención repetida en vuelo (bg, isBusy) → 1 join total; F TVRACK por sub-stream. `writeQueue.hasPending(key)` añadido (tareas encoladas sin arrancar; `isBusy` intacto). Registrado en `run-all.cjs` (17 steps).
+- [x] **T-5.6** `MatrizVideo.test.jsx`: 9 tests WS4e adaptados al pre-filtro (cambian UN subgrupo y assertean el payload pre-filtrado — el comportamiento nuevo ES el punto de WS5), test "sin cambios" (sin POST, sin optimistic, toast info), 2 tests "Forzar reenvío" (intent completo + `{force:true}`; nunca "sin cambios"). Mock de `useToast` añadido al archivo. `verify-broker-core.mjs`: +sección 16 (10 checks WS5) + 5 checks ws4e/ws4c actualizados al nuevo contrato → 140/140.
+
+### Commits (work-unit)
+
+| Hash | Mensaje |
+|---|---|
+| `263ed3f` | feat(broker): guard pre-join dedupe en executeWrite con lastBatch y escape force |
+| `0e74f32` | feat(broker-client): pre-filtro de subgrupos confirmados y forzar reenvio en MatrizVideo |
+| `<hash-3>` | docs(sdd): progreso WS5 y tareas T-5.x marcadas |
+
+### Verificación (sin hardware)
+
+- `node server/broker/verify/verify-dedupe.cjs` → **✓ DEDUPE OK (guard pre-join + force + un-solo-cambio + one-join-lag + in-flight + tvrack)** (30 checks).
+- `node server/broker/verify/run-all.cjs` → **✓ TODAS LAS VERIFICACIONES PASARON** (17 steps incl. `verify-dedupe` nuevo; `verify-confirm-settling` de PR #13 VERDE; `executeWrite` conserva su flujo join→confirm→reported).
+- `pnpm test` → **209/209 tests, 15 archivos** (207 + 3 nuevos − 1 reemplazado).
+- `node src/hooks/verify/verify-broker-core.mjs` → **140/140 verificaciones OK** (130 + 10 sección 16; 5 checks ws4e/ws4c actualizados al contrato con pre-filtro).
+- `npx eslint` sobre archivos tocados → único error **preexistente** (`writeQueue.js:116` no-undef `module` — CJS con config browser; `module.exports` ya existía).
+- Sin hardware real: todo contra mock (`VITE_MOCK_ARRANGER=1`); el Arranger real NO fue golpeado; pseudo-canales 0000/0000A/0000B deshabilitados.
+
+### Cambios acumulados
+
+~430 líneas authored (server: writeQueue ~30 + server.js ~90 + verify-dedupe ~300 nuevo; cliente: api ~10 + MatrizVideo ~75 + tests ~120) — marginalmente sobre el presupuesto de 400 → recomendación `size:exception` para PR8 (los checks del verify-dedupe y los tests son parte del contrato; la cadena auto-chain ya asigna PR8 = WS5 como slice propia).
+
+### Desviaciones / notas
+
+1. **`!writeQueue.isBusy(dest)` del guard se implementa como `!writeQueue.hasPending(dest)`**: dentro de `executeWrite` (que corre DENTRO de la cadena del writeQueue) `isBusy(dest)` es SIEMPRE true — la propia tarea vive en el Map hasta el `finally`. El "no busy" real del spec ("nada pendiente detrás de esta tarea") se materializó con `writeQueue.hasPending(key)`, que cuenta tareas encoladas sin arrancar. `isBusy`/`pendingCount`/`pendingKeys` conservan su semántica (verify-writequeue verde).
+2. **Dedupe en vuelo por FIFO, no por lastBatch**: serializado por destino, cuando la tarea idéntica duplicada corre, la original YA terminó → `reported` confirmado la atrapa. El escenario spec "intención repetida con isBusy" queda cubierto (verify E: 2 POSTs casi simultáneos → 1 join). `lastBatch` se usó como marcador de resubmit para el `reason`, NO como condición de salteo (un `lastBatch` match con `reported` divergente habría generado no-op falso tras un cambio externo del hardware).
+3. **Respuesta no-op del sync path**: `{ok, noop:true, confirmed:true, reported:<confirmado>}` — mantiene verdes los checks de `verify-confirm-settling` escenario C (`ok:true`, `confirmed:true`, `reported === "DTV3"`). `noop` también añadido (aditivo) a las respuestas sync de tvrack/zonas-fuera, y el broadcast de dominio se omite en el sync path cuando hay no-op (el guard ya broadcasteó).
+4. **Pre-filtro cliente contra `estado.tvs` (reported-wins), no contra `matrixGroups.desired`**: `desired` es intención no confirmada — deduplicar contra ella sí generaría no-ops falsos (one-join-lag). El merge de deriveUiState (reported gana + overlay propio) hace que solo se salteen subgrupos genuinamente confirmados o con intención propia idéntica en vuelo; ante duda viaja el POST (el server re-decide con su guard).
+5. **Toasts**: éxito normal "Matriz de video actualizada"; vía force "Matriz de video reenviada"; sin cambios `info("sin cambios")` (UXF-2). El test "envía intent vacío cuando todos Sin datos" de WS4e fue reemplazado por el de "sin cambios" (el intent vacío ya no viaja).
+6. **Preset load hereda el guard**: los writes del preset (`writeQueue.enqueue` directo, sin force) deduplican no-ops — recargar el preset vigente emite 0 joins (DoD "zonas no-op"). Sin cambio de código: el guard vive en `executeWrite`.
+7. **`server/pnpm-lock.yaml` NO incluido** (drift preexistente de WS3, intacto).
+
+### Rollback boundary
+
+`git revert` de los 2 commits feat — quita el guard pre-join, `lastBatch`, `hasPending` y el pre-filtro/botón force del cliente. `confirmEncoder`/settling (PR #13) quedan intactos (el guard era aditivo y anterior al join). El endpoint acepta `force` desconocido (campo ignorado) → clientes nuevos no rompen contra server viejo. No toca la secuencia IR (`sendChannelDigits`), el dominio `channelIntent` ni `matrixModel`.
+
+## WS1 — auditoría read-only (PR 9) ⬜ pendiente

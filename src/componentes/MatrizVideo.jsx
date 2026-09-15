@@ -40,6 +40,33 @@ const DESTINOS_TV = [
   "TV21", "TV22", "TV23", "TV24", "TV25", "TV26",
 ];
 
+// WS4d: títulos de zona para display (las OPCIONES y subgrupos vienen del
+// matrixModel servido — MG-4; estos títulos no duplican nada del modelo).
+const ZONE_TITLES = {
+  videowall: "Videos Wall Norte - Centro - Sur",
+  perimetro: "Perímetro de TVs Norte - Centro - Sur",
+  barra: "Tvs de la Barra Norte - Libertador - Sur - Pista",
+};
+
+// WS4d (MG-6): representación honesta del estado derivado.
+// `null` (mixto) → opción "Mixto / Personalizado"; `undefined` (sin datos:
+// pantallas faltantes o sin modelo) → sin selección.
+const MIXED_OPTION = "__mixto__";
+const MIXED_LABEL = "Mixto / Personalizado";
+const NO_DATA_OPTION = "";
+const NO_DATA_LABEL = "Sin datos";
+
+/** "DTV123" → "DTV 1,2,3"; "DTV1" → "DTV 1" (labels de opciones del select). */
+const optionLabel = (value) => {
+  if (/^DTV\d+$/.test(value) && value.length > 4) {
+    return `DTV ${value.slice(3).split("").join(",")}`;
+  }
+  return value.replace("DTV", "DTV ");
+};
+
+/** Valor representable como fuente/combo de un subgrupo (excluye sentinels). */
+const isSourceValue = (v) => typeof v === "string" && /^DTV\d+$/.test(v);
+
 const MatrizVideo = () => {
   const {
     estado,
@@ -51,6 +78,7 @@ const MatrizVideo = () => {
     applyOptimistic,
     getOptimisticDomain,
     revertOptimistic,
+    matrixGroups,
     matrixModel,
   } = useContext(ContextoUser);
 
@@ -115,35 +143,55 @@ const MatrizVideo = () => {
     }
   };
 
-  // Valores de grupo derivados de las TVs individuales del broker
-  // (sin keys legacy en el estado). El form edita grupos; el submit expande.
-  // WS4c: el collapse se deriva del matrixModel SERVIDO (MG-4 — sin literales
-  // propios; sin modelo → degradación segura, el select cae al default).
-  // Transitorio hasta WS4d (T-4d.2): initialValues tomará matrixGroups.desired
-  // con precedencia server y el campo legacy "TvsBarraLivertador" se renombra
-  // junto al switch del submit (por eso la key del form y la del modelo
-  // difieren acá).
+  // WS4d (MG-4/MG-6): zonas/subgrupos y opciones derivados del matrixModel
+  // SERVIDO — sin bloques hardcodeados. `initialValues` toma PRECEDENCIA
+  // SERVER desde `matrixGroups.desired`; si el server aún no reporta la key
+  // se hace fallback al collapse de las TVs individuales del broker.
+  // Representación honesta: `null` (mixto) → "Mixto / Personalizado";
+  // `undefined` (sin datos) → sin selección. Sin modelo → degradación segura
+  // (no se renderizan selects de grupos y Enviar queda deshabilitado).
+  const hasModel = Boolean(matrixModel && Array.isArray(matrixModel.zones));
   const combosBySize = matrixModel?.combosBySize || {};
-  const modelScreens = (key) => {
-    for (const zone of matrixModel?.zones || []) {
-      const sg = (zone.subgroups || []).find((s) => s.key === key);
-      if (sg) return sg.screens;
-    }
-    return null;
-  };
+  const videoSources = getByCapability("videoSource");
+  const optionsForSize = (size) => [
+    ...videoSources.map((d) => d.id),
+    ...(combosBySize[size] || []),
+  ];
 
-  const initialValues = {
-    VWN: tvs.VWN || "DTV1",
-    VWC: tvs.VWC || "DTV1",
-    VWS: tvs.VWS || "DTV1",
-    TvsBarraLivertador: collapseGroup(tvs, modelScreens("TvsBarraLibertador"), combosBySize) || "DTV1",
-    TvsBarraSur: collapseGroup(tvs, modelScreens("TvsBarraSur"), combosBySize) || "DTV1",
-    TvsBarraPista: collapseGroup(tvs, modelScreens("TvsBarraPista"), combosBySize) || "DTV1",
-    TvsBarraNorte: collapseGroup(tvs, modelScreens("TvsBarraNorte"), combosBySize) || "DTV1",
-    TvsEscaleraNorte: collapseGroup(tvs, modelScreens("TvsEscaleraNorte"), combosBySize) || "DTV1",
-    TvsEscaleraCentro: collapseGroup(tvs, modelScreens("TvsEscaleraCentro"), combosBySize) || "DTV1",
-    TvsEscaleraSur: collapseGroup(tvs, modelScreens("TvsEscaleraSur"), combosBySize) || "DTV1",
-  };
+  const groupZones = hasModel
+    ? matrixModel.zones.map((zone) => ({
+        key: zone.key,
+        title: ZONE_TITLES[zone.key] || zone.key,
+        subgroups: (zone.subgroups || []).map((sg) => {
+          const screens = Array.isArray(sg.screens) ? sg.screens : [];
+          const serverValue = matrixGroups?.[sg.key];
+          const derived =
+            serverValue !== undefined
+              ? serverValue
+              : collapseGroup(tvs, screens, combosBySize);
+          return {
+            key: sg.key,
+            label: sg.dir,
+            options: optionsForSize(screens.length),
+            value:
+              derived === null
+                ? MIXED_OPTION
+                : derived === undefined
+                  ? NO_DATA_OPTION
+                  : derived,
+            showMixed: derived === null,
+            showNoData: derived === undefined,
+          };
+        }),
+      }))
+    : [];
+
+  const initialValues = {};
+  for (const zone of groupZones) {
+    for (const g of zone.subgroups) {
+      initialValues[g.key] = g.value;
+    }
+  }
 
   return (
     <main className={styles.main}>
@@ -159,12 +207,20 @@ const MatrizVideo = () => {
         <Formik
           initialValues={initialValues}
           onSubmit={async (values) => {
+            // WS4d: submit legacy por-TV (WS4e lo reemplaza por
+            // POST /api/matrix-groups). Cambios de esta slice:
+            //  - key del form renombrada TvsBarraLivertador → TvsBarraLibertador
+            //    (MG-3/MG-7 — la que el modelo y el endpoint esperan).
+            //  - Grupos en estado no representable ("Mixto / Personalizado" o
+            //    sin datos) NO escriben: no hay intención expandible, se
+            //    conservan las TVs como están.
             const newTvs = { ...tvs };
-            newTvs.VWN = values.VWN;
-            newTvs.VWC = values.VWC;
-            newTvs.VWS = values.VWS;
-            newTvs.TvsBarraLivertador = values.TvsBarraLivertador;
-            switch (values.TvsBarraLivertador) {
+            if (isSourceValue(values.VWN)) newTvs.VWN = values.VWN;
+            if (isSourceValue(values.VWC)) newTvs.VWC = values.VWC;
+            if (isSourceValue(values.VWS)) newTvs.VWS = values.VWS;
+            if (isSourceValue(values.TvsBarraLibertador)) {
+            newTvs.TvsBarraLibertador = values.TvsBarraLibertador;
+            switch (values.TvsBarraLibertador) {
               case "DTV123":
                 newTvs.TV01 = "DTV1";
                 newTvs.TV02 = "DTV2";
@@ -191,10 +247,12 @@ const MatrizVideo = () => {
                 newTvs.TV03 = "DTV3";
                 break;
               default:
-                newTvs.TV01 = values.TvsBarraLivertador;
-                newTvs.TV02 = values.TvsBarraLivertador;
-                newTvs.TV03 = values.TvsBarraLivertador;
+                newTvs.TV01 = values.TvsBarraLibertador;
+                newTvs.TV02 = values.TvsBarraLibertador;
+                newTvs.TV03 = values.TvsBarraLibertador;
             }
+            }
+            if (isSourceValue(values.TvsBarraSur)) {
             newTvs.TvsBarraSur = values.TvsBarraSur;
             switch (values.TvsBarraSur) {
               case "DTV1234":
@@ -239,6 +297,8 @@ const MatrizVideo = () => {
                 newTvs.TV06 = values.TvsBarraSur;
                 newTvs.TV07 = values.TvsBarraSur;
             }
+            }
+            if (isSourceValue(values.TvsBarraPista)) {
             newTvs.TvsBarraPista = values.TvsBarraPista;
             switch (values.TvsBarraPista) {
               case "DTV123":
@@ -271,6 +331,8 @@ const MatrizVideo = () => {
                 newTvs.TV09 = values.TvsBarraPista;
                 newTvs.TV10 = values.TvsBarraPista;
             }
+            }
+            if (isSourceValue(values.TvsBarraNorte)) {
             newTvs.TvsBarraNorte = values.TvsBarraNorte;
             switch (values.TvsBarraNorte) {
               case "DTV1234":
@@ -315,6 +377,8 @@ const MatrizVideo = () => {
                 newTvs.TV13 = values.TvsBarraNorte;
                 newTvs.TV14 = values.TvsBarraNorte;
             }
+            }
+            if (isSourceValue(values.TvsEscaleraNorte)) {
             newTvs.TvsEscaleraNorte = values.TvsEscaleraNorte;
             switch (values.TvsEscaleraNorte) {
               case "DTV1234":
@@ -359,6 +423,8 @@ const MatrizVideo = () => {
                 newTvs.TV25 = values.TvsEscaleraNorte;
                 newTvs.TV26 = values.TvsEscaleraNorte;
             }
+            }
+            if (isSourceValue(values.TvsEscaleraCentro)) {
             newTvs.TvsEscaleraCentro = values.TvsEscaleraCentro;
             switch (values.TvsEscaleraCentro) {
               case "DTV1234":
@@ -403,6 +469,8 @@ const MatrizVideo = () => {
                 newTvs.TV21 = values.TvsEscaleraCentro;
                 newTvs.TV22 = values.TvsEscaleraCentro;
             }
+            }
+            if (isSourceValue(values.TvsEscaleraSur)) {
             newTvs.TvsEscaleraSur = values.TvsEscaleraSur;
             switch (values.TvsEscaleraSur) {
               case "DTV1234":
@@ -446,6 +514,7 @@ const MatrizVideo = () => {
                 newTvs.TV16 = values.TvsEscaleraSur;
                 newTvs.TV17 = values.TvsEscaleraSur;
                 newTvs.TV18 = values.TvsEscaleraSur;
+            }
             }
 
             // Escrituras confirmed-only vía broker (writeQueue serializa por
@@ -525,127 +594,44 @@ const MatrizVideo = () => {
         >
           <Form>
             <div className={styles.formContainer}>
-              <div className={styles.selectZona}>
-                <h3 className={styles.selectZonaTitulo}>Videos Wall Norte - Centro - Sur</h3>
-                <div className={styles.selectRow}>
-                  <Select id="select-VWN" label="VWall Norte" name="VWN" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                  </Select>
-                  <Select label="VWall Centro" name="VWC" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                  </Select>
-                  <Select label="VWall Sur" name="VWS" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-              <div className={styles.selectZona}>
-                <h3 className={styles.selectZonaTitulo}>Perimetro de TVs Norte - Centro - Sur</h3>
-                <div className={styles.selectRow}>
-                  <Select
-                    label="TVs Escalera Norte"
-                    name="TvsEscaleraNorte"
-                    className={styles.formSelect}
-                  >
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                  <Select
-                    label="TVs Escalera Centro"
-                    name="TvsEscaleraCentro"
-                    className={styles.formSelect}
-                  >
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                  <Select label="TVs Escalera Sur" name="TvsEscaleraSur" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                </div>
-              </div>
-              <div className={styles.selectZona}>
-                <h3 className={styles.selectZonaTitulo}>
-                  Tvs de la Barra Norte - Livertador - Sur - Pista
-                </h3>
-                <div className={styles.selectRow}>
-                  <Select label="TVs Barra Norte" name="TvsBarraNorte" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                  <Select
-                    label="TVs Barra Livertador"
-                    name="TvsBarraLivertador"
-                    className={styles.formSelect}
-                  >
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV123">DTV1,2,3</option>
-                    <option value="DTV121">DTV1,2,1</option>
-                    <option value="DTV542">DTV5,4,2</option>
-                    <option value="DTV143">DTV1,4,3</option>
-                    <option value="DTV153">DTV1,5,3</option>
-                  </Select>
-                  <Select label="TVs Barra Sur" name="TvsBarraSur" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                  <Select label="TVs Barra Pista" name="TvsBarraPista" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV123">DTV1,2,3</option>
-                    <option value="DTV121">DTV1,2,1</option>
-                    <option value="DTV542">DTV5,4,2</option>
-                    <option value="DTV143">DTV1,4,3</option>
-                    <option value="DTV153">DTV1,5,3</option>
-                  </Select>
-                </div>
-              </div>
+              {hasModel
+                ? groupZones.map((zone) => (
+                    <div key={zone.key} className={styles.selectZona}>
+                      <h3 className={styles.selectZonaTitulo}>{zone.title}</h3>
+                      <div className={styles.selectRow}>
+                        {zone.subgroups.map((g) => (
+                          <Select
+                            key={g.key}
+                            label={g.label}
+                            name={g.key}
+                            className={styles.formSelect}
+                          >
+                            {g.showNoData && (
+                              <option value={NO_DATA_OPTION}>{NO_DATA_LABEL}</option>
+                            )}
+                            {g.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {optionLabel(opt)}
+                              </option>
+                            ))}
+                            {g.showMixed && (
+                              <option value={MIXED_OPTION}>{MIXED_LABEL}</option>
+                            )}
+                          </Select>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                : (
+                  <div className={styles.selectZona}>
+                    <h3 className={styles.selectZonaTitulo}>Grupos de la matriz</h3>
+                    <p className={styles.syncHint}>
+                      Modelo de matriz no disponible — los grupos no se pueden editar.
+                    </p>
+                  </div>
+                )}
               <div className={styles.submitContainer}>
-                <Button type="submit" variant="primary">
+                <Button type="submit" variant="primary" disabled={!hasModel}>
                   Enviar
                 </Button>
               </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { ProviderUser } from "../contexto/Contexto";
 import MatrizVideo from "./MatrizVideo";
 
@@ -59,6 +59,42 @@ const baseState = {
   audio: [],
 };
 
+// WS4d: fixture del matrixModel (misma estructura que sirve el broker).
+// Es un fixture de test — el código de producción NO duplica el modelo (MG-4).
+const testMatrixModel = {
+  zones: [
+    {
+      key: "videowall",
+      subgroups: [
+        { key: "VWN", dir: "Norte", screens: ["VWN"] },
+        { key: "VWC", dir: "Centro", screens: ["VWC"] },
+        { key: "VWS", dir: "Sur", screens: ["VWS"] },
+      ],
+    },
+    {
+      key: "perimetro",
+      subgroups: [
+        { key: "TvsEscaleraNorte", dir: "Norte", screens: ["TV23", "TV24", "TV25", "TV26"] },
+        { key: "TvsEscaleraCentro", dir: "Centro", screens: ["TV19", "TV20", "TV21", "TV22"] },
+        { key: "TvsEscaleraSur", dir: "Sur", screens: ["TV15", "TV16", "TV17", "TV18"] },
+      ],
+    },
+    {
+      key: "barra",
+      subgroups: [
+        { key: "TvsBarraNorte", dir: "Norte", screens: ["TV11", "TV12", "TV13", "TV14"] },
+        { key: "TvsBarraLibertador", dir: "Libertador", screens: ["TV01", "TV02", "TV03"] },
+        { key: "TvsBarraSur", dir: "Sur", screens: ["TV04", "TV05", "TV06", "TV07"] },
+        { key: "TvsBarraPista", dir: "Pista", screens: ["TV08", "TV09", "TV10"] },
+      ],
+    },
+  ],
+  combosBySize: {
+    3: ["DTV123", "DTV121", "DTV542", "DTV143", "DTV153"],
+    4: ["DTV1234", "DTV1212", "DTV1231", "DTV5432", "DTV3254", "DTV1354"],
+  },
+};
+
 const mockHandleZonasFueraChange = vi.fn();
 const mockGetOptimisticDomain = vi.fn(() => ({}));
 const mockRevertOptimistic = vi.fn();
@@ -80,6 +116,11 @@ function renderWithContext(overrideValue = {}) {
     applyOptimistic: vi.fn(),
     getOptimisticDomain: mockGetOptimisticDomain,
     revertOptimistic: mockRevertOptimistic,
+    // WS4d: por defecto el modelo sirvió y el server no reportó matrixGroups
+    // (los valores caen al collapse de las TVs individuales). Los tests de
+    // degradación sobreescriben matrixModel: null.
+    matrixModel: testMatrixModel,
+    matrixGroups: {},
     ...overrideValue,
   };
   return render(
@@ -338,6 +379,136 @@ describe("MatrizVideo", () => {
 
       // Clean up mock
       mockSetTvSource.mockResolvedValue({ ok: true, reported: "DTV1" });
+    });
+  });
+
+  describe("WS4d — render desde matrixModel servido (MG-4/MG-5/MG-6/MG-7)", () => {
+    it("renderiza las 3 zonas y los 10 subgrupos desde el modelo, con label dir del subgrupo", () => {
+      renderWithContext();
+
+      // Títulos de zona (display; las opciones/subgrupos vienen del modelo).
+      expect(screen.getByText("Videos Wall Norte - Centro - Sur")).toBeInTheDocument();
+      expect(screen.getByText("Perímetro de TVs Norte - Centro - Sur")).toBeInTheDocument();
+      // MG-7: "Libertador", nunca "Livertador".
+      expect(screen.getByText("Tvs de la Barra Norte - Libertador - Sur - Pista")).toBeInTheDocument();
+      expect(screen.queryByText(/Livertador/)).toBeNull();
+
+      // 10 selects: label = dir del subgrupo. Únicos: Libertador y Pista.
+      expect(screen.getByLabelText("Libertador")).toBeInTheDocument();
+      expect(screen.getByLabelText("Pista")).toBeInTheDocument();
+      // Duplicados por dir: Norte ×3, Centro ×2, Sur ×3.
+      expect(screen.getAllByLabelText("Norte").length).toBe(3);
+      expect(screen.getAllByLabelText("Centro").length).toBe(2);
+      expect(screen.getAllByLabelText("Sur").length).toBe(3);
+    });
+
+    it("ofrece las opciones correctas por tamaño (MG-5): 8 fuentes + combos del modelo", () => {
+      renderWithContext();
+
+      // VWN (1 pantalla): solo DTV1..DTV8, sin combos.
+      const vwallNorte = screen.getAllByLabelText("Norte")[0];
+      const optVWN = within(vwallNorte).getAllByRole("option").map((o) => o.value);
+      expect(optVWN).toEqual(["DTV1", "DTV2", "DTV3", "DTV4", "DTV5", "DTV6", "DTV7", "DTV8"]);
+
+      // TvsBarraLibertador (3 pantallas): 8 fuentes + 5 combos de tamaño 3.
+      const libertador = screen.getByLabelText("Libertador");
+      const optLibertador = within(libertador).getAllByRole("option").map((o) => o.value);
+      expect(optLibertador).toHaveLength(13);
+      expect(optLibertador).toContain("DTV542");
+      expect(optLibertador).not.toContain("DTV1234"); // combo de 4 rechazado en subgrupo de 3
+
+      // TvsBarraNorte (4 pantallas): 8 fuentes + 6 combos de tamaño 4.
+      const barraNorte = screen.getAllByLabelText("Norte")[2];
+      const optBarraNorte = within(barraNorte).getAllByRole("option").map((o) => o.value);
+      expect(optBarraNorte).toHaveLength(14);
+      expect(optBarraNorte).toContain("DTV1234");
+      expect(optBarraNorte).not.toContain("DTV123"); // combo de 3 rechazado en subgrupo de 4
+    });
+
+    it("muestra 'Mixto / Personalizado' cuando el server reporta null (MG-6, precedencia server)", () => {
+      renderWithContext({ matrixGroups: { TvsBarraSur: null } });
+
+      // TvsBarraSur es el 3er select con label "Sur" (VWS, EscaleraSur, BarraSur).
+      const barraSur = screen.getAllByLabelText("Sur")[2];
+      expect(barraSur.value).toBe("__mixto__");
+      // La opción Mixto existe (renderizada porque el valor derivado es null).
+      const mixtoOption = within(barraSur).getAllByRole("option").find((o) => o.value === "__mixto__");
+      expect(mixtoOption).toHaveTextContent("Mixto / Personalizado");
+      // El server manda: aunque initialTvs de TvsBarraSur colapsa a DTV1234.
+      expect(screen.getByText("Mixto / Personalizado")).toBeInTheDocument();
+    });
+
+    it("usa matrixGroups.desired con precedencia server sobre el collapse de tvs", () => {
+      renderWithContext({ matrixGroups: { TvsBarraLibertador: "DTV542" } });
+
+      // initialTvs TV01..03 = DTV1/2/3 (colapsarían a DTV123), pero el server
+      // reportó DTV542 → el select muestra DTV542.
+      expect(screen.getByLabelText("Libertador").value).toBe("DTV542");
+    });
+
+    it("muestra 'Sin datos' (sin selección) cuando no hay valor derivado (undefined)", () => {
+      renderWithContext({ estado: { ...baseState, tvs: {} } });
+
+      // Sin tvs individuales: collapse → undefined → sin selección.
+      const libertador = screen.getByLabelText("Libertador");
+      expect(libertador.value).toBe("");
+      const noData = within(libertador).getAllByRole("option").find((o) => o.value === "");
+      expect(noData).toHaveTextContent("Sin datos");
+    });
+
+    it("el submit legacy expande con la key renombrada TvsBarraLibertador (sin Livertador)", async () => {
+      renderWithContext();
+
+      fireEvent.change(screen.getByLabelText("Libertador"), {
+        target: { value: "DTV542" },
+      });
+      fireEvent.click(screen.getByText("Enviar"));
+
+      await vi.waitFor(() => {
+        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+      });
+
+      // Expansión del combo DTV542 por posición (TV01..TV03).
+      expect(mockSetTvSource).toHaveBeenCalledWith("TV01", "DTV5");
+      expect(mockSetTvSource).toHaveBeenCalledWith("TV02", "DTV4");
+      expect(mockSetTvSource).toHaveBeenCalledWith("TV03", "DTV2");
+      // La key legacy del typo NO existe en el DOM (W-2 cerrado).
+      expect(screen.queryByText(/Livertador/)).toBeNull();
+    });
+
+    it("el submit conserva la fuente real de las TVs de un grupo en estado Mixto (sin coacción W-1)", async () => {
+      renderWithContext({ matrixGroups: { TvsBarraSur: null } });
+
+      fireEvent.click(screen.getByText("Enviar"));
+
+      await vi.waitFor(() => {
+        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+      });
+
+      // El submit legacy sigue escribiendo las 29 TVs (DoD WS4d), pero el
+      // grupo mixto NO se coacciona: TV04..TV07 conservan su fuente real
+      // (re-escritura no-op), a diferencia del bug W-1 que las forzaba a DTV1.
+      expect(mockSetTvSource).toHaveBeenCalledWith("TV04", "DTV1");
+      expect(mockSetTvSource).toHaveBeenCalledWith("TV05", "DTV2");
+      expect(mockSetTvSource).toHaveBeenCalledWith("TV06", "DTV3");
+      expect(mockSetTvSource).toHaveBeenCalledWith("TV07", "DTV4");
+      // El resto del submit sigue por-TV (VWN escribe).
+      expect(mockSetTvSource).toHaveBeenCalledWith("VWN", "DTV1");
+    });
+
+    it("sin matrixModel: degradación segura (sin selects de grupos, Enviar deshabilitado, TVRACK intacto)", () => {
+      renderWithContext({ matrixModel: null });
+
+      expect(screen.getByText(/Modelo de matriz no disponible/)).toBeInTheDocument();
+      expect(screen.queryByLabelText("Libertador")).toBeNull();
+      expect(screen.queryByLabelText("Pista")).toBeNull();
+
+      const enviar = screen.getByText("Enviar");
+      expect(enviar).toBeDisabled();
+
+      // El resto del componente sigue renderizando.
+      expect(screen.getByTestId("btn-video-DTV1")).toBeInTheDocument();
+      expect(screen.getByText("ZONAS FUERA DE SPORTBAR")).toBeInTheDocument();
     });
   });
 });

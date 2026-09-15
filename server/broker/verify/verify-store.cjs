@@ -164,6 +164,34 @@ function fixtureV2() {
     check("T5b: reported sigue null tras writes", st4.data.domains.channelIntent.reported === null);
     check("T5b: getChannelIntent expone el dominio", st4.getChannelIntent().desired.DTV1.canalActual === "1624");
 
+    // ── T6 (WS4b, T-4b.1): dominio matrixGroups + backfill idempotente ──
+    check("T6: migración v2→v3 incluye matrixGroups", !!store.data.domains.matrixGroups);
+    check("T6: matrixGroups reported null", store.data.domains.matrixGroups.reported === null);
+    check("T6: normalizeV3 agrega matrixGroups faltante (idempotente)", (() => {
+      const seed = { schemaVersion: 3, domains: { tvs: { desired: {}, reported: {}, version: 5, lastUpdated: "x" } }, appOnly: {} };
+      const out = normalizeV3(seed);
+      return !!(out.domains.matrixGroups && out.domains.tvs.version === 5);
+    })());
+    check("T6: normalizeV3 no toca matrixGroups existente", (() => {
+      const groups = { desired: { TvsBarraLibertador: "DTV123" }, reported: null, version: 9, lastUpdated: "z" };
+      const out = normalizeV3({ schemaVersion: 3, domains: { matrixGroups: groups }, appOnly: {} });
+      return out.domains.matrixGroups.version === 9 && out.domains.matrixGroups.desired.TvsBarraLibertador === "DTV123";
+    })());
+    check("T6: v3 viejo carga con backfill matrixGroups", !!st4.data.domains.matrixGroups && st4.data.domains.matrixGroups.desired !== null);
+
+    // T6b: setter app-domain (patrón presets): merge shallow + version bump
+    const vMg0 = st4.data.domains.matrixGroups.version;
+    st4.setMatrixGroups({ TvsBarraLibertador: "DTV123" });
+    check("T6b: setMatrixGroups persiste valor", st4.data.domains.matrixGroups.desired.TvsBarraLibertador === "DTV123");
+    check("T6b: setMatrixGroups bumpa versión", st4.data.domains.matrixGroups.version === vMg0 + 1);
+    st4.setMatrixGroups({ VWN: "DTV2" });
+    check("T6b: setMatrixGroups mergea sin pisar entradas previas", st4.data.domains.matrixGroups.desired.VWN === "DTV2" && st4.data.domains.matrixGroups.desired.TvsBarraLibertador === "DTV123");
+    st4.setMatrixGroups({ TvsBarraSur: null });
+    check("T6b: null (mixto) persistible", st4.data.domains.matrixGroups.desired.TvsBarraSur === null);
+    check("T6b: reported sigue null tras writes", st4.data.domains.matrixGroups.reported === null);
+    check("T6b: getMatrixGroups expone el dominio", st4.getMatrixGroups().desired.VWN === "DTV2");
+    check("T6b: setMatrixGroups rechaza no-objeto", (() => { try { st4.setMatrixGroups("DTV1"); return false; } catch { return true; } })());
+
     const failed = checks.filter((c) => !c.ok).length;
     console.log(`\n${failed === 0 ? "✓ STORE OK" : `✗ ${failed} chequeos fallaron`}`);
     process.exit(failed === 0 ? 0 : 1);

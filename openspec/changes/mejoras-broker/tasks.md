@@ -81,7 +81,7 @@ Reencuadre aprobado: modelo declarativo único `zones→subgroups{key,dir,screen
 - [x] **T-4a.1** Crear `server/broker/matrixModel.js`: `MATRIX_MODEL` = 3 zonas / 10 subgrupos `{key,dir,screens}` (VWN/VWC/VWS = 1 pantalla) + `combosBySize{3,4}`; helpers puros `screensOf`, `optionsFor(model,size)`, `subgroupKeys`. Acepta MG-3/MG-4.
 - [x] **T-4a.2** Reescribir `server/broker/groups.js`: `GROUP_DEFS`/`GROUP_PATTERNS` **derivados** de `matrixModel`; `expandGroups` recorre subgrupos (VWall incluido en `matrixGroups`); `collapseGroup` → `null` en mixed (nunca `values[0]`); `optionsFor(size)`; key `TvsBarraLibertador`.
 - [x] **T-4a.3** Reescribir `server/broker/verify/verify-groups.cjs`: A = 10 subgrupos, C8 = VWall SÍ en `matrixGroups`, D6 = mixed → `null`, F = 10 subgrupos/29 pantallas, + rechazo de combo de tamaño incorrecto. Actualizar label en `run-all.cjs`.
-- [ ] **T-4a.4** Extender `src/hooks/verify/verify-broker-core.mjs` con los helpers de `matrixModel` (read-only sobre server).
+- [x] **T-4a.4** Extender `src/hooks/verify/verify-broker-core.mjs` con los helpers de `matrixModel` (read-only sobre server). *(Absorbida en WS4c — sección 13 del verify.)*
 
 **DoD WS4a**: `node server/broker/verify/verify-groups.cjs` verde; `run-all.cjs` verde; sin wiring en `server.js`.
 
@@ -97,10 +97,10 @@ Reencuadre aprobado: modelo declarativo único `zones→subgroups{key,dir,screen
 
 ### WS4c — plumbing cliente (PR 5)
 
-- [ ] **T-4c.1** `src/hooks/brokerClientCore.js`: `DOMAIN_KEYS` +`matrixGroups` (:21); `DESIRED_KEY_DOMAINS` +`matrixGroups`; `applySnapshot`/`applyPollBody` **preservan `matrixModel` top-level** (hoy lo descartan); `deriveUiState` expone `matrixGroups` + `matrixModel`.
-- [ ] **T-4c.2** Quitar `GROUP_DEFS`/`GROUP_PATTERNS` hardcodeados (:710-733); `collapseGroup(tvs, screens, combosBySize)` y `expandFromModel(values, model)` derivados del modelo servido.
-- [ ] **T-4c.3** `src/api/arrangerApi.js` `setMatrixGroups(values)`.
-- [ ] **T-4c.4** `src/App.jsx`: inyectar `matrixModel`/`matrixGroups` al contexto (memo junto a `deriveUiState` :49). Extender `verify-broker-core.mjs`.
+- [x] **T-4c.1** `src/hooks/brokerClientCore.js`: `DOMAIN_KEYS` +`matrixGroups` (:21); `DESIRED_KEY_DOMAINS` +`matrixGroups`; `applySnapshot`/`applyPollBody` **preservan `matrixModel` top-level** (hoy lo descartan); `deriveUiState` expone `matrixGroups` + `matrixModel`.
+- [x] **T-4c.2** Quitar `GROUP_DEFS`/`GROUP_PATTERNS` hardcodeados (:710-733); `collapseGroup(tvs, screens, combosBySize)` y `expandFromModel(values, model)` derivados del modelo servido.
+- [x] **T-4c.3** `src/api/arrangerApi.js` `setMatrixGroups(values)`.
+- [x] **T-4c.4** `src/App.jsx`: inyectar `matrixModel`/`matrixGroups` al contexto (memo junto a `deriveUiState` :49). Extender `verify-broker-core.mjs`.
 
 **DoD WS4c**: `matrixModel` sobrevive snapshot/poll; `node src/hooks/verify/verify-broker-core.mjs` verde.
 

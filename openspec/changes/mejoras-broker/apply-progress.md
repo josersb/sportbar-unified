@@ -96,7 +96,7 @@ Branch: `feat/mejoras-broker-ws4a` (desde `feat/mejoras-broker-ws3b`). Fecha: 20
 - [x] **T-4a.1** `server/broker/matrixModel.js` creado: `MATRIX_MODEL` = 3 zonas / 10 subgrupos `{key,dir,screens}` (videowall: VWN/VWC/VWS de 1 pantalla; perimetro: Escalera N/C/S; barra: Norte/Libertador/Sur/Pista — 29 pantallas) + `combosBySize{3,4}` (5 combos de 3 + 6 de 4, opciones completas "DTVxyz" según contrato de interfaces del design). Helpers puros: `subgroups`, `subgroupKeys`, `findSubgroup`, `screensOf`, `optionsFor`, `decodeCombo`, `SOURCES`. MG-3/MG-4.
 - [x] **T-4a.2** `server/broker/groups.js` reescrito: `GROUP_DEFS`/`GROUP_PATTERNS` **derivados** de `matrixModel` (cero literales duplicados); `expandGroups(values)` mismo contrato `{tvs, matrixGroups}` — VWN/VWC/VWS ahora son subgrupos de 1 pantalla **incluidos** en `matrixGroups` (sin caso especial de passthrough; destinos reales no-subgrupo como TVRACK siguen pasando directas); `collapseGroup(tvs, screens)` → patrón / valor único / **`null` en mixto** (MG-6, nunca `values[0]`; `undefined` reservado a entrada inválida o pantallas faltantes); `optionsFor` reexportado; MG-5: combo de longitud incorrecta se rechaza (clave omitida de tvs y matrixGroups); key `TvsBarraLibertador` (label "Libertador", MG-7).
 - [x] **T-4a.3** `server/broker/verify/verify-groups.cjs` reescrito: 60 checks (A modelo MG-3: 3 zonas/10 subgrupos/29 pantallas canónicas sin solapamiento + dirs; B combos y decodificación; C optionsFor(1)/(3)/(4) exactos + derivación de groups.js; D expansión incl. rechazo MG-5 y VWall en matrixGroups (C8 invertido); E collapse con mixed→`null` (D6 invertido); F round-trips incl. VWall; G submit total 10 subgrupos→29 pantallas). Label actualizado en `run-all.cjs`.
-- [ ] **T-4a.4** Extender `verify-broker-core.mjs` con helpers de `matrixModel` — **fuera del alcance de esta pasada** (el prompt del slice acota a matrixModel/groups/verify-groups/run-all + eliminar report). Queda para re-apply o se absorbe en WS4c (T-4c.4 también extiende ese verify).
+- [x] **T-4a.4** Extender `verify-broker-core.mjs` con helpers de `matrixModel` — **absorbida en WS4c** (sección 13 del verify: contrato MG-3/MG-4/MG-5/MG-7 sobre los helpers exportados de `server/broker/matrixModel.js`, importado por interop CJS→ESM).
 
 ### Commits (work-unit)
 
@@ -168,6 +168,46 @@ Branch: `feat/mejoras-broker-ws4b` (desde `feat/mejoras-broker-ws4a`). Fecha: 20
 
 `git revert` de los 2 commits feat — quita el dominio `matrixGroups` (store/server/verify). Un state.json con `matrixGroups` carga igual sin el dominio (backfill solo agrega; clientes viejos ignoran dominios desconocidos). No toca `executeWrite`, `confirmEncoder`, la secuencia IR ni el cliente (WS4c/d/e pendientes).
 
-## WS5 — dedupe (PR 5) ⬜ pendiente
-## WS5 — dedupe (PR 5) ⬜ pendiente
+## WS4c — plumbing cliente (PR 5) ✅ COMPLETADO
+
+Branch: `feat/mejoras-broker-ws4c` (desde `feat/mejoras-broker-ws4b`). Fecha: 2026-09-15. **Reanudación**: un intento previo abortó por error de red y dejó el working tree con cambios sin commitear — se auditó con `git diff` antes de continuar; todo el trabajo recuperado estaba dentro del alcance de WS4c.
+
+### Tasks
+
+- [x] **T-4c.1** `brokerClientCore.js`: `DOMAIN_KEYS` +`matrixGroups`; `DESIRED_KEY_DOMAINS` +`matrixGroups` (el evento incremental trae `desired`); `applySnapshot` preserva `matrixModel` top-level (`snapshot.matrixModel ?? prev.matrixModel ?? null` — antes lo descartaba al reconstruir el objeto; `applyPollBody` hereda por delegación); `deriveUiState` expone `matrixGroups` (desired tal cual) + `matrixModel` (null si no fue servido — degradación segura).
+- [x] **T-4c.2** `GROUP_DEFS`/`GROUP_PATTERNS` hardcodeados eliminados del cliente (MG-4 — cero literales duplicados). Nuevos exports puros: `expandFromModel(values, model)` — espejo cliente de `expandGroups` del server, expande desde el modelo SERVIDO (patrón declarado por posición, valor único, passthrough de destinos no-subgrupo, rechazo MG-5 por omisión, `null` → clave omitida) y `collapseGroup(tvs, screens, combosBySize)` — espejo de `collapseGroup` del server (mixto → `null` MG-6, nunca `values[0]`; `undefined` reservado a entrada inválida/pantallas faltantes).
+- [x] **T-4c.3** `arrangerApi.js`: `setMatrixGroups(values)` → `POST /api/matrix-groups {values}` con `writeError` y status HTTP. Cliente read-only (MG-1): solo reporta la intención; el submit de MatrizVideo la consume en WS4e.
+- [x] **T-4c.4** `App.jsx`: `matrixGroups`/`matrixModel` derivados del snapshot en el mismo `useMemo` y **inyectados al contexto con precedencia server** (patrón idéntico a `channelIntent` de WS3). `verify-broker-core.mjs` extendido: sección 13 (**T-4a.4 absorbida** — helpers del `matrixModel` del server por interop CJS→ESM, MG-3/4/5/7) y sección 14 (WS4c: preservación snapshot/poll, dominio app-only, deriveUiState, expandFromModel con MG-5/MG-6, round-trip expand→collapse, checks anti-duplicación por parsing del source, contrato de `setMatrixGroups` e inyección en App).
+
+### Commits (work-unit)
+
+| Hash | Mensaje |
+|---|---|
+| `54c7157` | feat(broker-client): plumbing cliente matrixGroups/matrixModel derivado del modelo servido |
+| *(este commit)* | docs(sdd): progreso WS4c y tareas T-4c marcadas |
+
+### Verificación (sin hardware)
+
+- `pnpm test` → **196/196 tests, 15 archivos** (sin regresión; WS4c no agrega tests vitest — su contrato vive en verify-broker-core).
+- `node src/hooks/verify/verify-broker-core.mjs` → **120/120 verificaciones OK** (80 previas + 40 nuevas: 12 de la sección 13 / 28 de la sección 14).
+- `node server/broker/verify/run-all.cjs` → **✓ TODAS LAS VERIFICACIONES PASARON** (sin cambios en server; `verify-confirm-settling` de PR #13 sigue verde).
+- `npx eslint` sobre archivos tocados → solo errores **preexistentes** (`brokerClientCore.js:41,47` no-undef `__DEV__`/`process` en `isLoggingEnabled` — código no tocado por WS4c — y `App.jsx:59` react-hooks/set-state-in-effect, documentado desde WS2).
+
+### Cambios acumulados
+
+437 líneas authored (377 insertions, 60 deletions) — sobre el presupuesto de 400 → recomendación `size:exception` para PR5 (no se minificó el diff: comentarios de contrato y checks del verify son parte de la entrega; la cadena auto-chain ya asigna PR5 = WS4c como slice propio).
+
+### Desviaciones / notas
+
+1. **`MatrizVideo.jsx` conservado (no revertido)**: el intento previo tocó SOLO plomería de datos — reemplaza `GROUP_DEFS` por `modelScreens()` derivado del `matrixModel` servido en `initialValues` — y es **indispensable**: WS4c elimina `GROUP_DEFS` de `brokerClientCore.js`, así que revertir rompería la compilación del componente. El render de selects y el submit (switches legacy) están intactos para WS4d/WS4e. El mapping legacy form-key `TvsBarraLivertador` → model-key `TvsBarraLibertador` es transitorio hasta T-4d.2.
+2. **Degradación segura en MatrizVideo**: sin `matrixModel` servido, `modelScreens()` devuelve null → `collapseGroup` devuelve undefined → el form cae al default "DTV1" (nunca literales propios; WS4d deshabilitará los selects).
+3. **`expandFromModel` acepta combo no declarado como valor único** (espejo del server): la validación dura MG-5 con 400 vive en `POST /api/matrix-groups` (WS4b) — el helper cliente es read-only y no decide.
+4. **`server/pnpm-lock.yaml` NO incluido** (drift preexistente de WS3, intacto).
+5. **Pseudo-canales 0000/0000A/0000B** siguen deshabilitados; `executeWrite`/`confirmEncoder` (PR #13) sin tocar.
+
+### Rollback boundary
+
+`git revert 54c7157` — restaura `GROUP_DEFS`/`GROUP_PATTERNS` hardcodeados en el cliente y la firma vieja de `collapseGroup`. El server (WS4a/WS4b) queda intacto y un cliente viejo ignora `matrixGroups`/`matrixModel` (dominios desconocidos). No toca `executeWrite`, `confirmEncoder` ni la secuencia IR.
+
+## WS5 — dedupe (PR 8) ⬜ pendiente
 ## WS1 — auditoría read-only (PR 6) ⬜ pendiente

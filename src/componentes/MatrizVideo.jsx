@@ -162,6 +162,9 @@ const MatrizVideo = () => {
           return {
             key: sg.key,
             label: sg.dir,
+            // WS5 (T-5.4): pantallas del subgrupo para el pre-filtro del
+            // submit (collapse del estado confirmado por pantalla).
+            screens,
             options: optionsForSize(screens.length),
             value:
               derived === null
@@ -182,6 +185,63 @@ const MatrizVideo = () => {
       initialValues[g.key] = g.value;
     }
   }
+
+  // WS4e: intent completo del operador — solo valores representables
+  // (isSourceValue); "Mixto / Personalizado" y "Sin datos" se omiten.
+  const buildIntent = (values) => {
+    const intent = {};
+    for (const zone of groupZones) {
+      for (const g of zone.subgroups) {
+        if (isSourceValue(values[g.key])) intent[g.key] = values[g.key];
+      }
+    }
+    return intent;
+  };
+
+  // WS5 (UXF-2, T-5.4): submit con pre-filtro cliente. Los subgrupos cuyo
+  // valor ya coincide con el estado confirmado (collapse del `estado.tvs`,
+  // que es reported-wins: solo refleja valor confirmado u overlay propio
+  // en vuelo) NO viajan en el POST — el server los deduplicaría igual
+  // (guard pre-join), pero así ni siquiera sale la intención. Si NADA
+  // cambia → toast "sin cambios" sin POST. `force:true` (acción explícita
+  // "forzar reenvío") envía el intent COMPLETO y le pide al server que
+  // saltee su guard — escape del one-join-lag.
+  const submitIntent = async (values, { force = false } = {}) => {
+    let toSend = buildIntent(values);
+    if (!force) {
+      const changed = {};
+      for (const zone of groupZones) {
+        for (const g of zone.subgroups) {
+          if (toSend[g.key] === undefined) continue;
+          const confirmedDerived = collapseGroup(tvs, g.screens, combosBySize);
+          if (confirmedDerived !== toSend[g.key]) changed[g.key] = toSend[g.key];
+        }
+      }
+      toSend = changed;
+    }
+
+    if (Object.keys(toSend).length === 0) {
+      // UXF-2: no-op confirmado → "sin cambios", sin POST ni optimistic.
+      toast.info("sin cambios");
+      return;
+    }
+
+    // Optimistic ANTES del POST (mismo patrón fix real-hardware A):
+    // overlay de matrixGroups con la intención que VIAJA (pre-filtrada)
+    // para feedback visual inmediato; el SSE del server la confirma y
+    // limpia. Error en el POST (429/5xx/network) → revert al overlay
+    // previo + toast (hotfix 5, evidencia #908).
+    const prevOverlay = getOptimisticDomain("matrixGroups");
+    applyOptimistic("matrixGroups", toSend);
+    try {
+      // WS5: force:true pide al server saltear su guard dedupe (UXF-2).
+      await (force ? setMatrixGroups(toSend, { force: true }) : setMatrixGroups(toSend));
+      toast.success(force ? "Matriz de video reenviada" : "Matriz de video actualizada");
+    } catch (err) {
+      revertOptimistic("matrixGroups", toSend, prevOverlay);
+      toast.error(writeErrorMessage(err, "Matriz de video"));
+    }
+  };
 
   return (
     <main className={styles.main}>
@@ -206,40 +266,9 @@ const MatrizVideo = () => {
           // broadcast SSE de matrixGroups resincroniza el form con el desired
           // aceptado por el server (MG-1).
           enableReinitialize
-          onSubmit={async (values) => {
-            // WS4e (MG-1/MG-2): submit server-side — el cliente solo REPORTA
-            // la intención por subgrupo (un único POST /api/matrix-groups vía
-            // setMatrixGroups). El server valida cada valor contra
-            // optionsFor(size) (MG-5), expande a las pantallas (MG-4) y hace
-            // el write-through por writeQueue. El cliente NO expande ni
-            // decide: read-only sobre matrixGroups.
-            // Subgrupos en estado no representable ("Mixto / Personalizado"
-            // o sin datos) se OMITEN del intent: no hay intención expandible
-            // y el merge shallow del server conserva las entradas previas.
-            const intent = {};
-            for (const zone of groupZones) {
-              for (const g of zone.subgroups) {
-                if (isSourceValue(values[g.key])) intent[g.key] = values[g.key];
-              }
-            }
-
-            // Optimistic ANTES del POST (mismo patrón fix real-hardware A):
-            // overlay de matrixGroups con la intención del operador para
-            // feedback visual inmediato; el SSE del server (broadcast inmediato
-            // en POST /api/matrix-groups) la confirma y limpia. Error en el
-            // POST (429/5xx/network) → revert al overlay previo + toast
-            // (hotfix 5, evidencia #908).
-            const prevOverlay = getOptimisticDomain("matrixGroups");
-            applyOptimistic("matrixGroups", intent);
-            try {
-              await setMatrixGroups(intent);
-              toast.success("Matriz de video actualizada");
-            } catch (err) {
-              revertOptimistic("matrixGroups", intent, prevOverlay);
-              toast.error(writeErrorMessage(err, "Matriz de video"));
-            }
-          }}
+          onSubmit={(values) => submitIntent(values)}
         >
+          {(formik) => (
           <Form>
             <div className={styles.formContainer}>
               {hasModel
@@ -281,6 +310,17 @@ const MatrizVideo = () => {
               <div className={styles.submitContainer}>
                 <Button type="submit" variant="primary" disabled={!hasModel}>
                   Enviar
+                </Button>
+                {/* WS5 (UXF-2): escape explícito "forzar reenvío" — envía el
+                    intent completo (sin pre-filtro) con force:true; el server
+                    saltea su guard dedupe y re-emite los joins. */}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!hasModel}
+                  onClick={() => submitIntent(formik.values, { force: true })}
+                >
+                  Forzar reenvío
                 </Button>
               </div>
               <div className={styles.selectZona}>
@@ -393,6 +433,7 @@ const MatrizVideo = () => {
               </div>
             </div>
           </Form>
+          )}
         </Formik>
       </PageContainer>
     </main>

@@ -46,7 +46,10 @@ const App = () => {
   // ── Estado de matriz desde el broker (snapshot SSE + deltas) ──
   // La UI de tvs/tvrack/zonas-fuera es derivada del snapshot; NO hay estado
   // local de matriz ni polls (eliminados en PR 3). Escrituras → broker con await.
-  const { tvs, tvrackState: brokerTvrack, zonasFueraState: brokerZonas } = useMemo(
+  // WS4c (MG-1/MG-4): matrixGroups (desired server-authoritative) y el
+  // matrixModel servido viajan al contexto con PRECEDENCIA SERVER — el
+  // cliente los refleja read-only (nunca los persiste ni decide su valor).
+  const { tvs, tvrackState: brokerTvrack, zonasFueraState: brokerZonas, matrixGroups, matrixModel } = useMemo(
     () => deriveUiState(snapshot),
     [snapshot],
   );
@@ -236,6 +239,8 @@ const App = () => {
       applyOptimistic,
       getOptimisticDomain,
       revertOptimistic,
+      matrixGroups,
+      matrixModel,
       syncDiffs: buildDiffsInfo(snapshot),
     }),
     [
@@ -249,6 +254,8 @@ const App = () => {
       connected,
       lastError,
       snapshot,
+      matrixGroups,
+      matrixModel,
       handleChangeEstadoDecos,
       handleChangeEstadoAudio,
       handleChangeEstadoPreset,

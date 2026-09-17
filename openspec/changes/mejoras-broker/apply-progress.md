@@ -341,4 +341,4 @@ Branch: `feat/mejoras-broker-ws5` (desde `feat/mejoras-broker-ws4e`). Fecha: 202
 
 `git revert` de los 2 commits feat — quita el guard pre-join, `lastBatch`, `hasPending` y el pre-filtro/botón force del cliente. `confirmEncoder`/settling (PR #13) quedan intactos (el guard era aditivo y anterior al join). El endpoint acepta `force` desconocido (campo ignorado) → clientes nuevos no rompen contra server viejo. No toca la secuencia IR (`sendChannelDigits`), el dominio `channelIntent` ni `matrixModel`.
 
-## WS1 — auditoría read-only (PR 9) ⬜ pendiente
+## WS1 — auditoría read-only (PR 9) — COMPLETADA; ver ws1-audit.md ⬜ pendiente

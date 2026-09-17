@@ -638,7 +638,7 @@ import { readFileSync } from "node:fs";
     "ws4c: arrangerApi exporta setMatrixGroups → POST /api/matrix-groups",
     apiSrc.includes("export async function setMatrixGroups") && apiSrc.includes('"/api/matrix-groups"'),
   );
-  check("ws4c: setMatrixGroups envuelve el body como {values}", apiSrc.includes("JSON.stringify({ values })"));
+  check("ws4c: setMatrixGroups envuelve el body como {values} (WS5: + escape force opcional)", apiSrc.includes("JSON.stringify({ values, ...(force ? { force: true } : {}) })"));
 
   // App inyecta matrixGroups/matrixModel al contexto con precedencia server (T-4c.4).
   const appSrc = readFileSync(new URL("../../App.jsx", import.meta.url), "utf8");
@@ -647,6 +647,135 @@ import { readFileSync } from "node:fs";
     appSrc.includes("matrixGroups, matrixModel") && appSrc.includes("matrixModel,") && appSrc.includes("matrixGroups,"),
   );
 }
+
+// ── 15. WS4e: submit server-side de MatrizVideo (MG-1, un POST por submit) ──
+function verifyWs4e() {
+  console.log("\n── 15. WS4e — submit server-side de MatrizVideo ──");
+
+  // Contrato funcional del merge del overlay optimista en deriveUiState:
+  // el intent del submit (applyOptimistic "matrixGroups") gana sobre desired
+  // hasta que el SSE lo confirma; con overlay vacío es desired tal cual.
+  const st = {
+    domains: { matrixGroups: { desired: { VWN: "DTV1", TvsBarraSur: null }, reported: null } },
+    optimistic: { matrixGroups: { VWN: "DTV2" } },
+  };
+  const uiOpt = deriveUiState(st);
+  check(
+    "ws4e: deriveUiState overlay optimistic gana sobre desired (intent del submit)",
+    uiOpt.matrixGroups.VWN === "DTV2" && uiOpt.matrixGroups.TvsBarraSur === null,
+  );
+  const uiClean = deriveUiState({ domains: st.domains });
+  check(
+    "ws4e: deriveUiState sin overlay expone desired tal cual (MG-1)",
+    uiClean.matrixGroups.VWN === "DTV1" && uiClean.matrixGroups.TvsBarraSur === null,
+  );
+
+  // Contrato del submit (por parsing del source — JSX no resoluble en node puro).
+  const mvSrc = readFileSync(new URL("../../componentes/MatrizVideo.jsx", import.meta.url), "utf8");
+  check(
+    "ws4e: submit llama setMatrixGroups (POST /api/matrix-groups)",
+    mvSrc.includes("setMatrixGroups(toSend)") || mvSrc.includes("setMatrixGroups(toSend, { force: true })"),
+  );
+  check(
+    "ws4e: submit sin setTvSource por TV (expansión 100% server-side)",
+    !mvSrc.includes("setTvSource"),
+  );
+  check(
+    "ws4e: submit aplica optimistic matrixGroups antes del POST",
+    mvSrc.includes('applyOptimistic("matrixGroups", toSend)') &&
+      mvSrc.includes('getOptimisticDomain("matrixGroups")'),
+  );
+  check(
+    "ws4e: error del POST revierte el optimistic (hotfix 5)",
+    mvSrc.includes('revertOptimistic("matrixGroups", toSend, prevOverlay)'),
+  );
+  check(
+    "ws4e: grupos Mixto/Sin datos se omiten del intent (no se envían)",
+    mvSrc.includes("if (isSourceValue(values[g.key])) intent[g.key] = values[g.key];"),
+  );
+  check(
+    "ws4e: switch de expansión por grupo eliminado (~288 líneas, MG-4)",
+    !mvSrc.includes("switch (values.TvsBarra"),
+  );
+  check(
+    "ws4e: enableReinitialize presente (W-1 verify WS4d: llegada async del snapshot)",
+    /<Formik[\s\S]*?enableReinitialize[\s\S]*?onSubmit=/.test(mvSrc),
+  );
+  check(
+    "ws4e: sin batch sortTvsByGroup ni DESTINOS_TV (el server ordena la expansión)",
+    !mvSrc.includes("sortTvsByGroup") && !mvSrc.includes("DESTINOS_TV"),
+  );
+}
+
+// ── 16. WS5 — dedupe pre-join + escape force (contrato cliente + server) ──
+function verifyWs5() {
+  console.log("\n── 16. WS5: dedupe pre-join + escape force ──");
+  const apiSrc = readFileSync(new URL("../../api/arrangerApi.js", import.meta.url), "utf8");
+  const mvSrc = readFileSync(new URL("../../componentes/MatrizVideo.jsx", import.meta.url), "utf8");
+  const serverSrc = readFileSync(new URL("../../../server/server.js", import.meta.url), "utf8");
+  const wqSrc = readFileSync(new URL("../../../server/broker/writeQueue.js", import.meta.url), "utf8");
+
+  // T-5.3: escape force expuesto por la API.
+  check(
+    "ws5: setTvSource(tvId, source, { force }) envía force en el body (UXF-2)",
+    apiSrc.includes("export async function setTvSource(tvId, source, { force = false } = {})") &&
+      /body:\s*JSON\.stringify\(\{\s*source,\s*\.\.\.\(force \? \{ force: true \} : \{\}\)\s*\}\)/.test(apiSrc),
+  );
+  check(
+    "ws5: setMatrixGroups(values, { force }) envía force en el body",
+    apiSrc.includes("export async function setMatrixGroups(values, { force = false } = {})") &&
+      apiSrc.includes("JSON.stringify({ values, ...(force ? { force: true } : {}) })"),
+  );
+
+  // T-5.4: pre-filtro cliente contra el estado confirmado + toast + escape UI.
+  check(
+    "ws5: pre-filtro compara contra el confirmado (collapse por subgrupo) y omite iguales",
+    mvSrc.includes("const confirmedDerived = collapseGroup(tvs, g.screens, combosBySize)") &&
+      mvSrc.includes("confirmedDerived !== toSend[g.key]") &&
+      mvSrc.includes("if (!force) {"),
+  );
+  check(
+    "ws5: submit sin cambios → toast 'sin cambios' SIN POST ni optimistic (UXF-2)",
+    mvSrc.includes('toast.info("sin cambios")') &&
+      /Object\.keys\(toSend\)\.length === 0[\s\S]{0,200}toast\.info\("sin cambios"\)[\s\S]{0,120}return;/.test(mvSrc),
+  );
+  check(
+    "ws5: acción explícita 'Forzar reenvío' envía el intent completo con force:true",
+    mvSrc.includes("Forzar reenvío") &&
+      mvSrc.includes("submitIntent(formik.values, { force: true })") &&
+      mvSrc.includes("setMatrixGroups(toSend, { force: true })"),
+  );
+
+  // T-5.1: guard pre-join en executeWrite (contrato server, por parsing).
+  check(
+    "ws5: guard pre-join en executeWrite — no-op iff confirmed && !pendingBehind",
+    serverSrc.includes("const skipJoin = !force && confirmedSame && !writeQueue.hasPending(dest);") &&
+      serverSrc.includes("noop: true, confirmed: true"),
+  );
+  check(
+    "ws5: el guard corre ANTES del join y NO toca confirmEncoder/settling (PR #13)",
+    /skipJoin[\s\S]{0,900}return \{ ok: true, noop: true[\s\S]{0,400}const joinKind/.test(serverSrc) &&
+      serverSrc.includes("broadcastDomain(domain, writeId);"),
+  );
+  check(
+    "ws5: force:true saltea el guard en /api/tvs/:id/source y /api/matrix-groups",
+    /POST \/api\/tvs\/\$\{id\}\/source \{source:"\$\{src\}"\}\$\{writeOpts\.force \? " \[force\]" : ""\}/.test(serverSrc) &&
+      serverSrc.includes("writeInBackground(dest, \"tvs\", src, \"video\", writeId, writeOpts);") &&
+      serverSrc.includes("writeInBackground(dest, \"tvs\", source, \"video\", nextWriteId(), { force });"),
+  );
+  check(
+    "ws5: lastBatch in-memory Map<dest,{source,sub,at}>, NO persistido (decisión del change)",
+    serverSrc.includes("const lastBatch = new Map();") &&
+      !readFileSync(new URL("../../../server/broker/store.js", import.meta.url), "utf8").includes("lastBatch"),
+  );
+  check(
+    "ws5: writeQueue.hasPending — tareas encoladas sin arrancar (isBusy del guard dentro de executeWrite)",
+    wqSrc.includes("function hasPending(key)") && wqSrc.includes("queuedCounts"),
+  );
+}
+
+verifyWs4e();
+verifyWs5();
 
 const failed = checks.filter((c) => !c.ok).length;
 console.log(`\n${checks.length - failed}/${checks.length} verificaciones OK`);

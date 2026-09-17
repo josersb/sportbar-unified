@@ -4,18 +4,36 @@ import { ProviderUser } from "../contexto/Contexto";
 import MatrizVideo from "./MatrizVideo";
 
 // vi.mock is hoisted to top of file — use vi.hoisted for variables the factory needs
-const { mockSetTvSource, mockSetTvrackVideo, mockSetTvrackAudio, mockSetTvrackLink } = vi.hoisted(() => ({
+// WS4e: el submit ya NO escribe por-TV (setTvSource eliminado del componente);
+// se conserva el mock para ASSERT su ausencia. El único write del submit es
+// setMatrixGroups (POST /api/matrix-groups).
+const { mockSetTvSource, mockSetMatrixGroups, mockSetTvrackVideo, mockSetTvrackAudio, mockSetTvrackLink, mockToast } = vi.hoisted(() => ({
   mockSetTvSource: vi.fn().mockResolvedValue({ ok: true, reported: "DTV1" }),
+  mockSetMatrixGroups: vi.fn().mockResolvedValue({ ok: true, accepted: {} }),
   mockSetTvrackVideo: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
   mockSetTvrackAudio: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
   mockSetTvrackLink: vi.fn().mockResolvedValue({ video: "DTV1", audio: "DTV1", link: false }),
+  // WS5 (UXF-2): el container de toasts vive fuera de MatrizVideo; el mock
+  // permite asertar los mensajes ("sin cambios", éxito de "Forzar reenvío").
+  mockToast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  },
 }));
 
 vi.mock("../api/arrangerApi", () => ({
   setTvSource: mockSetTvSource,
+  setMatrixGroups: mockSetMatrixGroups,
   setTvrackVideo: mockSetTvrackVideo,
   setTvrackAudio: mockSetTvrackAudio,
   setTvrackLink: mockSetTvrackLink,
+}));
+
+vi.mock("./Toast", () => ({
+  useToast: () => mockToast,
+  default: () => null,
 }));
 
 // TV values — cada zona usa un patrón distinto para verificar el mapeo.
@@ -58,6 +76,10 @@ const baseState = {
   favoritos: [],
   audio: [],
 };
+
+/** Copia del objeto sin las claves indicadas (para simular TVs sin datos). */
+const omit = (obj, keys) =>
+  Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k)));
 
 // WS4d: fixture del matrixModel (misma estructura que sirve el broker).
 // Es un fixture de test — el código de producción NO duplica el modelo (MG-4).
@@ -123,11 +145,16 @@ function renderWithContext(overrideValue = {}) {
     matrixGroups: {},
     ...overrideValue,
   };
-  return render(
-    <ProviderUser value={contextValue}>
-      <MatrizVideo />
-    </ProviderUser>
-  );
+  // WS4e: devolver contextValue y rerender para el test de llegada async del
+  // snapshot (W-1 de verify WS4d — enableReinitialize).
+  return {
+    contextValue,
+    ...render(
+      <ProviderUser value={contextValue}>
+        <MatrizVideo />
+      </ProviderUser>
+    ),
+  };
 }
 
 describe("MatrizVideo", () => {
@@ -276,109 +303,224 @@ describe("MatrizVideo", () => {
     });
   });
 
-  describe("onSubmit (Enviar button)", () => {
-    it("calls setTvSource for all 29 real destinations via broker (no client joins)", async () => {
+  describe("onSubmit (Enviar button) — WS4e submit server-side + WS5 pre-filtro dedupe", () => {
+    // Payload esperado con initialTvs: cada subgrupo colapsa a su
+    // patrón/fuente única (VWN/VWC/VWS fuentes de 1; escaleras y barras a
+    // combos del modelo).
+    // WS5: con el pre-filtro cliente, un submit SIN cambios no envía nada
+    // (todo coincide con lo confirmado); los tests de submit cambian UN
+    // subgrupo y el payload esperado pasa a ser solo ese cambio.
+    const expectedIntent = {
+      VWN: "DTV1",
+      VWC: "DTV2",
+      VWS: "DTV3",
+      TvsEscaleraNorte: "DTV1234",
+      TvsEscaleraCentro: "DTV1234",
+      TvsEscaleraSur: "DTV1234",
+      TvsBarraNorte: "DTV1234",
+      TvsBarraLibertador: "DTV123",
+      TvsBarraSur: "DTV1234",
+      TvsBarraPista: "DTV123",
+    };
+
+    /** Cambia el select Libertador y submittear (WS5: un solo cambio). */
+    const submitWithLibertador = (value = "DTV542") => {
+      fireEvent.change(screen.getByLabelText("Libertador"), {
+        target: { value },
+      });
+      fireEvent.click(screen.getByText("Enviar"));
+    };
+
+    it("WS5: pre-filtra los subgrupos confirmados — un solo cambio → solo ese subgrupo viaja en UN POST (MG-1)", async () => {
       renderWithContext();
 
-      fireEvent.click(screen.getByText("Enviar"));
+      submitWithLibertador("DTV542");
 
       await vi.waitFor(() => {
-        expect(mockSetTvSource).toHaveBeenCalled();
+        expect(mockSetMatrixGroups).toHaveBeenCalledTimes(1);
       });
 
-      // 29 destinos reales: VWN/VWC/VWS + TV01-TV26 (sin TVRACK ni TvsBarra*)
-      expect(mockSetTvSource).toHaveBeenCalledTimes(29);
-
-      // First call should be VWN
-      expect(mockSetTvSource.mock.calls[0]).toEqual(["VWN", "DTV1"]);
+      // Libertador cambió (DTV123 → DTV542): viaja. Los otros 9 coinciden
+      // con el estado confirmado (collapse de initialTvs): NO viajan.
+      expect(mockSetMatrixGroups).toHaveBeenCalledWith({
+        TvsBarraLibertador: "DTV542",
+      });
     });
 
-    it("submits the batch ordered by physical groups (hotfix 6: video-wall first)", async () => {
+    it("no llama setTvSource por TV — la expansión es server-side (WS4e)", async () => {
       renderWithContext();
 
-      fireEvent.click(screen.getByText("Enviar"));
+      submitWithLibertador();
 
       await vi.waitFor(() => {
-        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+        expect(mockSetMatrixGroups).toHaveBeenCalledTimes(1);
       });
 
-      // Orden de envío = orden de ejecución con el semáforo global del
-      // server: video wall → escaleras norte/centro/sur → barras.
-      const calledDests = mockSetTvSource.mock.calls.map(([dest]) => dest);
-      expect(calledDests.slice(0, 29)).toEqual([
-        "VWN", "VWC", "VWS",
-        "TV23", "TV24", "TV25", "TV26",
-        "TV19", "TV20", "TV21", "TV22",
-        "TV15", "TV16", "TV17", "TV18",
-        "TV01", "TV02", "TV03",
-        "TV04", "TV05", "TV06", "TV07",
-        "TV08", "TV09", "TV10",
-        "TV11", "TV12", "TV13", "TV14",
-      ]);
+      expect(mockSetTvSource).not.toHaveBeenCalled();
     });
 
-    it("does NOT call handleChangeEstadoVideo (estado llega por SSE)", async () => {
+    it("no llama handleChangeEstadoVideo (estado llega por SSE)", async () => {
       const handleChangeEstadoVideo = vi.fn();
       renderWithContext({ handleChangeEstadoVideo });
 
-      fireEvent.click(screen.getByText("Enviar"));
+      submitWithLibertador();
 
       await vi.waitFor(() => {
-        expect(mockSetTvSource).toHaveBeenCalled();
+        expect(mockSetMatrixGroups).toHaveBeenCalled();
       });
 
       expect(handleChangeEstadoVideo).not.toHaveBeenCalled();
     });
 
-    it("continues submitting even when some writes fail (Promise.allSettled)", async () => {
-      // Make some calls fail but others succeed
-      mockSetTvSource
-        .mockRejectedValueOnce(new Error("Network error"))
-        .mockRejectedValueOnce(new Error("Network error"));
-
-      renderWithContext();
-
-      fireEvent.click(screen.getByText("Enviar"));
-
-      await vi.waitFor(() => {
-        expect(mockSetTvSource).toHaveBeenCalled();
+    it("omite los subgrupos en estado Mixto (null) o Sin datos (undefined) del intent", async () => {
+      // TvsBarraSur: null (Mixto, precedencia server) + tvs vacío deja
+      // TvsEscaleraSur sin datos (undefined). Con tvs vacío, TODO subgrupo
+      // deriva undefined → nada coincide con lo confirmado → el único
+      // cambio representable viaja completo.
+      renderWithContext({
+        matrixGroups: { TvsBarraSur: null },
+        estado: { ...baseState, tvs: omit(initialTvs, ["TV15", "TV16", "TV17", "TV18"]) },
       });
 
-      // All 29 still attempted despite failures (allSettled never rejects)
-      expect(mockSetTvSource.mock.calls.length).toBeGreaterThanOrEqual(29);
+      submitWithLibertador();
 
-      // Clean up mock
-      mockSetTvSource.mockResolvedValue({ ok: true, reported: "DTV1" });
+      await vi.waitFor(() => {
+        expect(mockSetMatrixGroups).toHaveBeenCalledTimes(1);
+      });
+
+      const payload = mockSetMatrixGroups.mock.calls[0][0];
+      expect(payload).not.toHaveProperty("TvsBarraSur");
+      expect(payload).not.toHaveProperty("TvsEscaleraSur");
+      // El cambio representable SÍ viaja.
+      expect(payload).toMatchObject({
+        TvsBarraLibertador: "DTV542",
+      });
     });
 
-    it("reverts optimistic of failed writes and reports count on 429 (hotfix 5)", async () => {
-      // Un 429 por express-rate-limit: la API expone err.status (arrangerApi
-      // writeError). 3 de las 29 órdenes rechazadas → revert + toast con conteo.
-      const e429 = new Error("Too many requests, try again later");
-      e429.status = 429;
-      mockSetTvSource
-        .mockRejectedValueOnce(e429)
-        .mockRejectedValueOnce(e429)
-        .mockRejectedValueOnce(e429)
-        .mockResolvedValue({ ok: true, reported: "DTV1" });
+    it("WS5: submit sin cambios → toast 'sin cambios', SIN POST ni optimistic (UXF-2)", async () => {
+      renderWithContext();
 
-      const applyOptimistic = vi.fn();
-      const revertOptimistic = vi.fn();
-      renderWithContext({ applyOptimistic, revertOptimistic });
-
+      // Sin tocar ningún select: todo el intent coincide con lo confirmado.
       fireEvent.click(screen.getByText("Enviar"));
 
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(mockSetMatrixGroups).not.toHaveBeenCalled();
+      expect(mockToast.info).toHaveBeenCalledWith("sin cambios");
+      expect(mockToast.success).not.toHaveBeenCalled();
+    });
+
+    it("aplica optimistic de matrixGroups ANTES del POST, con el intent pre-filtrado (fix real-hardware A)", async () => {
+      const applyOptimistic = vi.fn();
+      renderWithContext({ applyOptimistic });
+
+      submitWithLibertador("DTV542");
+
       await vi.waitFor(() => {
-        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+        expect(mockSetMatrixGroups).toHaveBeenCalledTimes(1);
       });
 
-      // El optimistic del batch se aplicó (patch de TVs) y el rollback de los
-      // fallidos se disparó con el overlay previo.
-      expect(applyOptimistic).toHaveBeenCalledWith("tvs", expect.objectContaining({ TV01: expect.any(String) }));
-      expect(revertOptimistic).toHaveBeenCalledWith("tvs", expect.any(Object), expect.any(Object));
+      // El overlay cubre SOLO lo que viaja (lo pre-filtrado): el resto del
+      // estado ya es real y el server lo conserva (merge shallow).
+      expect(applyOptimistic).toHaveBeenCalledWith("matrixGroups", {
+        TvsBarraLibertador: "DTV542",
+      });
+    });
+
+    it("revierte el optimistic y reporta el error cuando el POST falla (hotfix 5)", async () => {
+      const e429 = new Error("Too many requests, try again later");
+      e429.status = 429;
+      mockSetMatrixGroups.mockRejectedValueOnce(e429);
+      const revertOptimistic = vi.fn();
+      renderWithContext({ revertOptimistic });
+
+      submitWithLibertador();
+
+      await vi.waitFor(() => {
+        expect(mockSetMatrixGroups).toHaveBeenCalledTimes(1);
+      });
+
+      expect(revertOptimistic).toHaveBeenCalledWith(
+        "matrixGroups",
+        { TvsBarraLibertador: "DTV542" },
+        expect.any(Object)
+      );
 
       // Clean up mock
-      mockSetTvSource.mockResolvedValue({ ok: true, reported: "DTV1" });
+      mockSetMatrixGroups.mockResolvedValue({ ok: true, accepted: {} });
+    });
+
+    it("envía la key renombrada TvsBarraLibertador con el combo elegido (sin Livertador)", async () => {
+      renderWithContext();
+
+      submitWithLibertador("DTV542");
+
+      await vi.waitFor(() => {
+        expect(mockSetMatrixGroups).toHaveBeenCalledTimes(1);
+      });
+
+      // El combo viaja tal cual — el server lo expande por posición.
+      expect(mockSetMatrixGroups).toHaveBeenCalledWith({
+        TvsBarraLibertador: "DTV542",
+      });
+      // La key legacy del typo NO existe en el DOM (W-2 cerrado).
+      expect(screen.queryByText(/Livertador/)).toBeNull();
+    });
+
+    it("el submit NO envía el grupo en estado Mixto (el server conserva su estado)", async () => {
+      renderWithContext({ matrixGroups: { TvsBarraSur: null } });
+
+      submitWithLibertador();
+
+      await vi.waitFor(() => {
+        expect(mockSetMatrixGroups).toHaveBeenCalledTimes(1);
+      });
+
+      const payload = mockSetMatrixGroups.mock.calls[0][0];
+      expect(payload).not.toHaveProperty("TvsBarraSur");
+      expect(payload).toHaveProperty("TvsBarraLibertador");
+    });
+  });
+
+  describe("WS5 — escape 'Forzar reenvío' (UXF-2)", () => {
+    const expectedIntent = {
+      VWN: "DTV1",
+      VWC: "DTV2",
+      VWS: "DTV3",
+      TvsEscaleraNorte: "DTV1234",
+      TvsEscaleraCentro: "DTV1234",
+      TvsEscaleraSur: "DTV1234",
+      TvsBarraNorte: "DTV1234",
+      TvsBarraLibertador: "DTV123",
+      TvsBarraSur: "DTV1234",
+      TvsBarraPista: "DTV123",
+    };
+
+    it("envía el intent COMPLETO (sin pre-filtro) con force:true aunque todo coincida", async () => {
+      renderWithContext();
+
+      // Sin cambios en los selects: el pre-filtro vaciaría el intent, pero
+      // "Forzar reenvío" es el escape explícito del one-join-lag.
+      fireEvent.click(screen.getByText("Forzar reenvío"));
+
+      await vi.waitFor(() => {
+        expect(mockSetMatrixGroups).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockSetMatrixGroups).toHaveBeenCalledWith(expectedIntent, { force: true });
+      expect(mockToast.success).toHaveBeenCalledWith("Matriz de video reenviada");
+    });
+
+    it("force NO muestra 'sin cambios' (siempre reenvía)", async () => {
+      renderWithContext();
+
+      fireEvent.click(screen.getByText("Forzar reenvío"));
+
+      await vi.waitFor(() => {
+        expect(mockSetMatrixGroups).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockToast.info).not.toHaveBeenCalled();
     });
   });
 
@@ -456,44 +598,34 @@ describe("MatrizVideo", () => {
       expect(noData).toHaveTextContent("Sin datos");
     });
 
-    it("el submit legacy expande con la key renombrada TvsBarraLibertador (sin Livertador)", async () => {
-      renderWithContext();
-
-      fireEvent.change(screen.getByLabelText("Libertador"), {
-        target: { value: "DTV542" },
-      });
-      fireEvent.click(screen.getByText("Enviar"));
-
-      await vi.waitFor(() => {
-        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
+    it("W-1 (verify WS4d): al llegar el snapshot async, los selects reflejan el valor real (enableReinitialize)", () => {
+      // Hard reload en /matrizvideo: el componente monta ANTES de que el
+      // snapshot llegue por SSE → sin modelo, sin selects. Luego llega el
+      // snapshot con matrixModel + matrixGroups.desired.
+      const { contextValue, rerender } = renderWithContext({
+        matrixModel: null,
+        matrixGroups: {},
       });
 
-      // Expansión del combo DTV542 por posición (TV01..TV03).
-      expect(mockSetTvSource).toHaveBeenCalledWith("TV01", "DTV5");
-      expect(mockSetTvSource).toHaveBeenCalledWith("TV02", "DTV4");
-      expect(mockSetTvSource).toHaveBeenCalledWith("TV03", "DTV2");
-      // La key legacy del typo NO existe en el DOM (W-2 cerrado).
-      expect(screen.queryByText(/Livertador/)).toBeNull();
-    });
+      expect(screen.queryByLabelText("Libertador")).toBeNull();
 
-    it("el submit conserva la fuente real de las TVs de un grupo en estado Mixto (sin coacción W-1)", async () => {
-      renderWithContext({ matrixGroups: { TvsBarraSur: null } });
+      // Mismo componente montado: initialValues cambia de CONTENIDO (no solo
+      // de identidad). Con enableReinitialize el form se reinicializa y los
+      // selects muestran el valor real del server; sin él, el select mostraría
+      // la primera opción (DTV1) mientras el value de Formik queda undefined.
+      rerender(
+        <ProviderUser
+          value={{
+            ...contextValue,
+            matrixModel: testMatrixModel,
+            matrixGroups: { TvsBarraLibertador: "DTV542" },
+          }}
+        >
+          <MatrizVideo />
+        </ProviderUser>
+      );
 
-      fireEvent.click(screen.getByText("Enviar"));
-
-      await vi.waitFor(() => {
-        expect(mockSetTvSource).toHaveBeenCalledTimes(29);
-      });
-
-      // El submit legacy sigue escribiendo las 29 TVs (DoD WS4d), pero el
-      // grupo mixto NO se coacciona: TV04..TV07 conservan su fuente real
-      // (re-escritura no-op), a diferencia del bug W-1 que las forzaba a DTV1.
-      expect(mockSetTvSource).toHaveBeenCalledWith("TV04", "DTV1");
-      expect(mockSetTvSource).toHaveBeenCalledWith("TV05", "DTV2");
-      expect(mockSetTvSource).toHaveBeenCalledWith("TV06", "DTV3");
-      expect(mockSetTvSource).toHaveBeenCalledWith("TV07", "DTV4");
-      // El resto del submit sigue por-TV (VWN escribe).
-      expect(mockSetTvSource).toHaveBeenCalledWith("VWN", "DTV1");
+      expect(screen.getByLabelText("Libertador").value).toBe("DTV542");
     });
 
     it("sin matrixModel: degradación segura (sin selects de grupos, Enviar deshabilitado, TVRACK intacto)", () => {

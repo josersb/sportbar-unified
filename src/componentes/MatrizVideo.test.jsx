@@ -212,13 +212,14 @@ describe("MatrizVideo", () => {
   });
 
   describe("ZonasFueraSection — mini-card zone controls", () => {
-    it("renders 10 zona cards with zone labels from ZONE_LABELS", () => {
+    it("renders 11 zona cards with labels from zonasFuera.js", () => {
       const zonasFueraState = {
         "aVip-Barra-Centro": { video: "DTV3", audio: "DTV3", link: true },
         "aVip-Lobby-Batacazo": { video: "DTV5", audio: "DTV5", link: false },
         "aVip-Bar-Boveda": { video: "DTV1", audio: "DTV1", link: true },
         "RACK-VIP-PANTALLABATACA": { video: "DTV2", audio: "DTV2", link: false },
         "aMas-15-Barra": { video: "DTV4", audio: "DTV1", link: true },
+        "aMas15-Vwall-Libertador": { video: "DTV6", audio: "DTV6", link: true },
         "a-Menos1-Escenario": { video: "DTV6", audio: "DTV6", link: false },
         "a-Menos1-Escenario2": { video: "DTV7", audio: "DTV7", link: true },
         "a-QMR75-Menos1-TV1": { video: "DTV8", audio: "DTV1", link: false },
@@ -228,11 +229,12 @@ describe("MatrizVideo", () => {
 
       renderWithContext({ zonasFueraState });
 
-      expect(screen.getByText("VIP Barra Centro")).toBeInTheDocument();
-      expect(screen.getByText("VIP Lobby Batacazo")).toBeInTheDocument();
+      expect(screen.getByText("VIP Bar Lobby")).toBeInTheDocument();
       expect(screen.getByText("VIP Bar Bóveda")).toBeInTheDocument();
+      expect(screen.getByText("VIP Barra Centro")).toBeInTheDocument();
       expect(screen.getByText("Rack VIP Bataca")).toBeInTheDocument();
-      expect(screen.getByText("+15 Barra")).toBeInTheDocument();
+      expect(screen.getByText("Barra Irineo +15")).toBeInTheDocument();
+      expect(screen.getByText("Led Wall +15")).toBeInTheDocument();
       expect(screen.getByText("Escenario -1")).toBeInTheDocument();
       expect(screen.getByText("Escenario -1 (2)")).toBeInTheDocument();
       expect(screen.getByText("QMR75 -1 TV1")).toBeInTheDocument();
@@ -255,7 +257,7 @@ describe("MatrizVideo", () => {
       renderWithContext({ zonasFueraState: {} });
 
       const dashes = screen.getAllByText("\u2014");
-      expect(dashes.length).toBe(10);
+      expect(dashes.length).toBe(11);
     });
 
     it("calls handleZonasFueraChange with zoneId, 'video', deviceId when button clicked", () => {
@@ -279,7 +281,7 @@ describe("MatrizVideo", () => {
       renderWithContext();
 
       const linkLabels = screen.getAllByText("Vincular video + audio");
-      expect(linkLabels.length).toBe(10);
+      expect(linkLabels.length).toBe(11);
     });
 
     it("calls handleZonasFueraChange with link type when toggle clicked", () => {
@@ -291,12 +293,13 @@ describe("MatrizVideo", () => {
       renderWithContext({ zonasFueraState, handleZonasFueraChange });
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // First checkbox is TVRACK link, skip it — zona checkboxes start after
+      // First checkbox is TVRACK link, skip it — zona checkboxes start after.
+      // Con el orden canónico, la 1ª zona es aVip-Lobby-Batacazo.
       const zonaLinkCheckbox = checkboxes[1];
       fireEvent.click(zonaLinkCheckbox);
 
       expect(handleZonasFueraChange).toHaveBeenCalledWith(
-        "aVip-Barra-Centro",
+        "aVip-Lobby-Batacazo",
         "link",
         true
       );

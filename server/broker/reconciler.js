@@ -8,7 +8,7 @@
  * válida (null/blip nunca pisa). El cliente deja de tocar el Arranger.
  *
  * Ciclo:
- *   1. Lee get encoder de los 40 destinos en batches de 4 (video + audio,
+ *   1. Lee get encoder de los 41 destinos en batches de 4 (video + audio,
  *      TVRACK y zonas-fuera leen audio separado).
  *   2. Actualiza `reported` con las lecturas confirmadas (null nunca pisa).
  *   3. Auto-adopta `desired ← reported` por destino (y por sub-key video/audio

@@ -126,12 +126,21 @@ async function createServer(options = {}) {
     log,
   });
   const writeQueue = createWriteQueue({ log });
+  // Fix clobber reconciler/write: timestamp del último write (o intento) por
+  // destino. El reconciler NO adopta destinos tocados durante su scan — un
+  // scan tarda ~20s y la lectura pudo tomarse ANTES del write (pisaría un
+  // estado más nuevo: reported confirmado + desired del operador).
+  const writeTouchedAt = new Map();
   const reconciler = createReconciler({
     client,
     store,
     bus,
     log,
     intervalMs: options.reconcilerIntervalMs || RECONCILER_INTERVAL_MS,
+    recentlyWritten: (dest, sinceMs) => {
+      const t = writeTouchedAt.get(dest);
+      return t != null && t >= sinceMs;
+    },
   });
 
   // Arranque background + stale: servimos el persistido marcado stale y el
@@ -383,6 +392,9 @@ async function createServer(options = {}) {
     const domain = dest === TVRACK_ID ? "tvrack" : ZONA_FUERA_IDS.includes(dest) ? "zonasFuera" : "tvs";
     const key = domain === "tvs" ? toApp(dest) : dest;
     const wlog = (tag, msg) => writeLog(writeId, tag, msg);
+    // Marca el destino como tocado AHORA: el reconciler que esté escaneando no
+    // debe adoptarlo con una lectura previa (fix clobber scan/write).
+    writeTouchedAt.set(dest, Date.now());
     const d = store.getDomain(domain);
     // Leer link aquí, dentro de la tarea encolada: nunca capturar una versión
     // obsoleta antes de que la cola FIFO procese la escritura.
@@ -992,10 +1004,11 @@ async function createServer(options = {}) {
       return res.status(400).json({ error: "canal requerido" });
     }
 
-    // CD-2: mismo canal vigente → "canal ya sintonizado" sin emitir IR (el
-    // cliente NO envía dígitos) y sin bump de versión.
+    // CD-2: mismo canal vigente → "canal ya sintonizado" sin emitir IR. SOLO
+    // si el canal vigente está CONFIRMADO (ack accepted): un intent
+    // pending/rejected NO bloquea el reintento (y no debe "mentir" que cambió).
     const current = store.getDomain("channelIntent")?.desired[id];
-    if (current && current.canalActual === canal) {
+    if (current && current.canalActual === canal && current.ack === "accepted") {
       return res.json({
         ok: true,
         noop: true,
@@ -1010,6 +1023,7 @@ async function createServer(options = {}) {
     writeLog(writeId, "WRITE", `channel intent ${id} → ${canal} (IR client-side, ACK pendiente)`);
     store.setChannelIntentEntry(id, {
       canalActual: canal,
+      previousCanal: current && current.canalActual != null ? current.canalActual : null,
       lastSentAt: new Date().toISOString(),
       ack: "pending",
     });
@@ -1041,7 +1055,14 @@ async function createServer(options = {}) {
     if (!store.getDomain("channelIntent")?.desired[id]) {
       return res.status(404).json({ error: `Sin intención de canal para ${id}` });
     }
-    store.setChannelIntentEntry(id, { ack });
+    const cur = store.getDomain("channelIntent")?.desired[id];
+    if (ack === "rejected" && cur && cur.previousCanal != null) {
+      // El IR falló: el cambio NO se implementó. Restaurar el canal vigente
+      // para no dejar un estado falso (el panel debe reflejar la realidad).
+      store.setChannelIntentEntry(id, { ack, canalActual: cur.previousCanal });
+    } else {
+      store.setChannelIntentEntry(id, { ack });
+    }
     await store.write();
     broadcastDomain("channelIntent");
     const d = store.getDomain("channelIntent");

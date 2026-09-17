@@ -131,6 +131,19 @@ async function scenarioIntentFlow(tmpDir) {
     const after = broker.store.getDomain("channelIntent").desired.DTV1;
     check(`[D] lastSentAt intacto (no se reenvió)`, after.lastSentAt === before.lastSentAt);
 
+    console.log("\n── Escenario C2: rejected CON canal previo → restaura el vigente (hotfix) ──");
+    await postJson(`${base}/api/decos/DTV3/channel`, { canal: "1605" });
+    await postJson(`${base}/api/decos/DTV3/channel/ack`, { ack: "accepted" });
+    await postJson(`${base}/api/decos/DTV3/channel`, { canal: "1620" });
+    const resC2 = await postJson(`${base}/api/decos/DTV3/channel/ack`, { ack: "rejected" });
+    check(`[C2] rejected → 200 ok`, resC2.status === 200);
+    const entryC2 = broker.store.getDomain("channelIntent").desired.DTV3;
+    check(`[C2] canalActual restaurado al previo (1605)`, entryC2 && entryC2.canalActual === "1605");
+    check(`[C2] ack="rejected"`, entryC2 && entryC2.ack === "rejected");
+    const retryC2 = await postJson(`${base}/api/decos/DTV3/channel`, { canal: "1620" });
+    const bodyRetryC2 = await retryC2.json();
+    check(`[C2] retry del canal rechazado NO es noop (no bloquea reintento)`, bodyRetryC2.noop === false);
+
     console.log("\n── Escenario E: reported de canal NUNCA se modela (CD-1) ──");
     check(`[E] channelIntent.reported === null`, broker.store.getDomain("channelIntent").reported === null);
     const snap = broker.store.getSnapshot();

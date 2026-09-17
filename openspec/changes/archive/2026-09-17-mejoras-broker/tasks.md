@@ -135,8 +135,8 @@ Reencuadre aprobado: modelo declarativo único `zones→subgroups{key,dir,screen
 
 ## WS1 — auditoría read-only (PR 9 · hash 08994679)
 
-- [ ] **T-1.1** Procedimiento read-only: `get devices all` vs `aMas15-Vwall-Libertador`; documentar hallazgo en `openspec/changes/mejoras-broker/ws1-audit.md`. Cero writes. Referencia `API commands/devices_all.txt` (read-only).
-- [ ] **T-1.2** Si la identidad no coincide con ningún dispositivo modelado → registrar hallazgo para change aparte; no modelar aquí.
-- [ ] **T-1.3** Test: N/A — requiere Arranger real (sin hardware en entorno de agente); la evidencia es la salida read-only del comando.
+- [x] **T-1.1** Procedimiento read-only: `get devices all` vs `aMas15-Vwall-Libertador`; documentar hallazgo en `openspec/changes/mejoras-broker/ws1-audit.md`. Cero writes. Referencia `API commands/devices_all.txt` (read-only).
+- [x] **T-1.2** Si la identidad no coincide con ningún dispositivo modelado → registrar hallazgo para change aparte; no modelar aquí.
+- [x] **T-1.3** Test: N/A — requiere Arranger real (sin hardware en entorno de agente); la evidencia es la salida read-only del comando.
 
 **DoD WS1**: hallazgo documentado con evidencia; cero writes.

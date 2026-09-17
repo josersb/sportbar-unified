@@ -46,16 +46,19 @@ export async function fetchBrokerState(since = "") {
  * Escritura confirmada de un TV/video-wall: POST /api/tvs/:id/source.
  * El server serializa por destino (writeQueue), ejecuta join av, lee
  * get encoder y responde {ok, reported, version, lastUpdated, sync}.
+ * WS5-DEDUPE: el server deduplica writes no-op contra el `reported`
+ * confirmado; `force` reenvía el join salteando ese guard (UXF-2).
  *
  * @param {string} tvId — id app (TV01, VWN) o Arranger (VW-Norte)
  * @param {string} source — fuente (DTV1..DTV8)
+ * @param {object} [opts] - { force?: boolean } escape "forzar reenvío"
  * @returns {Promise<object>} respuesta confirmada del broker
  */
-export async function setTvSource(tvId, source) {
+export async function setTvSource(tvId, source, { force = false } = {}) {
   const response = await fetch(`/api/tvs/${encodeURIComponent(tvId)}/source`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ source }),
+    body: JSON.stringify({ source, ...(force ? { force: true } : {}) }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -214,6 +217,81 @@ export async function loadPreset(n) {
 export async function deletePresetServer(n) {
   const response = await fetch(`/api/presets/${n}`, { method: "DELETE" });
   if (!response.ok) throw new Error(`Failed to delete preset ${n}: ${response.status}`);
+  return response.json();
+}
+
+// ── WS3: Intención de canal DTV (app-only, server-owned) ──
+
+/**
+ * Registra la intención de canal de un decodificador (write-through, CD-1/CD-3).
+ * El server persiste {canalActual, lastSentAt, ack:"pending"} y lo difunde por
+ * SSE. CD-2: si el canal ya es el vigente responde {noop:true, reason:"canal ya
+ * sintonizado"} y el cliente NO debe emitir IR.
+ *
+ * @param {string} decoId — DTV1..DTV8
+ * @param {string|number} canal
+ * @returns {Promise<object>} { ok, noop?, message?, intent?, version? }
+ */
+export async function setChannelIntent(decoId, canal) {
+  const response = await fetch(`/api/decos/${encodeURIComponent(decoId)}/channel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ canal }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw writeError(response.status, body.error || `Failed to set channel intent for ${decoId}: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Reporta el resultado del IR client-side para que el server persista el ACK
+ * del controlador en channelIntent.ack (CD-1/CD-4).
+ *
+ * @param {string} decoId — DTV1..DTV8
+ * @param {"accepted"|"rejected"} ack — resultado de `send ir success`
+ * @returns {Promise<object>} { ok, decoId, intent, version }
+ */
+export async function setChannelIntentAck(decoId, ack) {
+  const response = await fetch(`/api/decos/${encodeURIComponent(decoId)}/channel/ack`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ack }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw writeError(response.status, body.error || `Failed to ack channel for ${decoId}: ${response.status}`);
+  }
+  return response.json();
+}
+
+// ── WS4c: Grupos de la matriz (server-authoritative, cliente read-only MG-1) ──
+
+/**
+ * Envía valores de subgrupo al broker: POST /api/matrix-groups {values}.
+ * El server valida cada valor contra optionsFor(size) (MG-5), expande al
+ * patch de TVs y encola los writes; persiste y difunde matrixGroups por SSE.
+ * El cliente NUNCA persiste ni decide matrixGroups (MG-1) — solo reporta la
+ * intención del operador. (El submit de MatrizVideo lo consume en WS4e.)
+ * WS5-DEDUPE: el server deduplica los writes no-op contra el `reported`
+ * confirmado (guard pre-join en executeWrite); `force` reenvía todo
+ * salteando ese guard (escape explícito "forzar reenvío", UXF-2).
+ *
+ * @param {object} values — clave de subgrupo → combo "DTVxyz" | fuente única | null
+ * @param {object} [opts] - { force?: boolean } escape "forzar reenvío"
+ * @returns {Promise<object>} { ok, accepted }
+ */
+export async function setMatrixGroups(values, { force = false } = {}) {
+  const response = await fetch("/api/matrix-groups", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ values, ...(force ? { force: true } : {}) }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw writeError(response.status, body.error || `Failed to set matrix groups: ${response.status}`);
+  }
   return response.json();
 }
 

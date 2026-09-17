@@ -106,3 +106,18 @@ Server startup MUST detect legacy string values and migrate: `"DTV2"` → `{ vid
 - GIVEN `state.json` has `zonasFuera: { "aVip-Barra-Centro": "DTV2" }`
 - WHEN server starts
 - THEN key becomes `{ video: "DTV2", audio: "DTV2", link: true, lastUpdated: ... }`
+### Requirement: Dedupe de escrituras de zona
+
+Las escrituras de `zonasFuera` MUST descartar no-ops reales contra el `reported` confirmado antes de emitir `join` al Arranger. La respuesta MUST ser idempotente/no-op. Un parámetro `forzar` MUST permitir el reenvío.
+
+#### Scenario: Zona no-op descartada
+
+- GIVEN una zona ya reporta la fuente pedida
+- WHEN llega una escritura idéntica
+- THEN no se emite `join` y se responde no-op
+
+#### Scenario: Escape forzar en zona
+
+- GIVEN `forzar` en true
+- WHEN llega una escritura de zona no-op
+- THEN se emite el `join` al Arranger

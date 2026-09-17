@@ -126,12 +126,21 @@ async function createServer(options = {}) {
     log,
   });
   const writeQueue = createWriteQueue({ log });
+  // Fix clobber reconciler/write: timestamp del último write (o intento) por
+  // destino. El reconciler NO adopta destinos tocados durante su scan — un
+  // scan tarda ~20s y la lectura pudo tomarse ANTES del write (pisaría un
+  // estado más nuevo: reported confirmado + desired del operador).
+  const writeTouchedAt = new Map();
   const reconciler = createReconciler({
     client,
     store,
     bus,
     log,
     intervalMs: options.reconcilerIntervalMs || RECONCILER_INTERVAL_MS,
+    recentlyWritten: (dest, sinceMs) => {
+      const t = writeTouchedAt.get(dest);
+      return t != null && t >= sinceMs;
+    },
   });
 
   // Arranque background + stale: servimos el persistido marcado stale y el
@@ -383,6 +392,9 @@ async function createServer(options = {}) {
     const domain = dest === TVRACK_ID ? "tvrack" : ZONA_FUERA_IDS.includes(dest) ? "zonasFuera" : "tvs";
     const key = domain === "tvs" ? toApp(dest) : dest;
     const wlog = (tag, msg) => writeLog(writeId, tag, msg);
+    // Marca el destino como tocado AHORA: el reconciler que esté escaneando no
+    // debe adoptarlo con una lectura previa (fix clobber scan/write).
+    writeTouchedAt.set(dest, Date.now());
     const d = store.getDomain(domain);
     // Leer link aquí, dentro de la tarea encolada: nunca capturar una versión
     // obsoleta antes de que la cola FIFO procese la escritura.

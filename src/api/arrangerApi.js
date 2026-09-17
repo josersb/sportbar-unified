@@ -46,16 +46,19 @@ export async function fetchBrokerState(since = "") {
  * Escritura confirmada de un TV/video-wall: POST /api/tvs/:id/source.
  * El server serializa por destino (writeQueue), ejecuta join av, lee
  * get encoder y responde {ok, reported, version, lastUpdated, sync}.
+ * WS5-DEDUPE: el server deduplica writes no-op contra el `reported`
+ * confirmado; `force` reenvía el join salteando ese guard (UXF-2).
  *
  * @param {string} tvId — id app (TV01, VWN) o Arranger (VW-Norte)
  * @param {string} source — fuente (DTV1..DTV8)
+ * @param {object} [opts] - { force?: boolean } escape "forzar reenvío"
  * @returns {Promise<object>} respuesta confirmada del broker
  */
-export async function setTvSource(tvId, source) {
+export async function setTvSource(tvId, source, { force = false } = {}) {
   const response = await fetch(`/api/tvs/${encodeURIComponent(tvId)}/source`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ source }),
+    body: JSON.stringify({ source, ...(force ? { force: true } : {}) }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -271,15 +274,19 @@ export async function setChannelIntentAck(decoId, ack) {
  * patch de TVs y encola los writes; persiste y difunde matrixGroups por SSE.
  * El cliente NUNCA persiste ni decide matrixGroups (MG-1) — solo reporta la
  * intención del operador. (El submit de MatrizVideo lo consume en WS4e.)
+ * WS5-DEDUPE: el server deduplica los writes no-op contra el `reported`
+ * confirmado (guard pre-join en executeWrite); `force` reenvía todo
+ * salteando ese guard (escape explícito "forzar reenvío", UXF-2).
  *
  * @param {object} values — clave de subgrupo → combo "DTVxyz" | fuente única | null
+ * @param {object} [opts] - { force?: boolean } escape "forzar reenvío"
  * @returns {Promise<object>} { ok, accepted }
  */
-export async function setMatrixGroups(values) {
+export async function setMatrixGroups(values, { force = false } = {}) {
   const response = await fetch("/api/matrix-groups", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ values }),
+    body: JSON.stringify({ values, ...(force ? { force: true } : {}) }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

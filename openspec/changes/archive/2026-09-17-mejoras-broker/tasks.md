@@ -122,21 +122,21 @@ Reencuadre aprobado: modelo declarativo único `zones→subgroups{key,dir,screen
 
 **Orden obligatorio**: WS4e ANTES de WS5 — WS5 reescribe el mismo submit de `MatrizVideo.jsx` (pre-filter + `force`).
 
-## WS5 — dedupe (PR 8 · hash d4b8e196)
+## WS5 — dedupe (PR 8)
 
-- [ ] **T-5.1** `server/server.js:386` guard pre-join en `executeWrite`: no-op iff `desired===source && reported[key]===source && !writeQueue.isBusy(dest)`; responde `{ok,noop:true}`. NO tocar `confirmEncoder`/settling.
-- [ ] **T-5.2** `lastBatch` in-memory `Map<dest,{source,at}>` (no persistido) marca resubmits idénticas.
-- [ ] **T-5.3** Param `force:true` saltea el guard; `setTvSource(id, source, {force})` en `src/api/arrangerApi.js`.
-- [ ] **T-5.4** `src/componentes/MatrizVideo.jsx`: pre-filter cliente `tvs[dest]===source`; toast "sin cambios"; acción "forzar reenvío".
-- [ ] **T-5.5** Nuevo `server/broker/verify/verify-dedupe.cjs`: no-op/repetida/isBusy/force/reported-stale. `server/broker/verify/verify-confirm-settling.cjs` (read-only) MUST seguir verde — no romper PR #13.
-- [ ] **T-5.6** Extender `src/componentes/MatrizVideo.test.jsx`: pre-filter + force.
+- [x] **T-5.1** Guard pre-join en `executeWrite`: no-op iff `reported` CONFIRMADO === source (todas las corrientes si linked) && `!writeQueue.hasPending(dest)`; responde `{ok, noop:true, confirmed:true, reported}` sin emitir el join. NO toca `confirmEncoder`/settling (PR #13). Traducción documentada: dentro de la tarea encolada `isBusy(dest)` es siempre true (la tarea vive en la cadena) → el "no busy" real es `hasPending` (nada pendiente detrás).
+- [x] **T-5.2** `lastBatch` in-memory `Map<dest,{source,sub,at}>` (no persistido) marca resubmits idénticas — informa el `reason` del no-op ("resubmit idéntica (lastBatch)" vs "reported confirmado"); NO participa de la decisión (evitar no-ops falsos).
+- [x] **T-5.3** Param `force:true` saltea el guard en `executeWrite` vía `opts`; expuesto en `/api/tvs/:id/source` (body), `/api/matrix-groups` (body) y tvrack/zonas-fuera sync (`noop` aditivo); `setTvSource(id, source, {force})` y `setMatrixGroups(values, {force})` en `src/api/arrangerApi.js`.
+- [x] **T-5.4** `src/componentes/MatrizVideo.jsx`: pre-filter cliente `collapseGroup(estado.tvs, screens, combosBySize) !== valor` por subgrupo (estado.tvs = reported-wins → una duda no se saltea); toast `info("sin cambios")` sin POST ni optimistic cuando no hay nada; botón "Forzar reenvío" (form render-prop) que envía el intent COMPLETO con `force:true`.
+- [x] **T-5.5** Nuevo `server/broker/verify/verify-dedupe.cjs` (30 checks: no-op confirmado + lastBatch reason / force reenvía / un-solo-cambio matrix-groups / resubmit idéntica 0 joins / one-join-lag re-emite / intención repetida en vuelo 1 join / tvrack sub-stream). Registrado en `run-all.cjs`; `verify-confirm-settling.cjs` (PR #13) sigue verde.
+- [x] **T-5.6** `src/componentes/MatrizVideo.test.jsx`: 9 tests WS4e adaptados al pre-filtro (un solo cambio → solo ese subgrupo viaja) + toast "sin cambios" sin POST + 2 tests "Forzar reenvío" (intent completo con force). `verify-broker-core.mjs` +sección 16 (10 checks WS5; 140/140).
 
-**DoD WS5**: escenarios WS5-DEDUPE + zonas no-op (zonas-fuera-state); `run-all.cjs` verde incl. `verify-confirm-settling`.
+**DoD WS5**: escenarios WS5-DEDUPE + zonas no-op (zonas-fuera-state); `run-all.cjs` verde incl. `verify-confirm-settling`. ✅
 
 ## WS1 — auditoría read-only (PR 9 · hash 08994679)
 
-- [ ] **T-1.1** Procedimiento read-only: `get devices all` vs `aMas15-Vwall-Libertador`; documentar hallazgo en `openspec/changes/mejoras-broker/ws1-audit.md`. Cero writes. Referencia `API commands/devices_all.txt` (read-only).
-- [ ] **T-1.2** Si la identidad no coincide con ningún dispositivo modelado → registrar hallazgo para change aparte; no modelar aquí.
-- [ ] **T-1.3** Test: N/A — requiere Arranger real (sin hardware en entorno de agente); la evidencia es la salida read-only del comando.
+- [x] **T-1.1** Procedimiento read-only: `get devices all` vs `aMas15-Vwall-Libertador`; documentar hallazgo en `openspec/changes/mejoras-broker/ws1-audit.md`. Cero writes. Referencia `API commands/devices_all.txt` (read-only).
+- [x] **T-1.2** Si la identidad no coincide con ningún dispositivo modelado → registrar hallazgo para change aparte; no modelar aquí.
+- [x] **T-1.3** Test: N/A — requiere Arranger real (sin hardware en entorno de agente); la evidencia es la salida read-only del comando.
 
 **DoD WS1**: hallazgo documentado con evidencia; cero writes.

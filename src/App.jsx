@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { ProviderUser, estadoInicial } from "./contexto/Contexto";
+import { reconcileFavoritos } from "./data/canalesFavoritos";
 import { useBrokerState } from "./hooks/useBrokerState";
-import { deriveUiState, buildDiffsInfo, writeErrorMessage } from "./hooks/brokerClientCore";
+import { deriveUiState, buildDiffsInfo, writeErrorMessage, rehydrateDecosFromIntent } from "./hooks/brokerClientCore";
 import {
   setAppState,
   setZonasFueraVideo,
@@ -26,13 +27,16 @@ const App = () => {
   // El server es dueño del estado app (appOnly.appState); la UI lo mantiene en
   // memoria y persiste cambios con POST /api/app-state (merge parcial).
   const [estado, setEstado] = useState(() => {
+    let initial = estadoInicial;
     try {
       const saved = localStorage.getItem(ESTADO_APP_KEY);
-      if (saved) return { ...estadoInicial, ...JSON.parse(saved), _version: 1 };
+      if (saved) initial = { ...estadoInicial, ...JSON.parse(saved), _version: 1 };
     } catch {
       // localStorage corrupto → estado inicial
     }
-    return estadoInicial;
+    // CF-3: reconciliar favoritos contra la allowlist de la grilla al
+    // hidratar — los canales obsoletos persistidos se eliminan.
+    return { ...initial, favoritos: reconcileFavoritos(initial.favoritos) };
   });
   const [tvrackState, setTvrackState] = useState({ video: "DTV1", audio: "DTV1", link: false });
   const [zonasFueraState, setZonasFueraState] = useState({});
@@ -42,7 +46,10 @@ const App = () => {
   // ── Estado de matriz desde el broker (snapshot SSE + deltas) ──
   // La UI de tvs/tvrack/zonas-fuera es derivada del snapshot; NO hay estado
   // local de matriz ni polls (eliminados en PR 3). Escrituras → broker con await.
-  const { tvs, tvrackState: brokerTvrack, zonasFueraState: brokerZonas } = useMemo(
+  // WS4c (MG-1/MG-4): matrixGroups (desired server-authoritative) y el
+  // matrixModel servido viajan al contexto con PRECEDENCIA SERVER — el
+  // cliente los refleja read-only (nunca los persiste ni decide su valor).
+  const { tvs, tvrackState: brokerTvrack, zonasFueraState: brokerZonas, matrixGroups, matrixModel } = useMemo(
     () => deriveUiState(snapshot),
     [snapshot],
   );
@@ -51,6 +58,10 @@ const App = () => {
     if (!snapshot) return;
     setTvrackState(brokerTvrack);
     setZonasFueraState(brokerZonas);
+    // CD-5 (WS3): rehidratar decos/dispositivos desde la intención de canal del
+    // server con precedencia server — el canal DTV vive en el broker, el
+    // cliente lo recibe (nunca lo persiste como fuente de verdad).
+    setEstado((prev) => rehydrateDecosFromIntent(prev, snapshot));
     setEstadoLoaded(true);
     setErrorDecos(false);
   }, [snapshot, brokerTvrack, brokerZonas]);
@@ -73,7 +84,10 @@ const App = () => {
       if (!parsed || typeof parsed !== "object") return;
       const patch = {};
       for (const key of ["decos", "dispositivos", "favoritos", "audio", "descripcionPreset"]) {
-        if (parsed[key] !== undefined) patch[key] = parsed[key];
+        if (parsed[key] !== undefined) {
+          // CF-3: no propagar favoritos obsoletos al broker en la migración
+          patch[key] = key === "favoritos" ? reconcileFavoritos(parsed[key]) : parsed[key];
+        }
       }
       if (Object.keys(patch).length > 0) {
         setAppState(patch).catch(() => {});
@@ -225,6 +239,8 @@ const App = () => {
       applyOptimistic,
       getOptimisticDomain,
       revertOptimistic,
+      matrixGroups,
+      matrixModel,
       syncDiffs: buildDiffsInfo(snapshot),
     }),
     [
@@ -238,6 +254,8 @@ const App = () => {
       connected,
       lastError,
       snapshot,
+      matrixGroups,
+      matrixModel,
       handleChangeEstadoDecos,
       handleChangeEstadoAudio,
       handleChangeEstadoPreset,

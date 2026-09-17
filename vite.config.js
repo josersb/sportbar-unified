@@ -56,6 +56,16 @@ export default defineConfig({
         target: EXPRESS_URL,
         changeOrigin: true,
       },
+      // Canales DTV (WS3) → Express
+      "/api/decos": {
+        target: EXPRESS_URL,
+        changeOrigin: true,
+      },
+      // Grupos de la matriz (WS4) → Express
+      "/api/matrix-groups": {
+        target: EXPRESS_URL,
+        changeOrigin: true,
+      },
       // Comandos IR/serial/presets de dispositivos: único proxy Arranger
       "/api/command": {
         target: EXPRESS_URL,

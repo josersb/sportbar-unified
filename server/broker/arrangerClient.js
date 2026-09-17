@@ -68,6 +68,12 @@ function createArrangerClient(options = {}) {
   // (Promise.race contra semaphoreTimeoutMs) suelta el turno aunque el
   // comando siga colgado — el semáforo nunca queda trabado.
   const maxConcurrent = resolveMaxConcurrent(options.maxConcurrent);
+  // Observabilidad (log-hygiene): el semáforo logueaba CADA espera y CADA
+  // concesión (~83% del log, enterrando writes/confirms/errores). Ahora solo
+  // reporta congestión (cruce de umbral) y esperas LENTAS.
+  const SEM_SLOW_MS = options.semSlowMs != null ? options.semSlowMs : 2000;
+  const SEM_CONGESTION_THRESHOLD =
+    options.semCongestionThreshold != null ? options.semCongestionThreshold : 10;
   const semaphoreTimeoutMs = options.semaphoreTimeoutMs != null ? options.semaphoreTimeoutMs : 30000;
   let inFlight = 0;
   const waitQueue = []; // FIFO de { resolve, enteredAt, writeId }
@@ -86,11 +92,13 @@ function createArrangerClient(options = {}) {
     const enteredAt = Date.now();
     await new Promise((resolve) => {
       waitQueue.push({ resolve, enteredAt, writeId });
-      // Log de la cola (hotfix 6): si el caller no trae writeId (p.ej. el
-      // proxy), usar un sequence propio del semáforo para poder correlar.
+      // Log de cola SOLO al cruzar el umbral de congestión (una línea por
+      // comando era el 83% del log). La espera lenta se reporta al conceder.
       turnSeq += 1;
-      const label = writeId || `w-${String(turnSeq).padStart(3, "0")}`;
-      logSem(writeId, `${label} espera turno (in-flight ${inFlight}, waiting ${waitQueue.length})`);
+      if (waitQueue.length === SEM_CONGESTION_THRESHOLD) {
+        const label = writeId || `w-${String(turnSeq).padStart(3, "0")}`;
+        logSem(writeId, `congestión: ${waitQueue.length} esperando turno (in-flight ${inFlight}) · último ${label}`);
+      }
     });
     // Al despertar el turno YA fue transferido por release() (inFlight ya
     // está contado a nombre de este comando).
@@ -119,7 +127,13 @@ function createArrangerClient(options = {}) {
       if (next) {
         inFlight += 1; // transferencia directa: no pasa por acquire()
         const waitedMs = Date.now() - next.enteredAt;
-        logSem(next.writeId, `${next.writeId || "cmd"} turno concedido (esperó ${(waitedMs / 1000).toFixed(1)}s)`);
+        // Solo esperas LENTAS: el tráfico normal espera <1s (no se loguea).
+        if (waitedMs >= SEM_SLOW_MS) {
+          logSem(
+            next.writeId,
+            `${next.writeId || "cmd"} turno concedido tras espera LENTA (${(waitedMs / 1000).toFixed(1)}s, in-flight ${inFlight})`
+          );
+        }
         next.resolve();
       }
     };

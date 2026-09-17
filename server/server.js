@@ -992,10 +992,11 @@ async function createServer(options = {}) {
       return res.status(400).json({ error: "canal requerido" });
     }
 
-    // CD-2: mismo canal vigente → "canal ya sintonizado" sin emitir IR (el
-    // cliente NO envía dígitos) y sin bump de versión.
+    // CD-2: mismo canal vigente → "canal ya sintonizado" sin emitir IR. SOLO
+    // si el canal vigente está CONFIRMADO (ack accepted): un intent
+    // pending/rejected NO bloquea el reintento (y no debe "mentir" que cambió).
     const current = store.getDomain("channelIntent")?.desired[id];
-    if (current && current.canalActual === canal) {
+    if (current && current.canalActual === canal && current.ack === "accepted") {
       return res.json({
         ok: true,
         noop: true,
@@ -1010,6 +1011,7 @@ async function createServer(options = {}) {
     writeLog(writeId, "WRITE", `channel intent ${id} → ${canal} (IR client-side, ACK pendiente)`);
     store.setChannelIntentEntry(id, {
       canalActual: canal,
+      previousCanal: current && current.canalActual != null ? current.canalActual : null,
       lastSentAt: new Date().toISOString(),
       ack: "pending",
     });
@@ -1041,7 +1043,14 @@ async function createServer(options = {}) {
     if (!store.getDomain("channelIntent")?.desired[id]) {
       return res.status(404).json({ error: `Sin intención de canal para ${id}` });
     }
-    store.setChannelIntentEntry(id, { ack });
+    const cur = store.getDomain("channelIntent")?.desired[id];
+    if (ack === "rejected" && cur && cur.previousCanal != null) {
+      // El IR falló: el cambio NO se implementó. Restaurar el canal vigente
+      // para no dejar un estado falso (el panel debe reflejar la realidad).
+      store.setChannelIntentEntry(id, { ack, canalActual: cur.previousCanal });
+    } else {
+      store.setChannelIntentEntry(id, { ack });
+    }
     await store.write();
     broadcastDomain("channelIntent");
     const d = store.getDomain("channelIntent");

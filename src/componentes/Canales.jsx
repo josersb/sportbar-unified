@@ -2,7 +2,7 @@ import { useRef, useContext, useState } from "react";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
 import { CANALES_FAVORITOS, CANAL_ALLOWLIST } from "../data/canalesFavoritos";
-import { sendChannelDigits } from "../api/arrangerApi";
+import { sendChannelDigits, setChannelIntent, setChannelIntentAck } from "../api/arrangerApi";
 import "./Toast.css";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
@@ -24,31 +24,54 @@ const Canales = () => {
   };
 
   const submitCanal = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    const canal = inputRef.current.value;
+    const selectedDeco = selectRef.current.value;
+    const decoNumber = parseInt(selectedDeco.replace("DTV", ""), 10);
+    const prevCanal = estado.dispositivos?.[selectedDeco]?.canalActual ?? null;
+    // Optimistic local (legacy decos + dispositivos). Se REVIERTE si el intent
+    // o el IR fallan: el panel no debe mostrar un cambio que no se implementó.
+    const applyLocal = (value) => {
+      handleUpdateDispositivo(selectedDeco, { canalActual: value });
+      handleChangeEstadoDecos(
+        decos.map((deco, i) => (i === decoNumber - 1 ? { ...deco, canalDeco: value } : deco))
+      );
+    };
     try {
-      e.preventDefault();
-      setLoading(true);
-      const canal = inputRef.current.value;
       // CF-1: la validación consume la MISMA allowlist que la grilla
       // (CANALES_FAVORITOS) — un canal de la grilla siempre ejecuta.
-      if (CANAL_ALLOWLIST.has(canal)) {
-        const selectedDeco = selectRef.current.value;
-        // Update dispositivo state directly
-        handleUpdateDispositivo(selectedDeco, { canalActual: canal });
-        // Also keep legacy decos array in sync for backward compat
-        const decoNumber = parseInt(selectedDeco.replace("DTV", ""), 10);
-        const newDecos = decos.map((deco, i) =>
-          i === decoNumber - 1 ? { ...deco, canalDeco: canal } : deco
-        );
-        handleChangeEstadoDecos(newDecos);
-        await sendChannelDigits(selectedDeco, canal);
-        toast.success(`Canal ${canal} enviado a ${selectedDeco}`);
-      } else {
-        // CF-2: rechazo explícito — toast de advertencia, sin reset
-        // silencioso del input ni del placeholder.
+      if (!CANAL_ALLOWLIST.has(canal)) {
+        // CF-2: rechazo explícito — toast de advertencia, sin reset silencioso.
         toast.warning("canal no válido");
+        return;
+      }
+      applyLocal(canal);
+
+      // WS3 write-through: el server decide ANTES de emitir IR. CD-2: si el
+      // canal ya es el vigente CONFIRMADO responde noop y NO se emite IR.
+      const intent = await setChannelIntent(selectedDeco, canal);
+      if (intent.noop) {
+        toast.info("canal ya sintonizado");
+        return;
+      }
+      // CD-3: cambio de canal → feedback inmediato + IR client-side (los
+      // dígitos siguen viajando por /api/command, transport client-side).
+      toast.info(`cambiando al canal ${canal}`);
+      try {
+        await sendChannelDigits(selectedDeco, canal);
+        // CD-1: ACK del controlador (send ir success) persistido en el server.
+        await setChannelIntentAck(selectedDeco, "accepted");
+      } catch {
+        // CD-4: fallo del controlador → ACK rejected + revert del optimistic.
+        await setChannelIntentAck(selectedDeco, "rejected").catch(() => {});
+        applyLocal(prevCanal);
+        toast.error("error al cambiar canal, volvé a intentar");
       }
     } catch {
-      toast.error("Error al comunicar con el Arranger");
+      // Fallo del POST de intención (red/429/5xx): el write no se procesó.
+      applyLocal(prevCanal);
+      toast.error("error al cambiar canal, volvé a intentar");
     } finally {
       setLoading(false);
     }

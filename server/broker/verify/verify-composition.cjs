@@ -93,6 +93,8 @@ async function readUntilStateLink(reader, domain, linked, zoneId = null) {
     let body = await res.json();
     check("GET /api/broker/state → 200", res.status === 200);
     check("snapshot incluye sync y versions", !!body.sync && !!body.versions && body.versions.tvs >= 1);
+    check("snapshot incluye matrixModel top-level (WS4b)", !!body.matrixModel && Array.isArray(body.matrixModel.zones) && body.matrixModel.zones.length === 3);
+    check("versions.matrixGroups presente (WS4b)", typeof body.versions.matrixGroups === "number");
     check("desired TV01 default DTV1 (mock)", body.domains.tvs.desired.TV01 === "DTV1");
     const syncStale = body.sync.status === "stale" || body.sync.status === "synced";
     check("sync arranca stale (o ya synced por scan rápido)", syncStale);
@@ -312,6 +314,10 @@ async function readUntilStateLink(reader, domain, linked, zoneId = null) {
         body.domains.zonasFuera.desired["aVip-Bar-Boveda"].audio === "DTV6" &&
         body.domains.tvrack.desired.video === "DTV9" &&
         body.domains.tvrack.desired.audio === "DTV8",
+    );
+    check(
+      "preset load deriva matrixGroups server-side (WS4b, MG-2)",
+      !!body.domains.matrixGroups && body.domains.matrixGroups.reported === null && body.domains.matrixGroups.desired.TvsBarraSur === null,
     );
     const afterPresetScan = await broker.reconciler.scanOnce();
     check("scan posterior a preset distinto no adopta drift espurio", afterPresetScan.adopted === 0 && broker.reconciler.buildDiffs("tvrack").length === 0 && broker.reconciler.buildDiffs("zonasFuera").length === 0);

@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * Verificación PR 1 + PR 2 — State Broker foundation + composition.
+ * Verificación del state broker (slices WS2→WS3→WS4a→…, un step por PR).
  *
  * Sin test runner y sin hardware: cada script usa require directo contra los
  * módulos de server/broker/ (o createServer contra mock en puerto efímero).
@@ -14,7 +14,7 @@ const { spawnSync } = require("child_process");
 const path = require("path");
 
 const steps = [
-  ["verify-vite-proxy", "proxy Vite /api/tvrack hacia Express del worktree"],
+  ["verify-vite-proxy", "proxy Vite dev: TODO /api/<seg> usado por el cliente está proxeado al Express del worktree"],
   ["verify-destinations", "destinos canónicos (40, sin duplicados, mapa VW)"],
   ["verify-mock", "mockArranger modos normal/blip/offline deterministas"],
   ["verify-arranger-client", "arrangerClient getEncoder/joinAv + retry + FW-LOCKED"],
@@ -23,9 +23,13 @@ const steps = [
   ["verify-eventbus", "eventBus hub SSE: snapshot, incremental, heartbeat, máx 10"],
   ["verify-writequeue", "writeQueue FIFO por destino: serie, última intención gana"],
   ["verify-reconciler", "reconciler: auto-adopt, null no pisa, single-flight, intervalo, sync-status post-scan"],
+  ["verify-reconciler-concurrency", "fix clobber scan/write: una lectura vieja NO pisa un write durante el scan"],
   ["verify-write-confirm", "write-confirm: retry getEncoder post-join (settle) → reported correcto"],
   ["verify-confirm-settling", "confirm-settling: ventana por comando (av/stream) + no-op + unconfirmed"],
   ["verify-channel-intent", "WS3 channel-intent: intención+ACK, noop sin IR, reported null, reload, snapshot"],
+  ["verify-groups", "WS4a matrixModel+groups: modelo declarativo (3 zonas/10 subgrupos), opciones, expansión, mixed→null, round-trip"],
+  ["verify-matrix-groups", "WS4b matrix-groups: dominio server-authoritative, validación optionsFor, snapshot matrixModel, preset server-side"],
+  ["verify-dedupe", "WS5 dedupe: guard pre-join (no-op confirmado), escape force, un-solo-cambio, one-join-lag, in-flight"],
   ["verify-composition", "composition server.js: endpoints nuevos + legacy + SSE + stale→synced"],
 ];
 
@@ -40,5 +44,5 @@ for (const [name, label] of steps) {
   if (!ok) failed += 1;
 }
 
-console.log(`\n${failed === 0 ? "✓ TODAS LAS VERIFICACIONES PR 1 + PR 2 PASARON" : `✗ ${failed} verificación(es) fallaron`}`);
+console.log(`\n${failed === 0 ? "✓ TODAS LAS VERIFICACIONES PASARON" : `✗ ${failed} verificación(es) fallaron`}`);
 process.exit(failed === 0 ? 0 : 1);

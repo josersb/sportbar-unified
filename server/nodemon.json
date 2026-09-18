@@ -1,0 +1,5 @@
+{
+  "ext": "js,mjs,json",
+  "ignore": ["state.json", "state.json.*", "logs/*", "dist/*"],
+  "delay": "800"
+}

@@ -10,8 +10,9 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { createStore } = require("../store.js");
+const { createStore, normalizeV3 } = require("../store.js");
 const { createMockArranger } = require("../mockArranger.js");
+const { ZONA_FUERA_IDS } = require("../destinations.js");
 
 const checks = [];
 function check(name, cond) {
@@ -122,6 +123,120 @@ function fixtureV2() {
     check("T4: reported null no pisa", store.data.domains.tvs.reported.TV01 === "DTV4");
     check("T4: reported null no bumpa", store.data.domains.tvs.version === before);
     check("T4: setReportedAll con lecturas válidas", (() => { store.setReportedAll("tvs", { TV01: "DTV4", TV02: null }); return store.data.domains.tvs.reported.TV02 === undefined; })());
+
+    // ── T5 (WS3, T-3.1/3.2): dominio channelIntent + backfill idempotente ──
+    check("T5: migración v2→v3 incluye channelIntent", !!store.data.domains.channelIntent);
+    check("T5: channelIntent reported null", store.data.domains.channelIntent.reported === null);
+    check("T5: normalizeV3 agrega dominio faltante (idempotente)", (() => {
+      const seed = { schemaVersion: 3, domains: { tvs: { desired: {}, reported: {}, version: 5, lastUpdated: "x" } }, appOnly: {} };
+      const out = normalizeV3(seed);
+      return !!(out.domains.channelIntent && out.domains.tvs.version === 5);
+    })());
+    check("T5: normalizeV3 no toca dominio existente", (() => {
+      const intent = { desired: { DTV1: { canalActual: "1624", lastSentAt: "y", ack: "accepted" } }, reported: null, version: 7, lastUpdated: "z" };
+      const out = normalizeV3({ schemaVersion: 3, domains: { channelIntent: intent }, appOnly: {} });
+      return out.domains.channelIntent.version === 7;
+    })());
+    check("T5: normalizeV3 ignora seeds no-v3", normalizeV3({ schemaVersion: 2 })?.schemaVersion === 2);
+
+    // v3 anterior a WS3 en disco (sin channelIntent) → backfill al abrir, sin backup
+    const dbPath4 = path.join(tmp, "state4.json");
+    const backup4 = path.join(tmp, "state4.backup.json");
+    fs.writeFileSync(dbPath4, JSON.stringify({
+      schemaVersion: 3,
+      domains: { tvs: { desired: { TV01: "DTV3" }, reported: {}, version: 2, lastUpdated: "x" } },
+      appOnly: { tvrack: { link: false } },
+      sync: { status: "synced", lastSync: "y" },
+    }));
+    const st4 = await createStore({ dbPath: dbPath4, backupPath: backup4, log: { info: () => {}, warn: () => {} } });
+    check("T5: v3 viejo carga con backfill channelIntent", !!st4.data.domains.channelIntent && st4.data.domains.channelIntent.desired !== null);
+    check("T5: v3 viejo sin backup (sin rescan)", !fs.existsSync(backup4));
+    check("T5: v3 viejo conserva tvs intacto", st4.data.domains.tvs.desired.TV01 === "DTV3" && st4.data.domains.tvs.version === 2);
+
+    // T5b: setter app-domain (patrón presets): entrada mergeada + version bump
+    const vCi0 = st4.data.domains.channelIntent.version;
+    st4.setChannelIntentEntry("DTV1", { canalActual: "1624", lastSentAt: "2026-09-14T00:00:00.000Z", ack: "pending" });
+    const entry1 = st4.data.domains.channelIntent.desired.DTV1;
+    check("T5b: setChannelIntentEntry persiste intención", entry1.canalActual === "1624" && entry1.ack === "pending");
+    check("T5b: setChannelIntentEntry bumpa versión", st4.data.domains.channelIntent.version === vCi0 + 1);
+    st4.setChannelIntentEntry("DTV1", { ack: "accepted" });
+    const entry2 = st4.data.domains.channelIntent.desired.DTV1;
+    check("T5b: ACK mergea sin pisar canalActual/lastSentAt", entry2.ack === "accepted" && entry2.canalActual === "1624" && entry2.lastSentAt === "2026-09-14T00:00:00.000Z");
+    check("T5b: reported sigue null tras writes", st4.data.domains.channelIntent.reported === null);
+    check("T5b: getChannelIntent expone el dominio", st4.getChannelIntent().desired.DTV1.canalActual === "1624");
+
+    // ── T6 (WS4b, T-4b.1): dominio matrixGroups + backfill idempotente ──
+    check("T6: migración v2→v3 incluye matrixGroups", !!store.data.domains.matrixGroups);
+    check("T6: matrixGroups reported null", store.data.domains.matrixGroups.reported === null);
+    check("T6: normalizeV3 agrega matrixGroups faltante (idempotente)", (() => {
+      const seed = { schemaVersion: 3, domains: { tvs: { desired: {}, reported: {}, version: 5, lastUpdated: "x" } }, appOnly: {} };
+      const out = normalizeV3(seed);
+      return !!(out.domains.matrixGroups && out.domains.tvs.version === 5);
+    })());
+    check("T6: normalizeV3 no toca matrixGroups existente", (() => {
+      const groups = { desired: { TvsBarraLibertador: "DTV123" }, reported: null, version: 9, lastUpdated: "z" };
+      const out = normalizeV3({ schemaVersion: 3, domains: { matrixGroups: groups }, appOnly: {} });
+      return out.domains.matrixGroups.version === 9 && out.domains.matrixGroups.desired.TvsBarraLibertador === "DTV123";
+    })());
+    check("T6: v3 viejo carga con backfill matrixGroups", !!st4.data.domains.matrixGroups && st4.data.domains.matrixGroups.desired !== null);
+
+    // T6b: setter app-domain (patrón presets): merge shallow + version bump
+    const vMg0 = st4.data.domains.matrixGroups.version;
+    st4.setMatrixGroups({ TvsBarraLibertador: "DTV123" });
+    check("T6b: setMatrixGroups persiste valor", st4.data.domains.matrixGroups.desired.TvsBarraLibertador === "DTV123");
+    check("T6b: setMatrixGroups bumpa versión", st4.data.domains.matrixGroups.version === vMg0 + 1);
+    st4.setMatrixGroups({ VWN: "DTV2" });
+    check("T6b: setMatrixGroups mergea sin pisar entradas previas", st4.data.domains.matrixGroups.desired.VWN === "DTV2" && st4.data.domains.matrixGroups.desired.TvsBarraLibertador === "DTV123");
+    st4.setMatrixGroups({ TvsBarraSur: null });
+    check("T6b: null (mixto) persistible", st4.data.domains.matrixGroups.desired.TvsBarraSur === null);
+    check("T6b: reported sigue null tras writes", st4.data.domains.matrixGroups.reported === null);
+    check("T6b: getMatrixGroups expone el dominio", st4.getMatrixGroups().desired.VWN === "DTV2");
+    check("T6b: setMatrixGroups rechaza no-objeto", (() => { try { st4.setMatrixGroups("DTV1"); return false; } catch { return true; } })());
+
+    // ── T7 (vwall-libertador): backfill de zonas fuera faltantes en v3 ──
+    const NEW_ZONE = "aMas15-Vwall-Libertador";
+    const OLD_ZONES = ZONA_FUERA_IDS.filter((id) => id !== NEW_ZONE);
+    /** Seed v3 con las 10 zonas previas (sin la #11) y valores existentes. */
+    function seedV3Con10Zonas() {
+      const desired = {};
+      const appZonas = {};
+      for (const id of OLD_ZONES) {
+        desired[id] = { video: "DTV3", audio: "DTV2" };
+        appZonas[id] = { link: true };
+      }
+      return {
+        schemaVersion: 3,
+        domains: {
+          tvs: { desired: { TV01: "DTV3" }, reported: {}, version: 4, lastUpdated: "x" },
+          zonasFuera: { desired, reported: {}, version: 6, lastUpdated: "y" },
+        },
+        appOnly: { tvrack: { link: false }, zonasFuera: appZonas },
+        sync: { status: "synced", lastSync: "z" },
+      };
+    }
+
+    // In-memory: la #11 aparece con defaults, las 10 previas NO se pisan.
+    const seedT7 = seedV3Con10Zonas();
+    const outT7 = normalizeV3(seedT7);
+    check("T7: schemaVersion intacto", outT7.schemaVersion === 3);
+    check("T7: zona #11 aparece en desired con defaults", outT7.domains.zonasFuera.desired[NEW_ZONE].video === "DTV1" && outT7.domains.zonasFuera.desired[NEW_ZONE].audio === "DTV1");
+    check("T7: zona #11 aparece en appOnly con link false", outT7.appOnly.zonasFuera[NEW_ZONE].link === false);
+    check("T7: las 10 zonas previas conservan valores", outT7.domains.zonasFuera.desired["aVip-Barra-Centro"].video === "DTV3" && outT7.appOnly.zonasFuera["aVip-Barra-Centro"].link === true);
+    check("T7: sin bump de versiones", outT7.domains.zonasFuera.version === 6 && outT7.domains.tvs.version === 4);
+
+    // Re-run: idempotente, ni duplica ni pisa.
+    const outT7b = normalizeV3(outT7);
+    check("T7: re-run idempotente (mismo contenido)", JSON.stringify(outT7b.domains.zonasFuera.desired) === JSON.stringify(outT7.domains.zonasFuera.desired) && JSON.stringify(outT7b.appOnly.zonasFuera) === JSON.stringify(outT7.appOnly.zonasFuera));
+
+    // En disco: state.json v3 con 10 zonas → la #11 aparece al abrir, sin backup.
+    const dbPath5 = path.join(tmp, "state5.json");
+    const backup5 = path.join(tmp, "state5.backup.json");
+    fs.writeFileSync(dbPath5, JSON.stringify(seedV3Con10Zonas()));
+    const st5 = await createStore({ dbPath: dbPath5, backupPath: backup5, log: { info: () => {}, warn: () => {} } });
+    check("T7: v3 en disco carga la #11 (desired DTV1/DTV1)", st5.data.domains.zonasFuera.desired[NEW_ZONE].video === "DTV1" && st5.data.domains.zonasFuera.desired[NEW_ZONE].audio === "DTV1");
+    check("T7: v3 en disco carga la #11 (appOnly link false)", st5.data.appOnly.zonasFuera[NEW_ZONE].link === false);
+    check("T7: v3 en disco sin backup (sin rescan)", !fs.existsSync(backup5));
+    check("T7: v3 en disco conserva zonas previas", st5.data.domains.zonasFuera.desired["aMas-15-Barra"].video === "DTV3" && st5.data.appOnly.zonasFuera["aMas-15-Barra"].link === true);
 
     const failed = checks.filter((c) => !c.ok).length;
     console.log(`\n${failed === 0 ? "✓ STORE OK" : `✗ ${failed} chequeos fallaron`}`);

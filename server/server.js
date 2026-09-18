@@ -23,6 +23,10 @@ const {
   toArranger,
   isDestination,
 } = require("./broker/destinations.js");
+// WS4a/WS4b — modelo declarativo único + helpers de grupos (MG-4: única fuente
+// de opciones/expansión; el server es dueño de matrixGroups).
+const matrixModel = require("./broker/matrixModel.js");
+const { expandGroups, collapseGroup } = require("./broker/groups.js");
 
 // Leer configuración específica del worktree (gitignored)
 let wtConfig = { vitePort: 5173, expressPort: 3101 };
@@ -41,6 +45,10 @@ const ARRANGER_BASE = `http://${ARRANGER_HOST}:${ARRANGER_PORT}`;
 // Antes divergían: línea 20 usaba VITE_ARRANGER_TOKEN y la 460 usaba
 // ARRANGER_TOKEN || "TOKEN_REMOVED". Ahora UN solo token, fail-fast al arranque.
 const ARRANGER_TOKEN = process.env.VITE_ARRANGER_TOKEN || process.env.ARRANGER_TOKEN;
+
+// Modelo declarativo servido read-only en el snapshot (design WS4: el cliente
+// renderiza los selects desde `matrixModel` — sin copias cliente-side).
+const MATRIX_MODEL = matrixModel.MATRIX_MODEL;
 
 // Intervalo de reconciliación (env var, default 300000 ms = 5 min, post-design)
 const RECONCILER_INTERVAL_MS = parseInt(process.env.RECONCILER_INTERVAL_MS || "", 10) || 300000;
@@ -111,14 +119,28 @@ async function createServer(options = {}) {
     readEncoder: (dest, sub) => client.getEncoder(dest, sub),
     log,
   });
-  const bus = createEventBus({ getSnapshot: () => store.getSnapshot(), log });
+  const bus = createEventBus({
+    // T-4b.2: el snapshot SSE lleva `matrixModel` top-level además del store,
+    // para que el cliente (WS4c/d) renderice desde el modelo servido.
+    getSnapshot: () => ({ ...store.getSnapshot(), matrixModel: MATRIX_MODEL }),
+    log,
+  });
   const writeQueue = createWriteQueue({ log });
+  // Fix clobber reconciler/write: timestamp del último write (o intento) por
+  // destino. El reconciler NO adopta destinos tocados durante su scan — un
+  // scan tarda ~20s y la lectura pudo tomarse ANTES del write (pisaría un
+  // estado más nuevo: reported confirmado + desired del operador).
+  const writeTouchedAt = new Map();
   const reconciler = createReconciler({
     client,
     store,
     bus,
     log,
     intervalMs: options.reconcilerIntervalMs || RECONCILER_INTERVAL_MS,
+    recentlyWritten: (dest, sinceMs) => {
+      const t = writeTouchedAt.get(dest);
+      return t != null && t >= sinceMs;
+    },
   });
 
   // Arranque background + stale: servimos el persistido marcado stale y el
@@ -285,6 +307,14 @@ async function createServer(options = {}) {
   const REREAD_DELAYS_MS = [3000, 9000];
   const pendingReReads = new Map(); // `${dest}:${sub}` → { attempts, source, timer }
 
+  // ── WS5-DEDUPE (T-5.2): lastBatch — último write por destino, in-memory ──
+  // Map<dest, { source, sub, at }>. NO se persiste (decisión del change):
+  // sobrevive solo al proceso. Marca resubmits idénticas y da el `reason`
+  // del no-op en la respuesta del guard ("resubmit idéntica" vs
+  // "reported confirmado"). Se actualiza en CADA executeWrite, emita join
+  // o lo saltee, así que refleja la última intención efectiva del destino.
+  const lastBatch = new Map();
+
   /** Aplica un read confirmado al reported (misma lógica que executeWrite §4). */
   function applyConfirmedRead(domain, key, sub, value) {
     if (domain === "tvs") {
@@ -344,15 +374,27 @@ async function createServer(options = {}) {
    * por destino. Devuelve { ok, dest, source, sub, reported, error? }.
    *
    * HOTFIX 5 (observabilidad): mide las duraciones de cada fase (queue, join,
-   * confirm, re-reads) para la línea de cierre end-to-end que loggea
-   * writeInBackground tras el broadcast — reconstrucción de timelines.
-   */
-  async function executeWrite(dest, source, sub = "video", writeId, timings) {
+    * confirm, re-reads) para la línea de cierre end-to-end que loggea
+    * writeInBackground tras el broadcast — reconstrucción de timelines.
+    *
+    * WS5-DEDUPE (T-5.1): `opts.force` saltea el guard pre-join. El guard
+    * corre ANTES de emitir el join y NO toca `confirmEncoder` ni su ventana
+    * de settling (PR #13): solo evita emitir un comando que el hardware ya
+    * confirmó. Traducción de la condición del spec dentro de la tarea
+    * encolada: `writeQueue.isBusy(dest)` es SIEMPRE true durante la ejecución
+    * de la propia tarea (la tarea vive en la cadena), así que el "no busy"
+    * real es `!writeQueue.hasPending(dest)` — nada pendiente detrás de esta.
+    */
+  async function executeWrite(dest, source, sub = "video", writeId, timings, opts = {}) {
+    const force = opts.force === true;
     const t = timings || { queuedAt: Date.now(), startedAt: Date.now() };
     t.startedAt = Date.now(); // la tarea arrancó (salió de la cola)
     const domain = dest === TVRACK_ID ? "tvrack" : ZONA_FUERA_IDS.includes(dest) ? "zonasFuera" : "tvs";
     const key = domain === "tvs" ? toApp(dest) : dest;
     const wlog = (tag, msg) => writeLog(writeId, tag, msg);
+    // Marca el destino como tocado AHORA: el reconciler que esté escaneando no
+    // debe adoptarlo con una lectura previa (fix clobber scan/write).
+    writeTouchedAt.set(dest, Date.now());
     const d = store.getDomain(domain);
     // Leer link aquí, dentro de la tarea encolada: nunca capturar una versión
     // obsoleta antes de que la cola FIFO procese la escritura.
@@ -364,6 +406,32 @@ async function createServer(options = {}) {
           ? !!appOnly.zonasFuera?.[dest]?.link
           : false;
     const linked = domain !== "tvs" && link;
+
+    // ── WS5-DEDUPE (T-5.1): guard pre-join ──
+    // No-op iff `reported` CONFIRMADO ya es la fuente pedida (todas las
+    // corrientes si linked) y no hay writes pendientes detrás de esta tarea.
+    // `reported` solo lo escriben lecturas confirmadas (executeWrite §4,
+    // re-reads y scan del reconciler), así que es confiable; si difiere
+    // (one-join-lag) el join se emite — ante duda, NO saltear. `force:true`
+    // saltea el guard (escape explícito del operador). `lastBatch` solo
+    // informa el `reason`; NO participa de la decisión (evitar no-ops falsos).
+    let confirmedReported; // valor confirmado actual del destino (para el no-op)
+    let confirmedSame;
+    if (linked) {
+      const rep = domain === "tvrack" ? d.reported : d.reported ? d.reported[key] : undefined;
+      confirmedReported = { video: source, audio: source };
+      confirmedSame = !!rep && rep.video === source && rep.audio === source;
+    } else if (domain === "tvs") {
+      confirmedReported = d.reported[key];
+      confirmedSame = confirmedReported === source;
+    } else if (domain === "tvrack") {
+      confirmedReported = d.reported ? d.reported[sub] : undefined;
+      confirmedSame = confirmedReported === source;
+    } else {
+      confirmedReported = d.reported && d.reported[key] ? d.reported[key][sub] : undefined;
+      confirmedSame = confirmedReported === source;
+    }
+    const skipJoin = !force && confirmedSame && !writeQueue.hasPending(dest);
 
     // 1. Intención del operador
     if (domain === "tvs") {
@@ -379,6 +447,27 @@ async function createServer(options = {}) {
     } else {
       d.desired[key] = { ...(d.desired[key] || {}), [sub]: source };
       store.bumpVersion(domain);
+    }
+
+    // ── WS5-DEDUPE (T-5.1): no-op confirmado → sin join ──
+    // El desired YA quedó seteado (intención registrada y coherente con el
+    // reported); se broadcastea y se responde {ok, noop:true, confirmed:true}
+    // SIN emitir el comando al Arranger. `confirmEncoder` y su ventana de
+    // settling (PR #13) quedan intactos: el guard termina aquí.
+    if (skipJoin) {
+      const prevBatch = lastBatch.get(dest);
+      const reason =
+        prevBatch && prevBatch.source === source && (prevBatch.sub || "video") === sub
+          ? "resubmit idéntica (lastBatch)"
+          : "reported confirmado";
+      lastBatch.set(dest, { source, sub, at: Date.now() });
+      wlog(
+        "DEDUPE",
+        `no-op ${dest}/${sub}=${source} — ${reason}; join NO emitido`,
+      );
+      await store.write();
+      broadcastDomain(domain, writeId);
+      return { ok: true, noop: true, confirmed: true, dest, source, sub, reported: confirmedReported };
     }
 
     // 2. Comando al Arranger — `joinKind` es la ÚNICA fuente de verdad: decide
@@ -398,6 +487,8 @@ async function createServer(options = {}) {
       return { ok: false, dest, source, sub, error: joinResult.error || "join falló" };
     }
     wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} ok (${joinResult.text || ""})`);
+    // WS5-DEDUPE: la intención efectiva de este destino quedó emitida.
+    lastBatch.set(dest, { source, sub, at: Date.now() });
 
     // 3. Lectura post-comando (confirmación) — ventana por tipo de comando
     //    (ver confirmEncoder/CONFIRM_POLICY): read#1 inmediato + read#2 anclado
@@ -517,6 +608,13 @@ async function createServer(options = {}) {
     let payload;
     if (domain === "presets") {
       payload = d.desired;
+    } else if (domain === "channelIntent") {
+      // App-only (CD-5): se difunde el desired (intención), nunca reported (null).
+      payload = d.desired;
+    } else if (domain === "matrixGroups") {
+      // App-only (MG-1): se difunde el desired (intención de grupos),
+      // nunca reported (null).
+      payload = d.desired;
     } else if (domain === "tvrack") {
       payload = {
         ...(d.reported || {}),
@@ -553,9 +651,12 @@ async function createServer(options = {}) {
         tvrack: snap.domains.tvrack.version,
         zonasFuera: snap.domains.zonasFuera.version,
         presets: snap.domains.presets.version,
+        channelIntent: snap.domains.channelIntent ? snap.domains.channelIntent.version : 1,
+        matrixGroups: snap.domains.matrixGroups ? snap.domains.matrixGroups.version : 1,
       },
       domains: snap.domains,
       appOnly: snap.appOnly,
+      matrixModel: MATRIX_MODEL,
     };
   }
 
@@ -650,12 +751,13 @@ async function createServer(options = {}) {
    * @param {string} domain - tvs | tvrack | zonasFuera
    * @param {string} source - source DTV
    * @param {string} sub - video | audio
+   * @param {object} [opts] - { force } → saltea el guard WS5-DEDUPE en executeWrite
    * @returns {Promise<{ok, confirmed, reported}>} - siempre se resuelve
    */
-  function writeInBackground(dest, domain, source, sub, writeId) {
+  function writeInBackground(dest, domain, source, sub, writeId, opts = {}) {
     if (!BACKGROUND_CONFIRM) {
       // Modo síncrono (compat): se mantiene para rollback o tests E2E
-      return writeQueue.enqueue(dest, () => executeWrite(dest, source, sub, writeId));
+      return writeQueue.enqueue(dest, () => executeWrite(dest, source, sub, writeId, undefined, opts));
     }
     // Fire-and-forget: la cola FIFO del writeQueue garantiza orden; el
     // broadcast del desired sale inmediato para que el cliente vea la
@@ -663,7 +765,7 @@ async function createServer(options = {}) {
     const queuePos = writeQueue.pendingCount + 1;
     writeLog(writeId, "QUEUE", `enqueued ${dest} (pos ${queuePos}, pending ${writeQueue.pendingKeys.length})`);
     const timings = { queuedAt: Date.now(), startedAt: Date.now() };
-    const task = writeQueue.enqueue(dest, () => executeWrite(dest, source, sub, writeId, timings));
+    const task = writeQueue.enqueue(dest, () => executeWrite(dest, source, sub, writeId, timings, opts));
     // Broadcast desired inmediato: el cliente con optimistic overlay o el
     // polling ven la intención sin esperar el join.
     broadcastDomain(domain, writeId);
@@ -672,6 +774,12 @@ async function createServer(options = {}) {
         if (!result || !result.ok) {
           writeError(writeId, "QUEUE", `write ${dest}/${sub}=${source} falló: ${result && result.error}`);
           writeLog(writeId, "WRITE", `DONE end-to-end ${(Date.now() - timings.queuedAt) / 1000}s (queue ${((timings.startedAt - timings.queuedAt) / 1000).toFixed(2)}s · join fallido)`);
+          return;
+        }
+        if (result.noop) {
+          // WS5-DEDUPE: no hubo join (el guard lo salteó); el broadcast del
+          // desired ya salió desde el guard y la cola sigue limpia.
+          writeLog(writeId, "WRITE", `DONE end-to-end ${((Date.now() - timings.queuedAt) / 1000).toFixed(1)}s (dedupe no-op, sin join)`);
           return;
         }
         // Confirmación asienta: re-broadcast con el reported confirmado.
@@ -715,9 +823,11 @@ async function createServer(options = {}) {
       versions: {},
       domains: {},
       appOnly: snap.appOnly,
+      matrixModel: MATRIX_MODEL,
     };
-    for (const name of ["tvs", "tvrack", "zonasFuera", "presets"]) {
+    for (const name of ["tvs", "tvrack", "zonasFuera", "presets", "channelIntent", "matrixGroups"]) {
       const d = snap.domains[name];
+      if (!d) continue; // seed sin backfill — dominio nuevo, se omite
       body.versions[name] = d.version;
       if (!since[name] || d.version > since[name]) {
         body.domains[name] = d;
@@ -739,9 +849,11 @@ async function createServer(options = {}) {
   });
 
   // Escritura de matriz confirmada (spec: desired → join → get encoder → reported → broadcast)
+  // WS5-DEDUPE: `force:true` en el body saltea el guard pre-join (escape
+  // explícito "forzar reenvío" del operador, UXF-2).
   app.post("/api/tvs/:id/source", writesLimiter, async (req, res) => {
     const { id } = req.params;
-    const { source, deviceId } = req.body || {};
+    const { source, deviceId, force } = req.body || {};
     const src = source || deviceId;
     const dest = toArranger(id);
     if (!isDestination(dest)) {
@@ -750,16 +862,17 @@ async function createServer(options = {}) {
     if (!src || typeof src !== "string") {
       return res.status(400).json({ error: "source requerido" });
     }
+    const writeOpts = { force: force === true };
 
     const writeId = nextWriteId();
-    writeLog(writeId, "WRITE", `POST /api/tvs/${id}/source {source:"${src}"} client=${req.ip || req.socket?.remoteAddress || "?"}`);
+    writeLog(writeId, "WRITE", `POST /api/tvs/${id}/source {source:"${src}"}${writeOpts.force ? " [force]" : ""} client=${req.ip || req.socket?.remoteAddress || "?"}`);
 
     if (BACKGROUND_CONFIRM) {
       // Background confirmation (fix real-hardware C): respondemos rápido
       // con confirmed=false; el join + confirmEncoder + broadcast del
       // reported corren en background. El cliente con optimistic overlay ve
       // el desired YA por el broadcast inmediato que dispara writeInBackground.
-      writeInBackground(dest, "tvs", src, "video", writeId);
+      writeInBackground(dest, "tvs", src, "video", writeId, writeOpts);
       const d = store.getDomain("tvs");
       return res.json({
         ok: true,
@@ -775,14 +888,16 @@ async function createServer(options = {}) {
       });
     }
 
-    const result = await writeQueue.enqueue(dest, () => executeWrite(dest, src, "video", writeId));
+    const result = await writeQueue.enqueue(dest, () => executeWrite(dest, src, "video", writeId, undefined, writeOpts));
     if (!result.ok) {
       return res.status(502).json({ ok: false, id, source: src, error: result.error });
     }
-    broadcastDomain("tvs");
+    if (!result.noop) broadcastDomain("tvs");
     const d = store.getDomain("tvs");
     res.json({
       ok: true,
+      // WS5-DEDUPE: no-op del guard → sin join, confirmado por el reported.
+      noop: !!result.noop,
       id,
       source: src,
       dest,
@@ -811,6 +926,17 @@ async function createServer(options = {}) {
     // El snapshot puede transportar el link app-only. Se persiste antes de
     // encolar, mientras executeWrite vuelve a leerlo dentro de cada tarea.
     applySnapshotLinks(preset);
+
+    // MG-2: resolver los valores de grupo EXCLUSIVAMENTE en el server,
+    // derivando matrixGroups de las TVs individuales del preset con
+    // collapseGroup. Mixed → null ("Mixto / Personalizado", MG-6); pantallas
+    // faltantes del preset → null (no representable como opción conocida).
+    const derived = {};
+    for (const sg of matrixModel.subgroups()) {
+      const v = collapseGroup(preset.tvs || {}, sg.screens);
+      derived[sg.key] = v === undefined ? null : v;
+    }
+    store.setMatrixGroups(derived);
     await store.write();
 
     const writes = [];
@@ -857,8 +983,170 @@ async function createServer(options = {}) {
       }
     }
 
-    for (const domain of ["tvs", "tvrack", "zonasFuera"]) broadcastDomain(domain);
+    for (const domain of ["tvs", "tvrack", "zonasFuera", "matrixGroups"]) broadcastDomain(domain);
     res.json({ ok: failed === 0, applied: results.length - failed, failed, results });
+  });
+
+  // ── WS3 — Intención de canal DTV (app-only, CD-1..CD-5) ──
+  // El canal se modela como INTENCIÓN server-side, nunca como estado confirmado
+  // del deco: la API V210826 no permite leer el canal; `send ir` solo da ACK del
+  // controlador. Los dígitos IR siguen client-side (transporte /api/command) y el
+  // cliente reporta el resultado del controlador vía el endpoint de ACK.
+  const DECO_ID_RE = /^DTV[1-8]$/;
+
+  app.post("/api/decos/:id/channel", writesLimiter, async (req, res) => {
+    const { id } = req.params;
+    if (!DECO_ID_RE.test(id)) {
+      return res.status(400).json({ error: `Decodificador inválido: ${id}` });
+    }
+    const canal = req.body && req.body.canal != null ? String(req.body.canal).trim() : "";
+    if (!canal) {
+      return res.status(400).json({ error: "canal requerido" });
+    }
+
+    // CD-2: mismo canal vigente → "canal ya sintonizado" sin emitir IR. SOLO
+    // si el canal vigente está CONFIRMADO (ack accepted): un intent
+    // pending/rejected NO bloquea el reintento (y no debe "mentir" que cambió).
+    const current = store.getDomain("channelIntent")?.desired[id];
+    if (current && current.canalActual === canal && current.ack === "accepted") {
+      return res.json({
+        ok: true,
+        noop: true,
+        reason: "canal ya sintonizado",
+        decoId: id,
+        canalActual: canal,
+        intent: current,
+      });
+    }
+
+    const writeId = nextWriteId();
+    writeLog(writeId, "WRITE", `channel intent ${id} → ${canal} (IR client-side, ACK pendiente)`);
+    store.setChannelIntentEntry(id, {
+      canalActual: canal,
+      previousCanal: current && current.canalActual != null ? current.canalActual : null,
+      lastSentAt: new Date().toISOString(),
+      ack: "pending",
+    });
+    await store.write();
+    broadcastDomain("channelIntent", writeId);
+    const d = store.getDomain("channelIntent");
+    res.json({
+      ok: true,
+      noop: false,
+      message: `cambiando al canal ${canal}`,
+      decoId: id,
+      canalActual: canal,
+      intent: d.desired[id],
+      version: d.version,
+    });
+  });
+
+  // ACK del controlador (resultado del IR client-side, CD-1): accepted
+  // (`send ir success`) o rejected (fallo del controlador).
+  app.post("/api/decos/:id/channel/ack", writesLimiter, async (req, res) => {
+    const { id } = req.params;
+    if (!DECO_ID_RE.test(id)) {
+      return res.status(400).json({ error: `Decodificador inválido: ${id}` });
+    }
+    const { ack } = req.body || {};
+    if (ack !== "accepted" && ack !== "rejected") {
+      return res.status(400).json({ error: "ack debe ser 'accepted' o 'rejected'" });
+    }
+    if (!store.getDomain("channelIntent")?.desired[id]) {
+      return res.status(404).json({ error: `Sin intención de canal para ${id}` });
+    }
+    const cur = store.getDomain("channelIntent")?.desired[id];
+    if (ack === "rejected" && cur && cur.previousCanal != null) {
+      // El IR falló: el cambio NO se implementó. Restaurar el canal vigente
+      // para no dejar un estado falso (el panel debe reflejar la realidad).
+      store.setChannelIntentEntry(id, { ack, canalActual: cur.previousCanal });
+    } else {
+      store.setChannelIntentEntry(id, { ack });
+    }
+    await store.write();
+    broadcastDomain("channelIntent");
+    const d = store.getDomain("channelIntent");
+    res.json({ ok: true, decoId: id, intent: d.desired[id], version: d.version });
+  });
+
+  // ── WS4b — matrixGroups (MG-1..MG-6) ──
+  // Dominio server-authoritative de la intención de grupos. El cliente envía
+  // SOLO valores de subgrupo; el server valida contra el modelo declarativo
+  // (MG-5: cada valor debe estar en optionsFor(size) del subgrupo — rechaza
+  // p. ej. DTV9 o un combo de longitud incorrecta), expande a TVs (MG-4) y
+  // encola los writes por el writeQueue. La dedupe no-op pre-join es WS5
+  // (guard dentro de executeWrite); acá el writeQueue serializa por destino.
+  app.post("/api/matrix-groups", writesLimiter, async (req, res) => {
+    const values = req.body && req.body.values ? req.body.values : null;
+    // WS5-DEDUPE: `force:true` reenvía todos los writes del submit salteando
+    // el guard pre-join (escape explícito "forzar reenvío", UXF-2).
+    const force = !!(req.body && req.body.force === true);
+    if (!values || typeof values !== "object" || Array.isArray(values)) {
+      return res.status(400).json({ error: "Se espera { values: { [subgroupKey]: valor } }" });
+    }
+
+    // Validación MG-5 contra el modelo: clave = subgrupo conocido, valor ∈
+    // optionsFor(size) o null (mixto explícito). Rechazo con 400 ANTES de
+    // tocar el store ni expandir (cierra la SUGGESTION de la verificación WS4a).
+    const errors = [];
+    const valid = {};
+    for (const [key, value] of Object.entries(values)) {
+      const sg = matrixModel.findSubgroup(key);
+      if (!sg) {
+        errors.push(`${key}: subgrupo desconocido`);
+        continue;
+      }
+      if (value === null) {
+        valid[key] = null;
+        continue;
+      }
+      if (!matrixModel.optionsFor(sg.screens.length).includes(value)) {
+        errors.push(`${key}: valor inválido ${JSON.stringify(value)} (opciones válidas: tamaño ${sg.screens.length})`);
+        continue;
+      }
+      valid[key] = value;
+    }
+    if (errors.length > 0) {
+      return res.status(400).json({ error: "valores de grupo inválidos", details: errors });
+    }
+    if (Object.keys(valid).length === 0) {
+      return res.json({ ok: true, noop: true, values: store.getMatrixGroups().desired });
+    }
+
+    // Expansión MG-4 (módulo puro): valores validados → patch de TVs.
+    const { tvs } = expandGroups(valid);
+
+    // Persistir la intención ANTES de encolar: los clientes ven matrixGroups
+    // ya (broadcast inmediato) mientras los joins asientan en background.
+    store.setMatrixGroups(valid);
+    await store.write();
+    const writeId = nextWriteId();
+    writeLog(
+      writeId,
+      "WRITE",
+      `POST /api/matrix-groups {${Object.entries(valid).map(([k, v]) => `${k}="${v}"`).join(", ")}} → ${Object.keys(tvs).length} writes`,
+    );
+    broadcastDomain("matrixGroups", writeId);
+
+    // Write-through por pantalla (mismo pipeline que el batch de MatrizVideo).
+    // Claves app del patch (VWN..TV26) → nomenclatura Arranger, igual que el
+    // preset load (VWN viaja como VW-Norte al hardware).
+    for (const [tvKey, source] of Object.entries(tvs)) {
+      const dest = toArranger(tvKey);
+      if (!isDestination(dest) || !source) continue;
+      writeInBackground(dest, "tvs", source, "video", nextWriteId(), { force });
+    }
+
+    const d = store.getDomain("matrixGroups");
+    res.json({
+      ok: true,
+      noop: false,
+      values: d.desired,
+      tvsPatch: tvs,
+      version: d.version,
+      lastUpdated: d.lastUpdated,
+      sync: store.getSync(),
+    });
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -894,9 +1182,13 @@ async function createServer(options = {}) {
     const result = await writeQueue.enqueue(TVRACK_ID, () => executeWrite(TVRACK_ID, src, sub, writeId));
     if (!result.ok) return res.status(502).json({ ok: false, error: result.error });
     const link = !!store.getAppOnly().tvrack?.link;
-    broadcastDomain("tvrack");
+    // WS5-DEDUPE: no-op del guard → sin join (el guard ya broadcasteó el desired).
+    if (!result.noop) broadcastDomain("tvrack");
     const d = store.getDomain("tvrack");
     res.json({
+      ok: true,
+      // WS5-DEDUPE: no-op del guard → sin join, confirmado por el reported.
+      noop: !!result.noop,
       video: d.desired.video,
       audio: d.desired.audio,
       link,
@@ -922,7 +1214,7 @@ async function createServer(options = {}) {
     });
   });
 
-  // ── Zonas Fuera — 10 zonas externas ──
+  // ── Zonas Fuera — 11 zonas externas ──
   function validateZonaFueraId(req, res, next) {
     const { id } = req.params;
     if (!ZONA_FUERA_IDS.includes(id)) {
@@ -958,9 +1250,18 @@ async function createServer(options = {}) {
     const result = await writeQueue.enqueue(id, () => executeWrite(id, src, sub, writeId));
     if (!result.ok) return res.status(502).json({ ok: false, error: result.error });
     const link = !!store.getAppOnly().zonasFuera?.[id]?.link;
-    broadcastDomain("zonasFuera");
+    // WS5-DEDUPE: no-op del guard → sin join (el guard ya broadcasteó el desired).
+    if (!result.noop) broadcastDomain("zonasFuera");
     const d = store.getDomain("zonasFuera");
-    res.json({ zoneId: id, ...d.desired[id], link, lastUpdated: d.lastUpdated });
+    res.json({
+      ok: true,
+      // WS5-DEDUPE: no-op del guard → sin join, confirmado por el reported.
+      noop: !!result.noop,
+      zoneId: id,
+      ...d.desired[id],
+      link,
+      lastUpdated: d.lastUpdated,
+    });
   }
 
   app.post("/api/zonas-fuera/:id/video", writesLimiter, validateZonaFueraId, (req, res) => zonaFueraWrite(req, res, "video"));

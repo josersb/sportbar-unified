@@ -8,7 +8,7 @@
  * válida (null/blip nunca pisa). El cliente deja de tocar el Arranger.
  *
  * Ciclo:
- *   1. Lee get encoder de los 40 destinos en batches de 4 (video + audio,
+ *   1. Lee get encoder de los 41 destinos en batches de 4 (video + audio,
  *      TVRACK y zonas-fuera leen audio separado).
  *   2. Actualiza `reported` con las lecturas confirmadas (null nunca pisa).
  *   3. Auto-adopta `desired ← reported` por destino (y por sub-key video/audio
@@ -27,7 +27,7 @@
  *   offline    — ninguna lectura confirmada en el ciclo (Arranger inalcanzable)
  */
 
-const { MATRIX_DESTINATIONS, TVRACK_ID, ZONA_FUERA_IDS, toApp } = require("./destinations");
+const { MATRIX_DESTINATIONS, TVRACK_ID, ZONA_FUERA_IDS, toApp, toArranger } = require("./destinations");
 
 const DEFAULT_INTERVAL_MS = 300000; // 5 min — decisión post-design
 
@@ -47,7 +47,7 @@ function valuesEqual(a, b) {
  *   store:  broker store (getDomain/setDesired/setReported/setReportedAll/bumpVersion/write/setSync)
  *   bus:    eventBus (publish/publishSync) — opcional: sin bus no hay eventos
  */
-function createReconciler({ client, store, bus = null, log = console, batchSize = 4, intervalMs } = {}) {
+function createReconciler({ client, store, bus = null, log = console, batchSize = 4, intervalMs, recentlyWritten = null } = {}) {
   if (!client || !store) {
     throw new Error("[reconciler] client y store son requeridos");
   }
@@ -109,24 +109,36 @@ function createReconciler({ client, store, bus = null, log = console, batchSize 
    * Auto-adopta un dominio: reported ← lecturas confirmadas; desired ← reported
    * por destino/sub-key. Devuelve la cantidad de adopciones (desired cambiados).
    */
-  function adoptDomain(domain, readings) {
-    const keys = Object.keys(readings || {});
-    if (keys.length === 0) return 0;
+  function adoptDomain(domain, readings, sinceMs) {
     const d = store.getDomain(domain);
     if (!d) return 0;
 
-    const prevVersion = d.version;
-    const prevReportedJson = JSON.stringify(d.reported || {});
-
-    // reported ← lecturas confirmadas (solo si realmente cambió, para no
-    // inflar versiones en escaneos sin novedades).
-    if (JSON.stringify(readings) !== prevReportedJson) {
-      store.setReportedAll(domain, readings); // filtra nulls; bumpVersion
+    // Fix clobber scan/write: descartar lecturas de destinos TOCADOS después de
+    // arrancado este scan. Un scan tarda ~20s; si un write (join confirmado o
+    // intención) ocurre en el medio, la lectura pudo tomarse ANTES y pisaría un
+    // estado más nuevo (el reported recién confirmado + el desired del operador).
+    const fresh = {};
+    for (const [key, value] of Object.entries(readings || {})) {
+      if (recentlyWritten) {
+        const dest = domain === "tvs" ? toArranger(key) : domain === "tvrack" ? TVRACK_ID : key;
+        if (recentlyWritten(dest, sinceMs)) {
+          log.info(`[reconciler] skip ${domain}.${key}: escrito durante el scan (lectura stale, no pisa)`);
+          continue;
+        }
+      }
+      fresh[key] = value;
     }
+    if (Object.keys(fresh).length === 0) return 0;
+
+    const prevVersion = d.version;
+
+    // reported ← lecturas confirmadas. MERGE sobre el actual: los destinos
+    // saltados conservan su reported; setReportedAll no bumpa si no cambia.
+    store.setReportedAll(domain, { ...(d.reported || {}), ...fresh });
 
     // desired ← reported confirmado (Arranger gana), por sub-key en objetos.
     let adopted = 0;
-    for (const [key, value] of Object.entries(readings)) {
+    for (const [key, value] of Object.entries(fresh)) {
       if (value == null) continue;
       if (domain === "zonasFuera") {
         const cur = d.desired[key] || {};
@@ -134,18 +146,18 @@ function createReconciler({ client, store, bus = null, log = console, batchSize 
           d.desired[key] = { ...(d.desired[key] || {}), video: value.video };
           store.bumpVersion(domain);
           adopted += 1;
-          log.info(`[reconciler] adoptado zonasFuera.${key}.video: ${cur.video} → ${value.video}`);
+          log.info(`[reconciler] adoptado zonasFuera.${key}.video → ${value.video}`);
         }
         if (value.audio != null && !valuesEqual(cur.audio, value.audio)) {
           d.desired[key] = { ...(d.desired[key] || {}), audio: value.audio };
           store.bumpVersion(domain);
           adopted += 1;
-          log.info(`[reconciler] adoptado zonasFuera.${key}.audio: ${cur.audio} → ${value.audio}`);
+          log.info(`[reconciler] adoptado zonasFuera.${key}.audio → ${value.audio}`);
         }
       } else if (!valuesEqual(d.desired[key], value)) {
         store.setDesired(domain, key, value); // bumpVersion
         adopted += 1;
-        log.info(`[reconciler] adoptado ${domain}.${key}: ${d.desired[key]} → ${value}`);
+        log.info(`[reconciler] adoptado ${domain}.${key} → ${value}`);
       }
     }
 
@@ -167,6 +179,7 @@ function createReconciler({ client, store, bus = null, log = console, batchSize 
     let anyConfirmed = false;
     try {
       const start = Date.now();
+      const scanStartedAt = start; // corte temporal del guard scan/write
       const tvsReadings = {};
       const tvrackReadings = {};
       const zonesReadings = {};
@@ -193,9 +206,9 @@ function createReconciler({ client, store, bus = null, log = console, batchSize 
         );
       }
 
-      adoptedTotal += adoptDomain("tvs", tvsReadings);
-      adoptedTotal += adoptDomain("tvrack", tvrackReadings);
-      adoptedTotal += adoptDomain("zonasFuera", zonesReadings);
+      adoptedTotal += adoptDomain("tvs", tvsReadings, scanStartedAt);
+      adoptedTotal += adoptDomain("tvrack", tvrackReadings, scanStartedAt);
+      adoptedTotal += adoptDomain("zonasFuera", zonesReadings, scanStartedAt);
       await store.write();
 
       const diffTotal = ["tvs", "tvrack", "zonasFuera"].reduce((n, d) => n + countDiffs(d), 0);

@@ -44,10 +44,10 @@ Las capabilities MUST ser manual-only: declaradas en el registro `dispositivos.j
 - THEN la UI refleja la nueva capability al recargar
 
 ### Requirement: Destination Registration
-The system SHALL register IPEX5002 decoder destinations alongside IPEX5001 source devices. A helper function MUST expose the full destination list to components.
+The system SHALL register 11 IPEX5002 decoder destinations alongside IPEX5001 source devices. A helper function MUST expose the full destination list to components.
 
 #### Scenario: Destinations exposed to components
-- GIVEN app initializes with 10 IPEX5002 destinations in estado.tvs
+- GIVEN app initializes with 11 IPEX5002 destinations in estado.tvs
 - WHEN a component needs destination metadata
 - THEN it can query the destination list with labels and Arranger names
 

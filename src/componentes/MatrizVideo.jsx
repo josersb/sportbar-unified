@@ -3,42 +3,41 @@ import { Formik, Form } from "formik";
 import Select from "./Select";
 import ContextoUser from "../contexto/Contexto";
 import { getByCapability } from "../contexto/dispositivos";
-import { setTvSource, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
-import { collapseGroup, GROUP_DEFS, writeErrorMessage } from "../hooks/brokerClientCore";
-import { sortTvsByGroup } from "../data/tvGroups";
+import { setMatrixGroups, setTvrackVideo, setTvrackAudio, setTvrackLink } from "../api/arrangerApi";
+import { collapseGroup, writeErrorMessage } from "../hooks/brokerClientCore";
 import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
 import Button from "./ui/Button";
+// Fuente única de orden y labels de las 11 zonas fuera (zonasFuera.js).
+import { ZONAS_FUERA } from "../data/zonasFuera";
 
-const ZONE_LABELS = {
-  'aVip-Barra-Centro': 'VIP Barra Centro',
-  'aVip-Lobby-Batacazo': 'VIP Lobby Batacazo',
-  'aVip-Bar-Boveda': 'VIP Bar Bóveda',
-  'RACK-VIP-PANTALLABATACA': 'Rack VIP Bataca',
-  'aMas-15-Barra': '+15 Barra',
-  'a-Menos1-Escenario': 'Escenario -1',
-  'a-Menos1-Escenario2': 'Escenario -1 (2)',
-  'a-QMR75-Menos1-TV1': 'QMR75 -1 TV1',
-  'a-QMR75-Menos1-TV2': 'QMR75 -1 TV2',
-  'a-QMC65-Menos1-TV2': 'QMC65 -1 TV2',
+// WS4d: títulos de zona para display (las OPCIONES y subgrupos vienen del
+// matrixModel servido — MG-4; estos títulos no duplican nada del modelo).
+const ZONE_TITLES = {
+  videowall: "Videos Wall Norte - Centro - Sur",
+  perimetro: "Perímetro de TVs Norte - Centro - Sur",
+  barra: "Tvs de la Barra Norte - Libertador - Sur - Pista",
 };
 
-const ZONAS_FUERA_IDS = [
-  'aVip-Barra-Centro', 'aVip-Lobby-Batacazo', 'aVip-Bar-Boveda',
-  'RACK-VIP-PANTALLABATACA', 'aMas-15-Barra', 'a-Menos1-Escenario',
-  'a-Menos1-Escenario2', 'a-QMR75-Menos1-TV1', 'a-QMR75-Menos1-TV2',
-  'a-QMC65-Menos1-TV2',
-];
+// WS4d (MG-6): representación honesta del estado derivado.
+// `null` (mixto) → opción "Mixto / Personalizado"; `undefined` (sin datos:
+// pantallas faltantes o sin modelo) → sin selección.
+const MIXED_OPTION = "__mixto__";
+const MIXED_LABEL = "Mixto / Personalizado";
+const NO_DATA_OPTION = "";
+const NO_DATA_LABEL = "Sin datos";
 
-// Destinos de matriz reales del broker (TV01-TV26 + VWN/VWC/VWS). Los grupos
-// TvsBarra*/TvsEscalera* del form se expanden a estas TVs individuales.
-const DESTINOS_TV = [
-  "VWN", "VWC", "VWS",
-  "TV01", "TV02", "TV03", "TV04", "TV05", "TV06", "TV07", "TV08", "TV09", "TV10",
-  "TV11", "TV12", "TV13", "TV14", "TV15", "TV16", "TV17", "TV18", "TV19", "TV20",
-  "TV21", "TV22", "TV23", "TV24", "TV25", "TV26",
-];
+/** "DTV123" → "DTV 1,2,3"; "DTV1" → "DTV 1" (labels de opciones del select). */
+const optionLabel = (value) => {
+  if (/^DTV\d+$/.test(value) && value.length > 4) {
+    return `DTV ${value.slice(3).split("").join(",")}`;
+  }
+  return value.replace("DTV", "DTV ");
+};
+
+/** Valor representable como fuente/combo de un subgrupo (excluye sentinels). */
+const isSourceValue = (v) => typeof v === "string" && /^DTV\d+$/.test(v);
 
 const MatrizVideo = () => {
   const {
@@ -51,6 +50,8 @@ const MatrizVideo = () => {
     applyOptimistic,
     getOptimisticDomain,
     revertOptimistic,
+    matrixGroups,
+    matrixModel,
   } = useContext(ContextoUser);
 
   const tvs = estado.tvs || {};
@@ -114,19 +115,114 @@ const MatrizVideo = () => {
     }
   };
 
-  // Valores de grupo derivados de las TVs individuales del broker
-  // (sin keys legacy en el estado). El form edita grupos; el submit expande.
-  const initialValues = {
-    VWN: tvs.VWN || "DTV1",
-    VWC: tvs.VWC || "DTV1",
-    VWS: tvs.VWS || "DTV1",
-    TvsBarraLivertador: collapseGroup(tvs, GROUP_DEFS.TvsBarraLivertador) || "DTV1",
-    TvsBarraSur: collapseGroup(tvs, GROUP_DEFS.TvsBarraSur) || "DTV1",
-    TvsBarraPista: collapseGroup(tvs, GROUP_DEFS.TvsBarraPista) || "DTV1",
-    TvsBarraNorte: collapseGroup(tvs, GROUP_DEFS.TvsBarraNorte) || "DTV1",
-    TvsEscaleraNorte: collapseGroup(tvs, GROUP_DEFS.TvsEscaleraNorte) || "DTV1",
-    TvsEscaleraCentro: collapseGroup(tvs, GROUP_DEFS.TvsEscaleraCentro) || "DTV1",
-    TvsEscaleraSur: collapseGroup(tvs, GROUP_DEFS.TvsEscaleraSur) || "DTV1",
+  // WS4d (MG-4/MG-6): zonas/subgrupos y opciones derivados del matrixModel
+  // SERVIDO — sin bloques hardcodeados. `initialValues` toma PRECEDENCIA
+  // SERVER desde `matrixGroups.desired`; si el server aún no reporta la key
+  // se hace fallback al collapse de las TVs individuales del broker.
+  // Representación honesta: `null` (mixto) → "Mixto / Personalizado";
+  // `undefined` (sin datos) → sin selección. Sin modelo → degradación segura
+  // (no se renderizan selects de grupos y Enviar queda deshabilitado).
+  const hasModel = Boolean(matrixModel && Array.isArray(matrixModel.zones));
+  const combosBySize = matrixModel?.combosBySize || {};
+  const videoSources = getByCapability("videoSource");
+  const optionsForSize = (size) => [
+    ...videoSources.map((d) => d.id),
+    ...(combosBySize[size] || []),
+  ];
+
+  const groupZones = hasModel
+    ? matrixModel.zones.map((zone) => ({
+        key: zone.key,
+        title: ZONE_TITLES[zone.key] || zone.key,
+        subgroups: (zone.subgroups || []).map((sg) => {
+          const screens = Array.isArray(sg.screens) ? sg.screens : [];
+          const serverValue = matrixGroups?.[sg.key];
+          const derived =
+            serverValue !== undefined
+              ? serverValue
+              : collapseGroup(tvs, screens, combosBySize);
+          return {
+            key: sg.key,
+            label: sg.dir,
+            // WS5 (T-5.4): pantallas del subgrupo para el pre-filtro del
+            // submit (collapse del estado confirmado por pantalla).
+            screens,
+            options: optionsForSize(screens.length),
+            value:
+              derived === null
+                ? MIXED_OPTION
+                : derived === undefined
+                  ? NO_DATA_OPTION
+                  : derived,
+            showMixed: derived === null,
+            showNoData: derived === undefined,
+          };
+        }),
+      }))
+    : [];
+
+  const initialValues = {};
+  for (const zone of groupZones) {
+    for (const g of zone.subgroups) {
+      initialValues[g.key] = g.value;
+    }
+  }
+
+  // WS4e: intent completo del operador — solo valores representables
+  // (isSourceValue); "Mixto / Personalizado" y "Sin datos" se omiten.
+  const buildIntent = (values) => {
+    const intent = {};
+    for (const zone of groupZones) {
+      for (const g of zone.subgroups) {
+        if (isSourceValue(values[g.key])) intent[g.key] = values[g.key];
+      }
+    }
+    return intent;
+  };
+
+  // WS5 (UXF-2, T-5.4): submit con pre-filtro cliente. Los subgrupos cuyo
+  // valor ya coincide con el estado confirmado (collapse del `estado.tvs`,
+  // que es reported-wins: solo refleja valor confirmado u overlay propio
+  // en vuelo) NO viajan en el POST — el server los deduplicaría igual
+  // (guard pre-join), pero así ni siquiera sale la intención. Si NADA
+  // cambia → toast "sin cambios" sin POST. `force:true` (acción explícita
+  // "forzar reenvío") envía el intent COMPLETO y le pide al server que
+  // saltee su guard — escape del one-join-lag.
+  const submitIntent = async (values, { force = false } = {}) => {
+    let toSend = buildIntent(values);
+    if (!force) {
+      const changed = {};
+      for (const zone of groupZones) {
+        for (const g of zone.subgroups) {
+          if (toSend[g.key] === undefined) continue;
+          const confirmedDerived = collapseGroup(tvs, g.screens, combosBySize);
+          if (confirmedDerived !== toSend[g.key]) changed[g.key] = toSend[g.key];
+        }
+      }
+      toSend = changed;
+    }
+
+    if (Object.keys(toSend).length === 0) {
+      // UXF-2: no-op confirmado → "sin cambios", sin POST ni optimistic.
+      toast.info("sin cambios");
+      return;
+    }
+
+    // Optimistic ANTES del POST (mismo patrón fix real-hardware A):
+    // overlay de matrixGroups con la intención que VIAJA (pre-filtrada)
+    // para feedback visual inmediato; el SSE del server la confirma y
+    // limpia. Error en el POST (429/5xx/network) → revert al overlay
+    // previo + toast (hotfix 5, evidencia #908).
+    const prevOverlay = getOptimisticDomain("matrixGroups");
+    applyOptimistic("matrixGroups", toSend);
+    try {
+      // WS5: force:true pide al server saltear su guard dedupe (UXF-2).
+      await (force ? setMatrixGroups(toSend, { force: true }) : setMatrixGroups(toSend));
+      toast.success(force ? "Matriz de video reenviada" : "Matriz de video actualizada");
+    } catch (err) {
+      revertOptimistic("matrixGroups", toSend, prevOverlay);
+      toast.error(writeErrorMessage(err, "Matriz de video"));
+    }
   };
 
   return (
@@ -142,495 +238,71 @@ const MatrizVideo = () => {
         )}
         <Formik
           initialValues={initialValues}
-          onSubmit={async (values) => {
-            const newTvs = { ...tvs };
-            newTvs.VWN = values.VWN;
-            newTvs.VWC = values.VWC;
-            newTvs.VWS = values.VWS;
-            newTvs.TvsBarraLivertador = values.TvsBarraLivertador;
-            switch (values.TvsBarraLivertador) {
-              case "DTV123":
-                newTvs.TV01 = "DTV1";
-                newTvs.TV02 = "DTV2";
-                newTvs.TV03 = "DTV3";
-                break;
-              case "DTV121":
-                newTvs.TV01 = "DTV1";
-                newTvs.TV02 = "DTV2";
-                newTvs.TV03 = "DTV1";
-                break;
-              case "DTV542":
-                newTvs.TV01 = "DTV5";
-                newTvs.TV02 = "DTV4";
-                newTvs.TV03 = "DTV2";
-                break;
-              case "DTV143":
-                newTvs.TV01 = "DTV1";
-                newTvs.TV02 = "DTV4";
-                newTvs.TV03 = "DTV3";
-                break;
-              case "DTV153":
-                newTvs.TV01 = "DTV1";
-                newTvs.TV02 = "DTV5";
-                newTvs.TV03 = "DTV3";
-                break;
-              default:
-                newTvs.TV01 = values.TvsBarraLivertador;
-                newTvs.TV02 = values.TvsBarraLivertador;
-                newTvs.TV03 = values.TvsBarraLivertador;
-            }
-            newTvs.TvsBarraSur = values.TvsBarraSur;
-            switch (values.TvsBarraSur) {
-              case "DTV1234":
-                newTvs.TV04 = "DTV1";
-                newTvs.TV05 = "DTV2";
-                newTvs.TV06 = "DTV3";
-                newTvs.TV07 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV04 = "DTV1";
-                newTvs.TV05 = "DTV2";
-                newTvs.TV06 = "DTV1";
-                newTvs.TV07 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV04 = "DTV1";
-                newTvs.TV05 = "DTV2";
-                newTvs.TV06 = "DTV3";
-                newTvs.TV07 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV04 = "DTV5";
-                newTvs.TV05 = "DTV4";
-                newTvs.TV06 = "DTV3";
-                newTvs.TV07 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV04 = "DTV3";
-                newTvs.TV05 = "DTV2";
-                newTvs.TV06 = "DTV5";
-                newTvs.TV07 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV04 = "DTV1";
-                newTvs.TV05 = "DTV3";
-                newTvs.TV06 = "DTV5";
-                newTvs.TV07 = "DTV4";
-                break;
-              default:
-                newTvs.TV04 = values.TvsBarraSur;
-                newTvs.TV05 = values.TvsBarraSur;
-                newTvs.TV06 = values.TvsBarraSur;
-                newTvs.TV07 = values.TvsBarraSur;
-            }
-            newTvs.TvsBarraPista = values.TvsBarraPista;
-            switch (values.TvsBarraPista) {
-              case "DTV123":
-                newTvs.TV08 = "DTV1";
-                newTvs.TV09 = "DTV2";
-                newTvs.TV10 = "DTV3";
-                break;
-              case "DTV121":
-                newTvs.TV08 = "DTV1";
-                newTvs.TV09 = "DTV2";
-                newTvs.TV10 = "DTV1";
-                break;
-              case "DTV542":
-                newTvs.TV08 = "DTV5";
-                newTvs.TV09 = "DTV4";
-                newTvs.TV10 = "DTV2";
-                break;
-              case "DTV143":
-                newTvs.TV08 = "DTV1";
-                newTvs.TV09 = "DTV4";
-                newTvs.TV10 = "DTV3";
-                break;
-              case "DTV153":
-                newTvs.TV08 = "DTV1";
-                newTvs.TV09 = "DTV5";
-                newTvs.TV10 = "DTV3";
-                break;
-              default:
-                newTvs.TV08 = values.TvsBarraPista;
-                newTvs.TV09 = values.TvsBarraPista;
-                newTvs.TV10 = values.TvsBarraPista;
-            }
-            newTvs.TvsBarraNorte = values.TvsBarraNorte;
-            switch (values.TvsBarraNorte) {
-              case "DTV1234":
-                newTvs.TV11 = "DTV1";
-                newTvs.TV12 = "DTV2";
-                newTvs.TV13 = "DTV3";
-                newTvs.TV14 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV11 = "DTV1";
-                newTvs.TV12 = "DTV2";
-                newTvs.TV13 = "DTV1";
-                newTvs.TV14 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV11 = "DTV1";
-                newTvs.TV12 = "DTV2";
-                newTvs.TV13 = "DTV3";
-                newTvs.TV14 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV11 = "DTV5";
-                newTvs.TV12 = "DTV4";
-                newTvs.TV13 = "DTV3";
-                newTvs.TV14 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV11 = "DTV3";
-                newTvs.TV12 = "DTV2";
-                newTvs.TV13 = "DTV5";
-                newTvs.TV14 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV11 = "DTV1";
-                newTvs.TV12 = "DTV3";
-                newTvs.TV13 = "DTV5";
-                newTvs.TV14 = "DTV4";
-                break;
-              default:
-                newTvs.TV11 = values.TvsBarraNorte;
-                newTvs.TV12 = values.TvsBarraNorte;
-                newTvs.TV13 = values.TvsBarraNorte;
-                newTvs.TV14 = values.TvsBarraNorte;
-            }
-            newTvs.TvsEscaleraNorte = values.TvsEscaleraNorte;
-            switch (values.TvsEscaleraNorte) {
-              case "DTV1234":
-                newTvs.TV23 = "DTV1";
-                newTvs.TV24 = "DTV2";
-                newTvs.TV25 = "DTV3";
-                newTvs.TV26 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV23 = "DTV1";
-                newTvs.TV24 = "DTV2";
-                newTvs.TV25 = "DTV1";
-                newTvs.TV26 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV23 = "DTV1";
-                newTvs.TV24 = "DTV2";
-                newTvs.TV25 = "DTV3";
-                newTvs.TV26 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV23 = "DTV5";
-                newTvs.TV24 = "DTV4";
-                newTvs.TV25 = "DTV3";
-                newTvs.TV26 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV23 = "DTV3";
-                newTvs.TV24 = "DTV2";
-                newTvs.TV25 = "DTV5";
-                newTvs.TV26 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV23 = "DTV1";
-                newTvs.TV24 = "DTV3";
-                newTvs.TV25 = "DTV5";
-                newTvs.TV26 = "DTV4";
-                break;
-              default:
-                newTvs.TV23 = values.TvsEscaleraNorte;
-                newTvs.TV24 = values.TvsEscaleraNorte;
-                newTvs.TV25 = values.TvsEscaleraNorte;
-                newTvs.TV26 = values.TvsEscaleraNorte;
-            }
-            newTvs.TvsEscaleraCentro = values.TvsEscaleraCentro;
-            switch (values.TvsEscaleraCentro) {
-              case "DTV1234":
-                newTvs.TV19 = "DTV1";
-                newTvs.TV20 = "DTV2";
-                newTvs.TV21 = "DTV3";
-                newTvs.TV22 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV19 = "DTV1";
-                newTvs.TV20 = "DTV2";
-                newTvs.TV21 = "DTV1";
-                newTvs.TV22 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV19 = "DTV1";
-                newTvs.TV20 = "DTV2";
-                newTvs.TV21 = "DTV3";
-                newTvs.TV22 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV19 = "DTV5";
-                newTvs.TV20 = "DTV4";
-                newTvs.TV21 = "DTV3";
-                newTvs.TV22 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV19 = "DTV3";
-                newTvs.TV20 = "DTV2";
-                newTvs.TV21 = "DTV5";
-                newTvs.TV22 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV19 = "DTV1";
-                newTvs.TV20 = "DTV3";
-                newTvs.TV21 = "DTV5";
-                newTvs.TV22 = "DTV4";
-                break;
-              default:
-                newTvs.TV19 = values.TvsEscaleraCentro;
-                newTvs.TV20 = values.TvsEscaleraCentro;
-                newTvs.TV21 = values.TvsEscaleraCentro;
-                newTvs.TV22 = values.TvsEscaleraCentro;
-            }
-            newTvs.TvsEscaleraSur = values.TvsEscaleraSur;
-            switch (values.TvsEscaleraSur) {
-              case "DTV1234":
-                newTvs.TV15 = "DTV1";
-                newTvs.TV16 = "DTV2";
-                newTvs.TV17 = "DTV3";
-                newTvs.TV18 = "DTV4";
-                break;
-              case "DTV1212":
-                newTvs.TV15 = "DTV1";
-                newTvs.TV16 = "DTV2";
-                newTvs.TV17 = "DTV1";
-                newTvs.TV18 = "DTV2";
-                break;
-              case "DTV1231":
-                newTvs.TV15 = "DTV1";
-                newTvs.TV16 = "DTV2";
-                newTvs.TV17 = "DTV3";
-                newTvs.TV18 = "DTV1";
-                break;
-              case "DTV5432":
-                newTvs.TV15 = "DTV5";
-                newTvs.TV16 = "DTV4";
-                newTvs.TV17 = "DTV3";
-                newTvs.TV18 = "DTV2";
-                break;
-              case "DTV3254":
-                newTvs.TV15 = "DTV3";
-                newTvs.TV16 = "DTV2";
-                newTvs.TV17 = "DTV5";
-                newTvs.TV18 = "DTV4";
-                break;
-              case "DTV1354":
-                newTvs.TV15 = "DTV1";
-                newTvs.TV16 = "DTV3";
-                newTvs.TV17 = "DTV5";
-                newTvs.TV18 = "DTV4";
-                break;
-              default:
-                newTvs.TV15 = values.TvsEscaleraSur;
-                newTvs.TV16 = values.TvsEscaleraSur;
-                newTvs.TV17 = values.TvsEscaleraSur;
-                newTvs.TV18 = values.TvsEscaleraSur;
-            }
-
-            // Escrituras confirmed-only vía broker (writeQueue serializa por
-            // destino): POST /api/tvs/:id/source por cada TV real, en batches.
-            // Overlay optimista ANTES del POST (fix real-hardware A): feedback
-            // visual inmediato. El SSE event del broker confirma/corrige y lo
-            // limpia. Sin estado local optimista en setEstado — el snapshot
-            // SSE es la fuente de verdad.
-            // Hotfix 5: los POSTs que fallan (429/5xx/network) se revierten
-            // del optimistic individualmente + toast con el conteo — la UI
-            // nunca muestra cambios que el server rechazó (evidencia #908).
-            // Hotfix 6: el batch se ORDENA por grupos físicos (video-wall →
-            // escaleras → barras) ANTES de disparar los POSTs — el orden de
-            // envío = orden de enqueue = orden de ejecución con el semáforo
-            // global del server. Pantallas relacionadas cambian juntas y lo
-            // más visible primero (evidencia #908: los del final del batch
-            // esperaban minutos).
-            const mappings = sortTvsByGroup(DESTINOS_TV).map((tv) => ({ dest: tv, source: newTvs[tv] }));
-            const prevOverlay = getOptimisticDomain("tvs");
-            const appliedPatches = [];
-            try {
-              // Aplicar optimistic de TODAS las TVs del submit en una sola
-              // pasada (UI se actualiza instantáneamente con la intención del
-              // operador, sin esperar el batch).
-              const tvsOptimisticPatch = {};
-              for (const { dest, source } of mappings) {
-                if (source) tvsOptimisticPatch[dest] = source;
-              }
-              if (Object.keys(tvsOptimisticPatch).length > 0) {
-                applyOptimistic("tvs", tvsOptimisticPatch);
-                appliedPatches.push(tvsOptimisticPatch);
-              }
-              const BATCH_SIZE = 8;
-              const failures = [];
-              for (let i = 0; i < mappings.length; i += BATCH_SIZE) {
-                const batch = mappings.slice(i, i + BATCH_SIZE);
-                const results = await Promise.allSettled(
-                  batch.map(({ dest, source }) => setTvSource(dest, source))
-                );
-                results.forEach((r, j) => {
-                  if (r.status === "rejected") failures.push({ ...batch[j], err: r.reason });
-                });
-              }
-              if (failures.length === 0) {
-                toast.success("Matriz de video actualizada");
-              } else {
-                // Rollback de SOLO los fallidos: revert del patch completo
-                // contra el overlay previo capturado antes del batch restaura
-                // las claves fallidas a su valor pre-submit; los exitosos
-                // conservan su optimistic hasta la confirmación SSE.
-                const failedPatch = {};
-                for (const { dest, source } of failures) {
-                  if (source) failedPatch[dest] = source;
-                }
-                if (Object.keys(failedPatch).length > 0) {
-                  revertOptimistic("tvs", failedPatch, prevOverlay);
-                }
-                const rateLimited = failures.some((f) => f.err && f.err.status === 429);
-                if (rateLimited) {
-                  toast.error(
-                    `${failures.length} de ${mappings.length} órdenes no fueron procesadas por límite de tasa — esperá unos segundos y reenviá`,
-                  );
-                } else {
-                  toast.error(
-                    `${failures.length} de ${mappings.length} órdenes no fueron procesadas — revisá la conexión y reintentá`,
-                  );
-                }
-              }
-            } catch {
-              // Rollback total (defensa: allSettled no debería rechazar).
-              for (const patch of appliedPatches) {
-                revertOptimistic("tvs", patch, prevOverlay);
-              }
-              toast.error("Error al actualizar la matriz de video");
-            }
-          }}
+          // W-1 (verify WS4d): los selects de grupos se montan tarde cuando el
+          // snapshot async llega después del mount (hard reload en /matrizvideo)
+          // y Formik no inicializa campos registrados tarde. Con
+          // enableReinitialize el form se reinicializa cuando initialValues
+          // cambia de contenido (deep-compare interno de Formik: no resetea por
+          // churn de identidad) — los selects reflejan el valor real del
+          // server apenas llega. Efecto colateral deseado: tras un submit, el
+          // broadcast SSE de matrixGroups resincroniza el form con el desired
+          // aceptado por el server (MG-1).
+          enableReinitialize
+          onSubmit={(values) => submitIntent(values)}
         >
+          {(formik) => (
           <Form>
             <div className={styles.formContainer}>
-              <div className={styles.selectZona}>
-                <h3 className={styles.selectZonaTitulo}>Videos Wall Norte - Centro - Sur</h3>
-                <div className={styles.selectRow}>
-                  <Select id="select-VWN" label="VWall Norte" name="VWN" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                  </Select>
-                  <Select label="VWall Centro" name="VWC" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                  </Select>
-                  <Select label="VWall Sur" name="VWS" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-              <div className={styles.selectZona}>
-                <h3 className={styles.selectZonaTitulo}>Perimetro de TVs Norte - Centro - Sur</h3>
-                <div className={styles.selectRow}>
-                  <Select
-                    label="TVs Escalera Norte"
-                    name="TvsEscaleraNorte"
-                    className={styles.formSelect}
-                  >
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                  <Select
-                    label="TVs Escalera Centro"
-                    name="TvsEscaleraCentro"
-                    className={styles.formSelect}
-                  >
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                  <Select label="TVs Escalera Sur" name="TvsEscaleraSur" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                </div>
-              </div>
-              <div className={styles.selectZona}>
-                <h3 className={styles.selectZonaTitulo}>
-                  Tvs de la Barra Norte - Livertador - Sur - Pista
-                </h3>
-                <div className={styles.selectRow}>
-                  <Select label="TVs Barra Norte" name="TvsBarraNorte" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                  <Select
-                    label="TVs Barra Livertador"
-                    name="TvsBarraLivertador"
-                    className={styles.formSelect}
-                  >
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV123">DTV1,2,3</option>
-                    <option value="DTV121">DTV1,2,1</option>
-                    <option value="DTV542">DTV5,4,2</option>
-                    <option value="DTV143">DTV1,4,3</option>
-                    <option value="DTV153">DTV1,5,3</option>
-                  </Select>
-                  <Select label="TVs Barra Sur" name="TvsBarraSur" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV1234">DTV1,2,3,4</option>
-                    <option value="DTV1212">DTV1,2,1,2</option>
-                    <option value="DTV1231">DTV1,2,3,1</option>
-                    <option value="DTV5432">DTV5,4,3,2</option>
-                    <option value="DTV3254">DTV3,2,5,4</option>
-                    <option value="DTV1354">DTV1,3,5,4</option>
-                  </Select>
-                  <Select label="TVs Barra Pista" name="TvsBarraPista" className={styles.formSelect}>
-                    {getByCapability('videoSource').map(d => (
-                      <option key={d.id} value={d.id}>{d.id.replace('DTV', 'DTV ')}</option>
-                    ))}
-                    <option value="DTV123">DTV1,2,3</option>
-                    <option value="DTV121">DTV1,2,1</option>
-                    <option value="DTV542">DTV5,4,2</option>
-                    <option value="DTV143">DTV1,4,3</option>
-                    <option value="DTV153">DTV1,5,3</option>
-                  </Select>
-                </div>
-              </div>
+              {hasModel
+                ? groupZones.map((zone) => (
+                    <div key={zone.key} className={styles.selectZona}>
+                      <h3 className={styles.selectZonaTitulo}>{zone.title}</h3>
+                      <div className={styles.selectRow}>
+                        {zone.subgroups.map((g) => (
+                          <Select
+                            key={g.key}
+                            label={g.label}
+                            name={g.key}
+                            className={styles.formSelect}
+                          >
+                            {g.showNoData && (
+                              <option value={NO_DATA_OPTION}>{NO_DATA_LABEL}</option>
+                            )}
+                            {g.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {optionLabel(opt)}
+                              </option>
+                            ))}
+                            {g.showMixed && (
+                              <option value={MIXED_OPTION}>{MIXED_LABEL}</option>
+                            )}
+                          </Select>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                : (
+                  <div className={styles.selectZona}>
+                    <h3 className={styles.selectZonaTitulo}>Grupos de la matriz</h3>
+                    <p className={styles.syncHint}>
+                      Modelo de matriz no disponible — los grupos no se pueden editar.
+                    </p>
+                  </div>
+                )}
               <div className={styles.submitContainer}>
-                <Button type="submit" variant="primary">
+                <Button type="submit" variant="primary" disabled={!hasModel}>
                   Enviar
+                </Button>
+                {/* WS5 (UXF-2): escape explícito "forzar reenvío" — envía el
+                    intent completo (sin pre-filtro) con force:true; el server
+                    saltea su guard dedupe y re-emite los joins. */}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!hasModel}
+                  onClick={() => submitIntent(formik.values, { force: true })}
+                >
+                  Forzar reenvío
                 </Button>
               </div>
               <div className={styles.selectZona}>
@@ -704,12 +376,12 @@ const MatrizVideo = () => {
                   ZONAS FUERA DE SPORTBAR
                 </h3>
                 <div className={styles.zonasFueraGrid}>
-                  {ZONAS_FUERA_IDS.map((zoneId) => {
-                    const zoneState = zonasFueraState[zoneId] || {};
+                  {ZONAS_FUERA.map((zone) => {
+                    const zoneState = zonasFueraState[zone.id] || {};
                     return (
-                      <div key={zoneId} className={styles.zonaCard}>
+                      <div key={zone.id} className={styles.zonaCard}>
                         <div className={styles.tvrackSubHeader}>
-                          <span>{ZONE_LABELS[zoneId]}</span>
+                          <span>{zone.label}</span>
                           <span className={styles.tvrackActiveBadge}>
                             {zoneState.video || '—'}
                           </span>
@@ -717,10 +389,10 @@ const MatrizVideo = () => {
                         <div className={styles.rackRow}>
                           {getByCapability('videoSource').map((d) => (
                             <Button
-                              key={`zf-${zoneId}-${d.id}`}
+                              key={`zf-${zone.id}-${d.id}`}
                               selected={d.id === zoneState.video}
-                              onClick={() => handleZonasFueraChange(zoneId, 'video', d.id)}
-                              data-testid={`btn-zf-video-${zoneId}-${d.id}`}
+                              onClick={() => handleZonasFueraChange(zone.id, 'video', d.id)}
+                              data-testid={`btn-zf-video-${zone.id}-${d.id}`}
                             >
                               {d.id}
                             </Button>
@@ -731,7 +403,7 @@ const MatrizVideo = () => {
                             <input
                               type="checkbox"
                               checked={zoneState.link || false}
-                              onChange={(e) => handleZonasFueraChange(zoneId, 'link', e.target.checked)}
+                              onChange={(e) => handleZonasFueraChange(zone.id, 'link', e.target.checked)}
                             />
                             Vincular video + audio
                           </label>
@@ -743,6 +415,7 @@ const MatrizVideo = () => {
               </div>
             </div>
           </Form>
+          )}
         </Formik>
       </PageContainer>
     </main>

@@ -60,6 +60,8 @@ Este proyecto usa múltiples ramas y worktrees. El orquestador debe seguir estas
 |------|----------|------|---------|--------|
 | `v2` | `sportbar-unified` (principal) | 5173 | 3101 | `pnpm run sportbar:dev` |
 | `feat/ahm-integration` | `sportbar-unified-worktrees/ahm-integration` | 5174 | 3102 | `pnpm run sportbar:dev` |
+| `feat/LedWallmas15` | `sportbar-unified-worktrees/mejoras-broker` | 5178 | 3106 | `pnpm run sportbar:dev` |
+| `feat/arranger-quickwins` | `sportbar-unified-worktrees/arranger-quickwins` | 5179 | 3107 | `pnpm run sportbar:dev` |
 | `master` | — | — | 3000 | producción (solo deploy) |
 
 ### Flujo de trabajo
@@ -89,6 +91,8 @@ feat/ahm-integration ──→ v2 ──→ master
 | `sportbar-unified-worktrees/buttons-redesign` | `feat/buttons-redesign` | 5176 | 3104 |
 | `sportbar-unified-worktrees/frontend-redesign` | `feat/frontend-redesign` | 5175 | 3103 |
 | `sportbar-unified-worktrees/security-ronda-4` | `feat/security-ronda-4` | 5177 | 3105 |
+| `sportbar-unified-worktrees/mejoras-broker` | `feat/LedWallmas15` | 5178 | 3106 |
+| `sportbar-unified-worktrees/arranger-quickwins` | `feat/arranger-quickwins` | 5179 | 3107 |
 
 Para crear un nuevo worktree:
 ```bash

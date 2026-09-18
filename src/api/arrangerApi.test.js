@@ -113,11 +113,13 @@ describe("sendSerialCommand", () => {
     vi.unstubAllGlobals();
   });
 
-  it("encodes \\x0A terminator as %5Cx0A in the URL", async () => {
+  it("encodes the real LF terminator as %0A in the URL", async () => {
     await sendSerialCommand("DTV1", "Mute1 set mute 1 true");
 
     const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("%5Cx0A");
+    expect(calledUrl).toContain("%0A");
+    // Regresión QW-2: NO debe enviar el literal de 4 caracteres \x0A (%5Cx0A).
+    expect(calledUrl).not.toContain("%5Cx0A");
     expect(calledUrl).toContain("send%20serial");
     expect(calledUrl).toContain("DTV1");
   });
@@ -126,7 +128,8 @@ describe("sendSerialCommand", () => {
     await sendSerialCommand("DTV3", "Source1 set Input 2");
 
     const calledUrl = fetch.mock.calls[0][0];
-    expect(calledUrl).toContain("%5Cx0A");
+    expect(calledUrl).toContain("%0A");
+    expect(calledUrl).not.toContain("%5Cx0A");
     expect(calledUrl).toContain("DTV3");
     expect(calledUrl).toContain("Source1%20set%20Input%202");
   });

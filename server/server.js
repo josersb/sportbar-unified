@@ -13,6 +13,8 @@ if (String(process.env.BROKER_FILE_LOG || "1") !== "0") {
 
 const { createStore } = require("./broker/store.js");
 const { createArrangerClient } = require("./broker/arrangerClient.js");
+// QW-4 — presets programáticos del Arranger (ensure/delete/load, naming sb_).
+const { createArrangerPresets } = require("./broker/arrangerPresets.js");
 const { createEventBus } = require("./broker/eventBus.js");
 const { createWriteQueue } = require("./broker/writeQueue.js");
 const { createReconciler } = require("./broker/reconciler.js");
@@ -113,6 +115,13 @@ async function createServer(options = {}) {
   // configurable) sin tocar el hardware ni el mock global. Default: el cliente
   // real/mock de siempre — behavior-preserving.
   const client = options.client || createArrangerClient({ token, mock: options.mock, mockMode: options.mockMode, mockLagSettleMs: options.mockLagSettleMs, log });
+  // QW-4: gestión programática de presets del Arranger. Reusa el cliente HTTP
+  // único (sendRaw → semáforo global); el Arranger es la fuente de verdad de
+  // sus presets (el broker NO persiste su estado).
+  const arrangerPresets = createArrangerPresets({
+    runCommand: (command, writeId) => client.sendRaw(command, undefined, writeId),
+    log,
+  });
   const store = await createStore({
     dbPath: options.dbPath,
     backupPath: options.backupPath,
@@ -197,7 +206,7 @@ async function createServer(options = {}) {
       res.header("Access-Control-Allow-Origin", origin);
       res.header("Vary", "Origin");
     }
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.header("Access-Control-Allow-Headers", "Content-Type");
     if (req.method === "OPTIONS") {
       return res.sendStatus(200);
@@ -482,9 +491,12 @@ async function createServer(options = {}) {
           : await client.joinVideo(source, dest, writeId);
     t.joinMs = Date.now() - joinStart;
     if (!joinResult.ok) {
-      wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} FAILED: ${joinResult.error || joinResult.text || "?"}`);
+      // QW-1: el resultado del write expone la clasificación del error del
+      // Arranger (transient | permanent | unknown) para logging/decisiones.
+      const errorKind = joinResult.errorKind || "unknown";
+      wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} FAILED [${errorKind}]: ${joinResult.error || joinResult.text || "?"}`);
       await store.write();
-      return { ok: false, dest, source, sub, error: joinResult.error || "join falló" };
+      return { ok: false, dest, source, sub, error: joinResult.error || "join falló", errorKind };
     }
     wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} ok (${joinResult.text || ""})`);
     // WS5-DEDUPE: la intención efectiva de este destino quedó emitida.
@@ -772,7 +784,8 @@ async function createServer(options = {}) {
     task
       .then((result) => {
         if (!result || !result.ok) {
-          writeError(writeId, "QUEUE", `write ${dest}/${sub}=${source} falló: ${result && result.error}`);
+          // QW-1: visibilidad de la clasificación del fallo (transient | permanent | unknown).
+          writeError(writeId, "QUEUE", `write ${dest}/${sub}=${source} falló [${(result && result.errorKind) || "unknown"}]: ${result && result.error}`);
           writeLog(writeId, "WRITE", `DONE end-to-end ${(Date.now() - timings.queuedAt) / 1000}s (queue ${((timings.startedAt - timings.queuedAt) / 1000).toFixed(2)}s · join fallido)`);
           return;
         }
@@ -1147,6 +1160,83 @@ async function createServer(options = {}) {
       lastUpdated: d.lastUpdated,
       sync: store.getSync(),
     });
+  });
+
+  // ── QW-4 — Presets programáticos del Arranger ──
+  // El Arranger es la fuente de verdad de sus presets: estos endpoints NO
+  // persisten nada en el store (ni lowdb ni memoria). Toda la validación de
+  // naming/comandos vive en arrangerPresets.js (400). NO se expone listado:
+  // `get presets` es el único comando ❓ de V210826 (R2).
+  function presetErrorStatus(errorKind) {
+    // `permanent` = el hardware rechazó la entrada (invalid args/mode) → 400;
+    // cualquier otro fallo (transient/unknown) es del upstream → 502.
+    return errorKind === "permanent" ? 400 : 502;
+  }
+
+  app.post("/api/arranger-presets", writesLimiter, async (req, res) => {
+    const { name, commands } = req.body || {};
+    const writeId = nextWriteId();
+    writeLog(
+      writeId,
+      "WRITE",
+      `POST /api/arranger-presets {name:"${name}", ${Array.isArray(commands) ? commands.length : "?"} comandos}`,
+    );
+    try {
+      const result = await arrangerPresets.ensurePreset(name, commands, writeId);
+      if (!result.ok) {
+        writeError(writeId, "ARRANGER", `ensurePreset ${name} falló [${result.errorKind}]: ${result.error}`);
+        return res.status(presetErrorStatus(result.errorKind)).json(result);
+      }
+      return res.json(result);
+    } catch (error) {
+      if (error && error.isValidation) {
+        return res.status(400).json({ ok: false, error: error.message, errorKind: "validation" });
+      }
+      writeError(writeId, "ARRANGER", `ensurePreset inesperado: ${error && error.message}`);
+      return res.status(500).json({ ok: false, error: error && error.message ? error.message : "error inesperado" });
+    }
+  });
+
+  app.delete("/api/arranger-presets/:name", writesLimiter, async (req, res) => {
+    const { name } = req.params;
+    const writeId = nextWriteId();
+    writeLog(writeId, "WRITE", `DELETE /api/arranger-presets/${name}`);
+    try {
+      const result = await arrangerPresets.deletePreset(name, writeId);
+      if (!result.ok) {
+        writeError(writeId, "ARRANGER", `deletePreset ${name} falló [${result.errorKind}]: ${result.error}`);
+        return res.status(presetErrorStatus(result.errorKind)).json(result);
+      }
+      return res.json(result);
+    } catch (error) {
+      if (error && error.isValidation) {
+        return res.status(400).json({ ok: false, error: error.message, errorKind: "validation" });
+      }
+      writeError(writeId, "ARRANGER", `deletePreset inesperado: ${error && error.message}`);
+      return res.status(500).json({ ok: false, error: error && error.message ? error.message : "error inesperado" });
+    }
+  });
+
+  app.post("/api/arranger-presets/:name/load", writesLimiter, async (req, res) => {
+    const { name } = req.params;
+    const { delayMinutes } = req.body || {};
+    const writeId = nextWriteId();
+    writeLog(writeId, "WRITE", `POST /api/arranger-presets/${name}/load {delayMinutes:${delayMinutes == null ? "—" : delayMinutes}}`);
+    try {
+      const result = await arrangerPresets.loadPreset(name, { delayMinutes, writeId });
+      if (!result.ok) {
+        writeError(writeId, "ARRANGER", `loadPreset ${name} falló [${result.errorKind}]: ${result.error}`);
+        return res.status(presetErrorStatus(result.errorKind)).json(result);
+      }
+      // delayUnit explicita la unidad (MINUTOS) — NUNCA confundir con ms (R4).
+      return res.json({ ...result, delayUnit: "minutes" });
+    } catch (error) {
+      if (error && error.isValidation) {
+        return res.status(400).json({ ok: false, error: error.message, errorKind: "validation" });
+      }
+      writeError(writeId, "ARRANGER", `loadPreset inesperado: ${error && error.message}`);
+      return res.status(500).json({ ok: false, error: error && error.message ? error.message : "error inesperado" });
+    }
   });
 
   // ══════════════════════════════════════════════════════════════════════

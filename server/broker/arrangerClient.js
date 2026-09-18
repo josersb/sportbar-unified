@@ -32,6 +32,7 @@
  */
 
 const { createMockArranger } = require("./mockArranger");
+const { classifyArrangerError, isArrangerErrorResponse } = require("./arrangerErrors");
 
 const FW_LOCKED_BANNER =
   "[FW-LOCKED] getter no disponible en firmware v1.3.4 (API V210826). " +
@@ -48,6 +49,32 @@ function resolveMaxConcurrent(explicit) {
   if (explicit != null && Number.isFinite(explicit) && explicit >= 1) return Math.floor(explicit);
   const env = parseInt(String(process.env.ARRANGER_MAX_CONCURRENT || ""), 10);
   return Number.isFinite(env) && env >= 1 ? env : 1;
+}
+
+/**
+ * Normaliza el resultado de un join y expone la clasificación del error (QW-1).
+ *
+ * El Arranger responde HTTP 200 incluso cuando el body es un error `error [...]`.
+ * Ese caso es un FALLO real: `ok` pasa a false y viajan `error` (texto crudo del
+ * Arranger) + `errorKind` (transient | permanent | unknown). Los fallos de red
+ * también se clasifican (normalmente transient). NO hay retry acá: la política
+ * de reintento es del broker.
+ */
+function toJoinResult(result) {
+  if (result.error) {
+    const { kind } = classifyArrangerError(result.error);
+    return { ok: false, error: result.error.message, errorKind: kind };
+  }
+  const classification = classifyArrangerError(result.text);
+  const bodyError = isArrangerErrorResponse(result.text);
+  const out = {
+    ok: result.response.ok && !bodyError,
+    text: result.text,
+    status: result.response.status,
+    errorKind: classification.kind,
+  };
+  if (bodyError) out.error = result.text;
+  return out;
 }
 
 /** Crea el cliente. options: { baseUrl, token, retries, baseDelayMs, mock, mockMode, mockBlipEvery, mockLagSettleMs, log, maxConcurrent, semaphoreTimeoutMs }. */
@@ -239,8 +266,7 @@ function createArrangerClient(options = {}) {
     const command = `join av ${source} ${dest}`;
     if (writeId) console.log(`[ARRANGER ${writeId}] → "${command}"`);
     const result = await requestArranger(command, writeId);
-    if (result.error) return { ok: false, error: result.error.message };
-    return { ok: result.response.ok, text: result.text, status: result.response.status };
+    return toJoinResult(result);
   }
 
   /** Ejecuta un join independiente manteniendo el mismo contrato/retry que joinAv. */
@@ -255,8 +281,7 @@ function createArrangerClient(options = {}) {
     const command = `join ${stream} ${source} ${dest}`;
     if (writeId) console.log(`[ARRANGER ${writeId}] → "${command}"`);
     const result = await requestArranger(command, writeId);
-    if (result.error) return { ok: false, error: result.error.message };
-    return { ok: result.response.ok, text: result.text, status: result.response.status };
+    return toJoinResult(result);
   }
 
   async function joinVideo(source, dest, writeId) {

@@ -482,9 +482,12 @@ async function createServer(options = {}) {
           : await client.joinVideo(source, dest, writeId);
     t.joinMs = Date.now() - joinStart;
     if (!joinResult.ok) {
-      wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} FAILED: ${joinResult.error || joinResult.text || "?"}`);
+      // QW-1: el resultado del write expone la clasificación del error del
+      // Arranger (transient | permanent | unknown) para logging/decisiones.
+      const errorKind = joinResult.errorKind || "unknown";
+      wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} FAILED [${errorKind}]: ${joinResult.error || joinResult.text || "?"}`);
       await store.write();
-      return { ok: false, dest, source, sub, error: joinResult.error || "join falló" };
+      return { ok: false, dest, source, sub, error: joinResult.error || "join falló", errorKind };
     }
     wlog("ARRANGER", `→ join ${joinKind} ${source} ${dest} ok (${joinResult.text || ""})`);
     // WS5-DEDUPE: la intención efectiva de este destino quedó emitida.
@@ -772,7 +775,8 @@ async function createServer(options = {}) {
     task
       .then((result) => {
         if (!result || !result.ok) {
-          writeError(writeId, "QUEUE", `write ${dest}/${sub}=${source} falló: ${result && result.error}`);
+          // QW-1: visibilidad de la clasificación del fallo (transient | permanent | unknown).
+          writeError(writeId, "QUEUE", `write ${dest}/${sub}=${source} falló [${(result && result.errorKind) || "unknown"}]: ${result && result.error}`);
           writeLog(writeId, "WRITE", `DONE end-to-end ${(Date.now() - timings.queuedAt) / 1000}s (queue ${((timings.startedAt - timings.queuedAt) / 1000).toFixed(2)}s · join fallido)`);
           return;
         }

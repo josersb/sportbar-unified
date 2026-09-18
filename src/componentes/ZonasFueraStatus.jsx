@@ -43,23 +43,26 @@ const ZonasFueraStatus = () => {
           <span>Video</span>
           <span>Audio</span>
         </li>
-        {ids.map((id) => (
-          <li key={id} className={styles.row}>
-            <span className={styles.zoneName}>{zonaFueraLabel(id)}</span>
-            <span
-              className={styles.signal}
-              style={{ backgroundColor: `var(--${data.video || "DTV1"})` }}
-            >
-              {data.video || "—"}
-            </span>
-            <span
-              className={styles.signal}
-              style={{ backgroundColor: `var(--${data.audio || "DTV1"})` }}
-            >
-              {data.audio || "—"}
-            </span>
-          </li>
-        ))}
+        {ids.map((id) => {
+          const data = zonasFueraState[id] || {};
+          return (
+            <li key={id} className={styles.row}>
+              <span className={styles.zoneName}>{zonaFueraLabel(id)}</span>
+              <span
+                className={styles.signal}
+                style={{ backgroundColor: `var(--${data.video || "DTV1"})` }}
+              >
+                {data.video || "—"}
+              </span>
+              <span
+                className={styles.signal}
+                style={{ backgroundColor: `var(--${data.audio || "DTV1"})` }}
+              >
+                {data.audio || "—"}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

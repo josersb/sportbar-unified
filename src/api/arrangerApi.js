@@ -360,10 +360,10 @@ export async function getDevices(target = "all") {
 }
 
 /**
- * Envía un comando serial a un dispositivo Tesira con terminador \\x0A.
+ * Envía un comando serial a un dispositivo Tesira con terminador LF real (0x0A).
  */
 export async function sendSerialCommand(device, command) {
-  const payload = `${command}\\x0A`;
+  const payload = `${command}\x0A`;
   const urlCommand = `send serial ${device} "${payload}"`;
   return sendArrangerCommand(urlCommand);
 }

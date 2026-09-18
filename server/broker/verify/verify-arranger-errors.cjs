@@ -68,6 +68,29 @@ function installFetch({ status = 200, body = "join av success DTV1 TV01", reject
     check(`permanent: ${raw}`, classifyArrangerError(raw).kind === PERMANENT);
   }
 
+  // ── a-HW) Evidencia de HARDWARE REAL (2026-09-18, firmware 1.3.4) ───────
+  // El Arranger antepone el eco del comando al error:
+  //   "join av error [encoder 'DTV9' not found]"
+  // y usa "encoder"/"decoder", no siempre "device". Estos casos son la
+  // regresión del bug detectado en la prueba contra el Arranger real.
+  const hardwareEchoCases = [
+    "join av error [encoder 'DTV9' not found]",
+    "join av error [decoder 'TV99' not found]",
+    "preset load error [preset 'sb_x' not found]",
+    "get status error [device 'Encoder1' disconnected]",
+  ];
+  for (const raw of hardwareEchoCases) {
+    check(`hardware-echo detectado como error: ${raw}`, isArrangerErrorResponse(raw) === true);
+  }
+  check("hardware-echo clasifica permanent: join av error [encoder 'DTV9' not found]",
+    classifyArrangerError("join av error [encoder 'DTV9' not found]").kind === PERMANENT);
+  check("hardware-echo clasifica transient: get status error [device 'Encoder1' disconnected]",
+    classifyArrangerError("get status error [device 'Encoder1' disconnected]").kind === TRANSIENT);
+  check("éxito sin 'error [': no se detecta como error (join av success DTV1 TV01)",
+    isArrangerErrorResponse("join av success DTV1 TV01") === false);
+  check("éxito con get encoder success: no se detecta como error",
+    isArrangerErrorResponse("get encoder success TV01") === false);
+
   // ── a) unknown: fuera de las listas del quick win / éxito inesperado ────
   const unknownCases = [
     "error [preset 'P1' not found]", // no figura en la lista QW-1 → unknown

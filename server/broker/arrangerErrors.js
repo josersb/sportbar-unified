@@ -46,7 +46,7 @@ const TRANSIENT_RULES = Object.freeze([
 const PERMANENT_RULES = Object.freeze([
   { name: "invalid arguments", pattern: /invalid arguments/i },
   { name: "invalid stream", pattern: /invalid stream/i },
-  { name: "device not found", pattern: /device\s+(?:'[^']*'\s+)?not found/i },
+  { name: "device not found", pattern: /\b(?:device|encoder|decoder)\s+(?:'[^']*'\s+)?not found/i },
   { name: "invalid mode", pattern: /invalid mode/i },
   { name: "security key mismatch", pattern: /security key mismatch/i },
   { name: "incomplete", pattern: /\bincomplete\b/i },
@@ -92,9 +92,17 @@ function classifyArrangerError(rawResponse) {
 /**
  * ¿La respuesta es una respuesta de error del Arranger? (`error ...`, con o
  * sin corchetes). El Arranger responde HTTP 200 aunque el body sea un error.
+ *
+ * ⚠️ Evidencia de hardware real (2026-09-18, firmware 1.3.4): el Arranger
+ * ANTEPONE el eco del comando al error:
+ *   "join av error [encoder 'DTV9' not found]"
+ * Por eso, además del formato documentado anclado a inicio de body, se
+ * detecta `error [` en cualquier posición (con corchetes, el formato del
+ * catálogo V210826). Los éxitos documentados nunca contienen "error [".
  */
 function isArrangerErrorResponse(rawResponse) {
-  return /^\s*error\b/i.test(toText(rawResponse));
+  const text = toText(rawResponse);
+  return /^\s*error\b/i.test(text) || /\berror\s*\[/i.test(text);
 }
 
 module.exports = {

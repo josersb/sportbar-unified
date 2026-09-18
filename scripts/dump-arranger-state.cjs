@@ -44,11 +44,11 @@ const DESTINATIONS = [
   "VW-Norte","VW-Centro","VW-Sur",
   // Rack
   "TVRACK",
-  // Zonas fuera de sportbar
-  "aVip-Barra-Centro","aVip-Lobby-Batacazo","aVip-Bar-Boveda",
-  "RACK-VIP-PANTALLABATACA","aMas-15-Barra",
-  "a-Menos1-Escenario","a-Menos1-Escenario2",
+  // Zonas fuera de sportbar (11, mismo orden canónico que destinations.js)
+  "aVip-Lobby-Batacazo","aVip-Bar-Boveda","aVip-Barra-Centro",
+  "RACK-VIP-PANTALLABATACA","aMas-15-Barra","aMas15-Vwall-Libertador",
   "a-QMR75-Menos1-TV1","a-QMR75-Menos1-TV2","a-QMC65-Menos1-TV2",
+  "a-Menos1-Escenario","a-Menos1-Escenario2",
 ];
 
 // ── Helpers ──

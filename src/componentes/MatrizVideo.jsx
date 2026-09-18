@@ -9,26 +9,8 @@ import { useToast } from "./Toast";
 import PageContainer from "./ui/PageContainer";
 import styles from "./MatrizVideo.module.css";
 import Button from "./ui/Button";
-
-const ZONE_LABELS = {
-  'aVip-Barra-Centro': 'VIP Barra Centro',
-  'aVip-Lobby-Batacazo': 'VIP Lobby Batacazo',
-  'aVip-Bar-Boveda': 'VIP Bar Bóveda',
-  'RACK-VIP-PANTALLABATACA': 'Rack VIP Bataca',
-  'aMas-15-Barra': '+15 Barra',
-  'a-Menos1-Escenario': 'Escenario -1',
-  'a-Menos1-Escenario2': 'Escenario -1 (2)',
-  'a-QMR75-Menos1-TV1': 'QMR75 -1 TV1',
-  'a-QMR75-Menos1-TV2': 'QMR75 -1 TV2',
-  'a-QMC65-Menos1-TV2': 'QMC65 -1 TV2',
-};
-
-const ZONAS_FUERA_IDS = [
-  'aVip-Barra-Centro', 'aVip-Lobby-Batacazo', 'aVip-Bar-Boveda',
-  'RACK-VIP-PANTALLABATACA', 'aMas-15-Barra', 'a-Menos1-Escenario',
-  'a-Menos1-Escenario2', 'a-QMR75-Menos1-TV1', 'a-QMR75-Menos1-TV2',
-  'a-QMC65-Menos1-TV2',
-];
+// Fuente única de orden y labels de las 11 zonas fuera (zonasFuera.js).
+import { ZONAS_FUERA } from "../data/zonasFuera";
 
 // WS4d: títulos de zona para display (las OPCIONES y subgrupos vienen del
 // matrixModel servido — MG-4; estos títulos no duplican nada del modelo).
@@ -394,12 +376,12 @@ const MatrizVideo = () => {
                   ZONAS FUERA DE SPORTBAR
                 </h3>
                 <div className={styles.zonasFueraGrid}>
-                  {ZONAS_FUERA_IDS.map((zoneId) => {
-                    const zoneState = zonasFueraState[zoneId] || {};
+                  {ZONAS_FUERA.map((zone) => {
+                    const zoneState = zonasFueraState[zone.id] || {};
                     return (
-                      <div key={zoneId} className={styles.zonaCard}>
+                      <div key={zone.id} className={styles.zonaCard}>
                         <div className={styles.tvrackSubHeader}>
-                          <span>{ZONE_LABELS[zoneId]}</span>
+                          <span>{zone.label}</span>
                           <span className={styles.tvrackActiveBadge}>
                             {zoneState.video || '—'}
                           </span>
@@ -407,10 +389,10 @@ const MatrizVideo = () => {
                         <div className={styles.rackRow}>
                           {getByCapability('videoSource').map((d) => (
                             <Button
-                              key={`zf-${zoneId}-${d.id}`}
+                              key={`zf-${zone.id}-${d.id}`}
                               selected={d.id === zoneState.video}
-                              onClick={() => handleZonasFueraChange(zoneId, 'video', d.id)}
-                              data-testid={`btn-zf-video-${zoneId}-${d.id}`}
+                              onClick={() => handleZonasFueraChange(zone.id, 'video', d.id)}
+                              data-testid={`btn-zf-video-${zone.id}-${d.id}`}
                             >
                               {d.id}
                             </Button>
@@ -421,7 +403,7 @@ const MatrizVideo = () => {
                             <input
                               type="checkbox"
                               checked={zoneState.link || false}
-                              onChange={(e) => handleZonasFueraChange(zoneId, 'link', e.target.checked)}
+                              onChange={(e) => handleZonasFueraChange(zone.id, 'link', e.target.checked)}
                             />
                             Vincular video + audio
                           </label>

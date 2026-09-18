@@ -12,6 +12,7 @@ const os = require("os");
 const path = require("path");
 const { createStore, normalizeV3 } = require("../store.js");
 const { createMockArranger } = require("../mockArranger.js");
+const { ZONA_FUERA_IDS } = require("../destinations.js");
 
 const checks = [];
 function check(name, cond) {
@@ -191,6 +192,51 @@ function fixtureV2() {
     check("T6b: reported sigue null tras writes", st4.data.domains.matrixGroups.reported === null);
     check("T6b: getMatrixGroups expone el dominio", st4.getMatrixGroups().desired.VWN === "DTV2");
     check("T6b: setMatrixGroups rechaza no-objeto", (() => { try { st4.setMatrixGroups("DTV1"); return false; } catch { return true; } })());
+
+    // ── T7 (vwall-libertador): backfill de zonas fuera faltantes en v3 ──
+    const NEW_ZONE = "aMas15-Vwall-Libertador";
+    const OLD_ZONES = ZONA_FUERA_IDS.filter((id) => id !== NEW_ZONE);
+    /** Seed v3 con las 10 zonas previas (sin la #11) y valores existentes. */
+    function seedV3Con10Zonas() {
+      const desired = {};
+      const appZonas = {};
+      for (const id of OLD_ZONES) {
+        desired[id] = { video: "DTV3", audio: "DTV2" };
+        appZonas[id] = { link: true };
+      }
+      return {
+        schemaVersion: 3,
+        domains: {
+          tvs: { desired: { TV01: "DTV3" }, reported: {}, version: 4, lastUpdated: "x" },
+          zonasFuera: { desired, reported: {}, version: 6, lastUpdated: "y" },
+        },
+        appOnly: { tvrack: { link: false }, zonasFuera: appZonas },
+        sync: { status: "synced", lastSync: "z" },
+      };
+    }
+
+    // In-memory: la #11 aparece con defaults, las 10 previas NO se pisan.
+    const seedT7 = seedV3Con10Zonas();
+    const outT7 = normalizeV3(seedT7);
+    check("T7: schemaVersion intacto", outT7.schemaVersion === 3);
+    check("T7: zona #11 aparece en desired con defaults", outT7.domains.zonasFuera.desired[NEW_ZONE].video === "DTV1" && outT7.domains.zonasFuera.desired[NEW_ZONE].audio === "DTV1");
+    check("T7: zona #11 aparece en appOnly con link false", outT7.appOnly.zonasFuera[NEW_ZONE].link === false);
+    check("T7: las 10 zonas previas conservan valores", outT7.domains.zonasFuera.desired["aVip-Barra-Centro"].video === "DTV3" && outT7.appOnly.zonasFuera["aVip-Barra-Centro"].link === true);
+    check("T7: sin bump de versiones", outT7.domains.zonasFuera.version === 6 && outT7.domains.tvs.version === 4);
+
+    // Re-run: idempotente, ni duplica ni pisa.
+    const outT7b = normalizeV3(outT7);
+    check("T7: re-run idempotente (mismo contenido)", JSON.stringify(outT7b.domains.zonasFuera.desired) === JSON.stringify(outT7.domains.zonasFuera.desired) && JSON.stringify(outT7b.appOnly.zonasFuera) === JSON.stringify(outT7.appOnly.zonasFuera));
+
+    // En disco: state.json v3 con 10 zonas → la #11 aparece al abrir, sin backup.
+    const dbPath5 = path.join(tmp, "state5.json");
+    const backup5 = path.join(tmp, "state5.backup.json");
+    fs.writeFileSync(dbPath5, JSON.stringify(seedV3Con10Zonas()));
+    const st5 = await createStore({ dbPath: dbPath5, backupPath: backup5, log: { info: () => {}, warn: () => {} } });
+    check("T7: v3 en disco carga la #11 (desired DTV1/DTV1)", st5.data.domains.zonasFuera.desired[NEW_ZONE].video === "DTV1" && st5.data.domains.zonasFuera.desired[NEW_ZONE].audio === "DTV1");
+    check("T7: v3 en disco carga la #11 (appOnly link false)", st5.data.appOnly.zonasFuera[NEW_ZONE].link === false);
+    check("T7: v3 en disco sin backup (sin rescan)", !fs.existsSync(backup5));
+    check("T7: v3 en disco conserva zonas previas", st5.data.domains.zonasFuera.desired["aMas-15-Barra"].video === "DTV3" && st5.data.appOnly.zonasFuera["aMas-15-Barra"].link === true);
 
     const failed = checks.filter((c) => !c.ok).length;
     console.log(`\n${failed === 0 ? "✓ STORE OK" : `✗ ${failed} chequeos fallaron`}`);

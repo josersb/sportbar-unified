@@ -1214,7 +1214,7 @@ async function createServer(options = {}) {
     });
   });
 
-  // ── Zonas Fuera — 10 zonas externas ──
+  // ── Zonas Fuera — 11 zonas externas ──
   function validateZonaFueraId(req, res, next) {
     const { id } = req.params;
     if (!ZONA_FUERA_IDS.includes(id)) {

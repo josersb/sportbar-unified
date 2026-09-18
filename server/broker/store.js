@@ -116,6 +116,10 @@ function defaultSchemaV3() {
  * matrixGroups) con sus defaults sin tocar lo existente. Los archivos v3
  * previos a WS3/WS4b cargan tal cual (T-3.1/T-4b.1): sin backup, sin rescan,
  * sin bump de versiones.
+ *
+ * Además, rellena las claves de zona faltantes en zonasFuera (desired +
+ * appOnly): con v3 existente y 11 zonas canónicas, la zona nueva es visible
+ * en el Aside sin esperar el scan del reconciler (vwall-libertador T7).
  */
 function normalizeV3(seed, now = isoNow()) {
   if (!seed || typeof seed !== "object" || seed.schemaVersion !== SCHEMA_VERSION) return seed;
@@ -125,6 +129,20 @@ function normalizeV3(seed, now = isoNow()) {
   }
   if (!seed.domains.matrixGroups) {
     seed.domains.matrixGroups = defaultMatrixGroups(now);
+  }
+  // Backfill de zonas fuera faltantes (idempotente: ??= no pisa lo existente).
+  const zonas = seed.domains.zonasFuera;
+  const desired = zonas && typeof zonas === "object" ? zonas.desired : undefined;
+  if (desired && typeof desired === "object") {
+    for (const zoneId of ZONA_FUERA_IDS) {
+      desired[zoneId] ??= { video: DEFAULT_SOURCE, audio: DEFAULT_SOURCE };
+    }
+  }
+  if (seed.appOnly && typeof seed.appOnly === "object" && seed.appOnly.zonasFuera && typeof seed.appOnly.zonasFuera === "object") {
+    const appZonas = seed.appOnly.zonasFuera;
+    for (const zoneId of ZONA_FUERA_IDS) {
+      appZonas[zoneId] ??= { link: false };
+    }
   }
   return seed;
 }

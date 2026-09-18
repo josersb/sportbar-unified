@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * Verify 1.1 — destinations: 40 destinos canónicos, sin duplicados, mapa VW.
+ * Verify 1.1 — destinations: 41 destinos canónicos, sin duplicados, mapa VW.
  */
 const d = require("../destinations.js");
 
@@ -11,13 +11,34 @@ function check(name, cond) {
   console.log(`${cond ? "✓" : "✗"} ${name}`);
 }
 
-check("40 destinos", d.MATRIX_DESTINATIONS.length === 40);
+check("41 destinos", d.MATRIX_DESTINATIONS.length === 41);
 check("sin duplicados", new Set(d.MATRIX_DESTINATIONS).size === d.MATRIX_DESTINATIONS.length);
 check("26 TVs presentes", d.TV_IDS.length === 26);
 check("3 VW Arranger", JSON.stringify(d.VW_ARRANGER) === JSON.stringify(["VW-Norte", "VW-Centro", "VW-Sur"]));
 check("3 VW app", JSON.stringify(d.VW_APP) === JSON.stringify(["VWN", "VWC", "VWS"]));
 check("TVRACK presente", d.MATRIX_DESTINATIONS.includes("TVRACK"));
-check("10 zonas fuera", d.ZONA_FUERA_IDS.length === 10);
+check("11 zonas fuera", d.ZONA_FUERA_IDS.length === 11);
+check(
+  "zona #11 aMas15-Vwall-Libertador registrada",
+  d.ZONA_FUERA_IDS.includes("aMas15-Vwall-Libertador"),
+);
+check(
+  "orden canónico de zonas fuera (lista cliente/zonasFuera.js)",
+  JSON.stringify(d.ZONA_FUERA_IDS) ===
+    JSON.stringify([
+      "aVip-Lobby-Batacazo",
+      "aVip-Bar-Boveda",
+      "aVip-Barra-Centro",
+      "RACK-VIP-PANTALLABATACA",
+      "aMas-15-Barra",
+      "aMas15-Vwall-Libertador",
+      "a-QMR75-Menos1-TV1",
+      "a-QMR75-Menos1-TV2",
+      "a-QMC65-Menos1-TV2",
+      "a-Menos1-Escenario",
+      "a-Menos1-Escenario2",
+    ]),
+);
 check("toArranger VWN→VW-Norte", d.toArranger("VWN") === "VW-Norte");
 check("toApp VW-Norte→VWN", d.toApp("VW-Norte") === "VWN");
 check("toArranger idempotente (TV01)", d.toArranger("TV01") === "TV01");

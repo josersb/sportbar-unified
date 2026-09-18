@@ -3,8 +3,8 @@
 /**
  * Destinations canónicas del State Broker.
  *
- * 40 destinos de la matriz audiovisual, en nomenclatura del Arranger:
- *   26 TVs (TV01–TV26) + 3 video walls (VW-Norte/Centro/Sur) + TVRACK + 10 zonas fuera.
+ * 41 destinos de la matriz audiovisual, en nomenclatura del Arranger:
+ *   26 TVs (TV01–TV26) + 3 video walls (VW-Norte/Centro/Sur) + TVRACK + 11 zonas fuera.
  *
  * Este módulo es el ÚNICO mapa de nomenclatura VW. Absorbe los 3 maps del cliente
  * (VW_REVERSE / VW_FORWARD / vwDestNames) que duplicaban esta información:
@@ -23,20 +23,24 @@ const VW_APP = ["VWN", "VWC", "VWS"];
 
 const TVRACK_ID = "TVRACK";
 
+// Zonas fuera de sportbar: 11 canónicas, EN ORDEN CANÓNICO (misma lista y
+// orden que src/data/zonasFuera.js del cliente — duplicado intencional, ver
+// comentario de sync en ambos extremos).
 const ZONA_FUERA_IDS = [
-  "aVip-Barra-Centro",
   "aVip-Lobby-Batacazo",
   "aVip-Bar-Boveda",
+  "aVip-Barra-Centro",
   "RACK-VIP-PANTALLABATACA",
   "aMas-15-Barra",
-  "a-Menos1-Escenario",
-  "a-Menos1-Escenario2",
+  "aMas15-Vwall-Libertador",
   "a-QMR75-Menos1-TV1",
   "a-QMR75-Menos1-TV2",
   "a-QMC65-Menos1-TV2",
+  "a-Menos1-Escenario",
+  "a-Menos1-Escenario2",
 ];
 
-/** 40 destinos canónicos en nomenclatura Arranger. */
+/** 41 destinos canónicos en nomenclatura Arranger. */
 const MATRIX_DESTINATIONS = [
   ...TV_IDS,
   ...VW_ARRANGER,

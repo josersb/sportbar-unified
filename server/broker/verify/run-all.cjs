@@ -15,7 +15,7 @@ const path = require("path");
 
 const steps = [
   ["verify-vite-proxy", "proxy Vite dev: TODO /api/<seg> usado por el cliente está proxeado al Express del worktree"],
-  ["verify-destinations", "destinos canónicos (40, sin duplicados, mapa VW)"],
+  ["verify-destinations", "destinos canónicos (41, sin duplicados, mapa VW)"],
   ["verify-mock", "mockArranger modos normal/blip/offline deterministas"],
   ["verify-arranger-client", "arrangerClient getEncoder/joinAv + retry + FW-LOCKED"],
   ["verify-semaphore", "hotfix 6: semáforo global serial, FIFO, watchdog, batch 29"],

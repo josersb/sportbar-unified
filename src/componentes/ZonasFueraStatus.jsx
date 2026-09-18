@@ -1,18 +1,8 @@
 import { useContext } from "react";
 import ContextoUser from "../contexto/Contexto";
+// Fuente única de orden y labels de las 11 zonas fuera (zonasFuera.js).
+import { zonaFueraLabel, orderedZonaFueraIds } from "../data/zonasFuera";
 import styles from "./ZonasFueraStatus.module.css";
-
-/** Shorten zone IDs for display: "aVip-Barra-Centro" → "Vip Barra Centro" */
-const displayName = (id) => {
-  return id
-    .replace(/^a-?/, "")
-    .replace(/^RACK-/, "Rack ")
-    .replace(/-/g, " ")
-    .replace("Vip", "VIP")
-    .replace("QMR", "QMR")
-    .replace("QMC", "QMC")
-    .trim();
-};
 
 const ZonasFueraStatus = () => {
   const { estadoLoaded, zonasFueraState } = useContext(ContextoUser);
@@ -29,10 +19,12 @@ const ZonasFueraStatus = () => {
     );
   }
 
-  const zonas = Object.entries(zonasFueraState);
+  // Orden canónico: canónicas presentes + desconocidas al final (nunca el
+  // insertion-order del state.json).
+  const ids = orderedZonaFueraIds(zonasFueraState);
 
   // ── Empty state ──
-  if (zonas.length === 0) {
+  if (ids.length === 0) {
     return (
       <section className={styles.section} aria-label="Estado de otras zonas">
         <h2 className={styles.heading}>Estado de otras zonas</h2>
@@ -51,23 +43,26 @@ const ZonasFueraStatus = () => {
           <span>Video</span>
           <span>Audio</span>
         </li>
-        {zonas.map(([id, data]) => (
-          <li key={id} className={styles.row}>
-            <span className={styles.zoneName}>{displayName(id)}</span>
-            <span
-              className={styles.signal}
-              style={{ backgroundColor: `var(--${data.video || "DTV1"})` }}
-            >
-              {data.video || "—"}
-            </span>
-            <span
-              className={styles.signal}
-              style={{ backgroundColor: `var(--${data.audio || "DTV1"})` }}
-            >
-              {data.audio || "—"}
-            </span>
-          </li>
-        ))}
+        {ids.map((id) => {
+          const data = zonasFueraState[id] || {};
+          return (
+            <li key={id} className={styles.row}>
+              <span className={styles.zoneName}>{zonaFueraLabel(id)}</span>
+              <span
+                className={styles.signal}
+                style={{ backgroundColor: `var(--${data.video || "DTV1"})` }}
+              >
+                {data.video || "—"}
+              </span>
+              <span
+                className={styles.signal}
+                style={{ backgroundColor: `var(--${data.audio || "DTV1"})` }}
+              >
+                {data.audio || "—"}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
